@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Complete documentation for Duplex 1.3.1, a dual-mode Twine 2 story format.">
+  <title>Duplex 1.3.1 Documentation</title>
+  <link rel="icon" href="duplex-logo.png">
+  <style>
+    :root{--ink:#181429;--muted:#655f76;--paper:#fffdf9;--line:#ded9e8;--sun:#ff6b4a;--gold:#ffbd55;--violet:#6c3aa7;--night:#14285f;scroll-behavior:smooth}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65}a{color:inherit}code,pre{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}.top{position:sticky;top:0;z-index:30;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#fffdf9e8;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}.top a{display:flex;align-items:center;gap:10px;text-decoration:none}.top img{width:34px;height:34px;border-radius:50%}.top>span{font:600 12px monospace;padding:6px 10px;border:1px solid #d6cde2;border-radius:99px;color:var(--violet);background:#f5f0fb}.shell{display:grid;grid-template-columns:250px minmax(0,860px);gap:72px;max-width:1240px;margin:auto;padding:50px 28px 100px}aside{position:sticky;top:92px;align-self:start;max-height:calc(100vh - 112px);overflow:auto}aside label,aside nav>b{display:block;margin-bottom:8px;color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}aside input{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:white;outline:none}aside input:focus{border-color:var(--violet);box-shadow:0 0 0 3px #6c3aa718}aside nav{display:flex;flex-direction:column;margin-top:28px}aside nav a{padding:5px 8px;border-left:2px solid transparent;color:#4f4960;font-size:14px;text-decoration:none}aside nav a:hover{border-color:var(--sun);color:var(--ink);background:#fff4ed}aside>p{margin-top:28px;padding:14px;border-radius:12px;background:linear-gradient(145deg,#fff0e8,#f1effc);font-size:12px;color:var(--muted)}main{min-width:0}.hero{display:grid;grid-template-columns:1.4fr .6fr;align-items:center;gap:40px;min-height:460px;padding:56px;border-radius:30px;background:radial-gradient(circle at 82% 24%,#ffbd5545,transparent 28%),linear-gradient(145deg,#24143f,#132a60);color:white;overflow:hidden}.hero>div>span,.section>header span,.modes article>span{font-size:12px;font-weight:760;letter-spacing:.13em;text-transform:uppercase}.hero h1{margin:18px 0;font-size:clamp(48px,7vw,74px);line-height:.96;letter-spacing:-.065em}.hero h1 em{color:var(--gold);font-style:normal}.hero p{color:#e8e3f1;font-size:18px}.hero a{display:inline-block;margin-top:18px;padding:11px 18px;border-radius:9px;background:var(--sun);font-weight:700;text-decoration:none}.hero>img{width:100%;max-width:270px;border-radius:50%;box-shadow:0 25px 70px #03051f80}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0 100px}.cards article{padding:22px;border:1px solid var(--line);border-radius:18px;background:white}.cards p{margin:5px 0 0;color:var(--muted);font-size:14px}.section{scroll-margin-top:90px;margin-bottom:108px}.section.filtered{display:none}.section>header{margin-bottom:26px}.section>header span{color:var(--sun)}.section h2{margin:4px 0;font-size:clamp(34px,5vw,48px);line-height:1.05;letter-spacing:-.04em}h3{margin-top:28px;letter-spacing:-.025em}.section>p{color:var(--muted)}.columns,.modes{display:grid;grid-template-columns:1fr 1fr;gap:24px}.columns>div{min-width:0}.modes article{padding:26px;border-radius:20px}.modes article:first-child{background:#fff0e5;border:1px solid #ffd1b7}.modes article:last-child{background:#eef3ff;border:1px solid #cbd8f3}.modes article:first-child>span{color:#c93e24}.modes article:last-child>span{color:#37559a}.modes h3{margin:8px 0}.modes p{min-height:72px;color:var(--muted)}ol,ul{padding-left:22px;color:var(--muted)}li{margin:.45em 0}p code,li code{padding:.1em .35em;border-radius:5px;background:#eeebf3;color:#4d2e7c}.code{overflow:hidden;margin:18px 0;border:1px solid #3e3653;border-radius:13px;background:#171422;color:#f8f4ff}.codebar{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #3d354d;color:#a9a0ba;font:600 11px monospace;text-transform:uppercase}.codebar button{border:0;background:transparent;color:var(--gold);cursor:pointer;font:600 11px monospace}pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.7;white-space:pre-wrap}.note,.warning{padding:16px 18px;border-left:4px solid var(--gold);border-radius:8px;background:#fff7dc!important;color:#5b4b21!important}.table{display:grid;border-top:1px solid var(--line)}.table>div{display:grid;grid-template-columns:minmax(155px,.7fr) 1.5fr;gap:22px;padding:14px 4px;border-bottom:1px solid var(--line)}.table code{color:#61349a;font-size:13px;font-weight:650}.table span{color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.chips code{padding:7px 10px;border:1px solid #cfc8db;border-radius:8px;background:white;color:#503073;font-size:12px}.warning{margin-top:30px;border-color:var(--sun);background:#fff0e8!important}.warning p{margin:.3em 0 0}.license{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:14px;margin-top:28px;padding:18px;border:1px solid var(--line);border-radius:14px}.license span{color:var(--muted);font-size:12px;text-transform:uppercase}.license b{font-size:22px}.license p{margin:0;text-align:right;color:var(--muted)}footer{display:flex;align-items:center;gap:12px;max-width:1160px;margin:auto;padding:28px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}footer img{width:30px;height:30px;border-radius:50%}footer a{margin-left:auto;color:var(--violet);font-weight:700;text-decoration:none}
+    @media(max-width:960px){.shell{grid-template-columns:1fr;padding-top:28px}aside{position:relative;top:auto;max-height:none}aside nav,aside>p{display:none}.hero{padding:40px}.cards{margin-bottom:75px}}@media(max-width:680px){.top{padding:0 16px}.shell{padding:18px 16px 70px}.hero{grid-template-columns:1fr;padding:30px 24px;min-height:auto}.hero>img{grid-row:1;width:110px}.hero h1{font-size:48px}.cards,.columns,.modes{grid-template-columns:1fr}.cards{gap:10px}.modes p{min-height:auto}.section{margin-bottom:74px}.table>div{grid-template-columns:1fr;gap:4px}.license{grid-template-columns:auto auto}.license p{grid-column:1/-1;text-align:left}footer{padding:22px 16px}}@media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+<header class="top"><a href="#overview"><img src="duplex-logo.png" alt="Duplex logo"><b>Duplex Docs</b></a><span>v1.3.1</span></header>
+<div class="shell"><aside><label>Search this page<input id="search" type="search" placeholder="widget, audio, tags…"></label><nav><b>On this page</b><a href="#overview">Overview</a><a href="#install">Install</a><a href="#modes">Display modes</a><a href="#core">Core syntax</a><a href="#logic">Logic &amp; scripting</a><a href="#interactive">Interactive</a><a href="#audio">Audio</a><a href="#ui">UI &amp; sidebars</a><a href="#widgets">Widgets</a><a href="#tags">Passage tags</a><a href="#api">JavaScript API</a><a href="#reference">Reference</a></nav><p><b>Duplex is its own format.</b><br>SugarCube-like syntax with two display modes.</p></aside><main>
+<section id="overview" class="hero"><div><span>Twine 2 story format · 1.3.1</span><h1>Two ways to tell<br><em>one story.</em></h1><p>Switch between a scrolling transcript and page-by-page passages without changing your authoring syntax.</p><a href="#install">Get started</a></div><img src="duplex-logo.png" alt="Setting sun joined to a moon"></section>
+<div class="cards"><article><b>One syntax</b><p>Variables, macros, widgets, links, audio, and controls.</p></article><article><b>Two modes</b><p>Append passages or replace the current page.</p></article><article><b>Two sidebars</b><p>Independent left and right UI bars.</p></article></div>
+
+<section id="install" class="section"><header><span>Getting started</span><h2>Install Duplex</h2></header><div class="columns"><div><h3>Twine 2 Desktop</h3><ol><li>Extract the package somewhere permanent.</li><li>Open <b>Story Formats → Add a New Format</b>.</li><li>Enter the full file URL to <code>format.js</code>.</li><li>Select <b>Duplex 1.3.1</b>.</li></ol><div class="code"><div class="codebar"><span>Linux example</span><button>Copy</button></div><pre>file:///home/you/Twine/duplex-format/format.js</pre></div><p class="note">Browser Twine may block local file URLs. Use Twine Desktop or host the format online.</p></div><div><h3>Tweego</h3><div class="code"><div class="codebar"><span>Project layout</span><button>Copy</button></div><pre>project/
+├── storyformats/
+│   └── duplex-format/
+│       └── format.js
+└── story.twee</pre></div><div class="code"><div class="codebar"><span>Shell</span><button>Copy</button></div><pre>tweego --list-formats
+tweego -f duplex-1.3.1 -o story.html story.twee</pre></div></div></div><h3>StoryData</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>:: StoryData
+{
+  "ifid": "YOUR-STORY-IFID",
+  "format": "Duplex",
+  "format-version": "1.3.1",
+  "start": "Start"
+}</pre></div></section>
+
+<section id="modes" class="section"><header><span>The defining feature</span><h2>Choose the display mode</h2></header><div class="modes"><article><span>Scrolling</span><h3>Append mode</h3><p>New passages appear beneath earlier passages as a transcript.</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>:: StoryInit
+&lt;&lt;set $passageMode = "append"&gt;&gt;</pre></div></article><article><span>Page-by-page</span><h3>Replace mode</h3><p>Navigation clears the previous passage before showing the next.</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>:: StoryInit
+&lt;&lt;set $passageMode = "replace"&gt;&gt;</pre></div></article></div><p>Story JavaScript may set <code>Config.displayMode</code>. This takes priority over story variables.</p><div class="code"><div class="codebar"><span>Story JavaScript</span><button>Copy</button></div><pre>Config.displayMode = "append"; // or "replace"</pre></div></section>
+
+<section id="core" class="section"><header><span>Authoring</span><h2>Core syntax</h2></header><div class="table"><div><code>[[Passage]]</code><span>Basic passage link.</span></div><div><code>[[Label-&gt;Passage]]</code><span>Labeled passage link.</span></div><div><code>[[Label|Passage]]</code><span>Alternate labeled-link form.</span></div><div><code>$name</code><span>Story variable; may print naked.</span></div><div><code>_name</code><span>Temporary passage variable.</span></div><div><code>&lt;&lt;set&gt;&gt;</code><span>Assign or modify a variable.</span></div><div><code>&lt;&lt;print&gt;&gt; / &lt;&lt;=&gt;&gt;</code><span>Evaluate and print.</span></div><div><code>&lt;&lt;unset&gt;&gt;</code><span>Delete variables or properties.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;set $name = "Nest"&gt;&gt;
+&lt;&lt;set $visits to 0&gt;&gt;
+&lt;&lt;set $visits += 1&gt;&gt;
+Hello, $name. Visit &lt;&lt;= $visits&gt;&gt;.
+&lt;&lt;unset $temporaryChoice&gt;&gt;</pre></div><h3>Operators</h3><p><code>is</code>, <code>is not</code>, <code>isnot</code>, <code>eq</code>, <code>neq</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>and</code>, <code>or</code>, and <code>not</code>, plus ordinary JavaScript operators.</p></section>
+
+<section id="logic" class="section"><header><span>Branching and code</span><h2>Logic and scripting</h2></header><div class="columns"><div><h3>If / elseif / else</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;if $keys &gt; 1&gt;&gt;
+  Several keys.
+&lt;&lt;elseif $keys is 1&gt;&gt;
+  One key.
+&lt;&lt;else&gt;&gt;
+  No keys.
+&lt;&lt;/if&gt;&gt;</pre></div></div><div><h3>Switch / case / default</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;switch $weather&gt;&gt;
+&lt;&lt;case "sunny"&gt;&gt;
+  The path glows.
+&lt;&lt;case "rain" "storm"&gt;&gt;
+  Water darkens the trail.
+&lt;&lt;default&gt;&gt;
+  Uncertain skies.
+&lt;&lt;/switch&gt;&gt;</pre></div></div></div><div class="table"><div><code>&lt;&lt;run expression&gt;&gt;</code><span>Execute code without output.</span></div><div><code>&lt;&lt;script&gt;&gt;…&lt;&lt;/script&gt;&gt;</code><span>Execute JavaScript.</span></div><div><code>&lt;&lt;script TwineScript&gt;&gt;</code><span>Execute translated Twine-style code.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;run $score += 10&gt;&gt;
+&lt;&lt;script&gt;&gt;
+  State.variables.seenBird = true;
+  output.append("Recorded.");
+&lt;&lt;/script&gt;&gt;</pre></div></section>
+
+<section id="interactive" class="section"><header><span>Player input</span><h2>Interactive macros</h2></header><div class="table"><div><code>&lt;&lt;button&gt;&gt;</code><span>Button that executes its body and may navigate.</span></div><div><code>&lt;&lt;link&gt;&gt;</code><span>Text link that executes its body and may navigate.</span></div><div><code>&lt;&lt;linkappend&gt;&gt;</code><span>Single-use link that appends its body.</span></div><div><code>&lt;&lt;linkprepend&gt;&gt;</code><span>Single-use link that prepends its body.</span></div><div><code>&lt;&lt;linkreplace&gt;&gt;</code><span>Single-use link replaced by its body.</span></div><div><code>&lt;&lt;checkbox&gt;&gt;</code><span>Checkbox bound to a story variable.</span></div><div><code>&lt;&lt;radiobutton&gt;&gt;</code><span>Radio control bound to a story variable.</span></div><div><code>&lt;&lt;cycle&gt;&gt;</code><span>Link that cycles through &lt;&lt;option&gt;&gt; values.</span></div><div><code>&lt;&lt;listbox&gt;&gt;</code><span>Select menu using &lt;&lt;option&gt;&gt; or &lt;&lt;optionsfrom&gt;&gt;.</span></div><div><code>&lt;&lt;numberbox&gt;&gt;</code><span>Numeric input; optional Enter-key passage.</span></div><div><code>&lt;&lt;textbox&gt;&gt;</code><span>Single-line input; optional Enter-key passage.</span></div><div><code>&lt;&lt;textarea&gt;&gt;</code><span>Multi-line text input.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;button "Take feather"&gt;&gt;
+  &lt;&lt;set $hasFeather = true&gt;&gt;
+&lt;&lt;/button&gt;&gt;
+
+&lt;&lt;cycle "$weather" autoselect&gt;&gt;
+  &lt;&lt;option "Clear" "clear"&gt;&gt;
+  &lt;&lt;option "Rain" "rain"&gt;&gt;
+&lt;&lt;/cycle&gt;&gt;
+
+&lt;&lt;textbox "$name" "Nest"&gt;&gt;</pre></div><p class="note">Cycles and listboxes support <code>&lt;&lt;option&gt;&gt;</code> and <code>&lt;&lt;optionsfrom&gt;&gt;</code>.</p></section>
+
+<section id="audio" class="section"><header><span>Media</span><h2>Audio macros</h2></header><div class="table"><div><code>&lt;&lt;cacheaudio&gt;&gt;</code><span>Register a track and its sources.</span></div><div><code>&lt;&lt;audio&gt;&gt;</code><span>Control tracks or groups.</span></div><div><code>&lt;&lt;createaudiogroup&gt;&gt;</code><span>Collect tracks under a :group ID.</span></div><div><code>&lt;&lt;createplaylist&gt;&gt;</code><span>Build a playlist.</span></div><div><code>&lt;&lt;masteraudio&gt;&gt;</code><span>Control master audio.</span></div><div><code>&lt;&lt;playlist&gt;&gt;</code><span>Control a playlist.</span></div><div><code>&lt;&lt;removeaudiogroup&gt;&gt;</code><span>Remove a custom group.</span></div><div><code>&lt;&lt;removeplaylist&gt;&gt;</code><span>Remove a playlist.</span></div><div><code>&lt;&lt;waitforaudio&gt;&gt;</code><span>Begin loading registered audio.</span></div></div><h3>Setup</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;cacheaudio "forest" "audio/forest.mp3" "audio/forest.ogg"&gt;&gt;
+&lt;&lt;cacheaudio "owl" "audio/owl.mp3"&gt;&gt;
+
+&lt;&lt;createaudiogroup ":ambience"&gt;&gt;
+  &lt;&lt;track "forest"&gt;&gt;
+  &lt;&lt;track "owl"&gt;&gt;
+&lt;&lt;/createaudiogroup&gt;&gt;</pre></div><h3>Actions</h3><div class="chips"><code>play</code><code>pause</code><code>stop</code><code>load</code><code>unload</code><code>mute</code><code>unmute</code><code>loop</code><code>unloop</code><code>volume level</code><code>time seconds</code><code>fadein</code><code>fadeout</code><code>fadeto level</code><code>fadeoverto seconds level</code><code>goto passage</code></div><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;audio "forest" volume 0.5 loop play&gt;&gt;
+&lt;&lt;audio ":ambience" fadeout&gt;&gt;
+&lt;&lt;playlist "night" shuffle play&gt;&gt;
+&lt;&lt;masteraudio volume 0.8&gt;&gt;</pre></div><p class="note">Native browser autoplay restrictions apply. Audio playback state is not stored in saves.</p></section>
+
+<section id="ui" class="section"><header><span>Interface</span><h2>UI and sidebars</h2></header><div class="columns"><div><h3>Left bar</h3><ul><li><code>StoryCaption</code></li><li><code>StoryMenu</code></li><li><code>StoryLeftBar</code></li></ul></div><div><h3>Right bar</h3><ul><li><code>StoryRightBar</code></li><li>Current passage</li><li>Current display mode</li></ul></div></div><div class="code"><div class="codebar"><span>Story JavaScript</span><button>Copy</button></div><pre>UIBarL.stow();
+UIBarL.unstow();
+UIBarL.hide();
+UIBarL.show();
+
+UIBarR.stow();
+UIBarR.unstow();</pre></div><p>Both bars implement <code>destroy()</code>, <code>hide()</code>, <code>show()</code>, <code>isHidden()</code>, <code>isStowed()</code>, <code>stow()</code>, <code>unstow()</code>, and <code>update()</code>.</p><p class="note">Aliases: <code>UIBar</code>, <code>UIBarRight</code>, <code>UIBars.left</code>, and <code>UIBars.right</code>.</p><h3>UI API</h3><div class="chips"><code>UI.alert(message)</code><code>UI.restart()</code><code>UI.saves()</code><code>UI.settings()</code><code>UI.update()</code><code>UI.jumpto()</code><code>UI.share()</code></div><p>Duplex includes one lightweight browser save, not SugarCube’s complete multi-slot Save API.</p></section>
+
+<section id="widgets" class="section"><header><span>Reusable macros</span><h2>Widgets</h2></header><p>Define custom macros in passages with the <code>widget</code> tag. They load before <code>StoryInit</code>.</p><div class="columns"><div><h3>Ordinary widget</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>:: Bird Widgets [widget]
+
+&lt;&lt;widget "birdname"&gt;&gt;
+  The bird is &lt;&lt;= _args[0]&gt;&gt;.
+&lt;&lt;/widget&gt;&gt;
+
+&lt;&lt;birdname "Common nighthawk"&gt;&gt;</pre></div></div><div><h3>Container widget</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>:: Bird Widgets [widget]
+
+&lt;&lt;widget "birdnote" container&gt;&gt;
+  &lt;aside&gt;&lt;&lt;= _contents&gt;&gt;&lt;/aside&gt;
+&lt;&lt;/widget&gt;&gt;
+
+&lt;&lt;birdnote&gt;&gt;Active at dusk.&lt;&lt;/birdnote&gt;&gt;</pre></div></div></div><div class="table"><div><code>_args[0]</code><span>First parsed argument.</span></div><div><code>_args.raw</code><span>Raw argument string.</span></div><div><code>_args.full</code><span>Full argument compatibility value.</span></div><div><code>_args.name</code><span>Invoked widget name.</span></div><div><code>_contents</code><span>Container widget contents.</span></div><div><code>$args</code><span>Deprecated compatibility alias.</span></div></div></section>
+
+<section id="tags" class="section"><header><span>Passage metadata</span><h2>Check passage tags</h2></header><p>In <code>StoryInit</code>, explicitly name the passage because no ordinary passage is rendering yet.</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;if tags("Start").includes("scrolling")&gt;&gt;
+  &lt;&lt;set $passageMode = "append"&gt;&gt;
+&lt;&lt;elseif hasTag("Start", "pages")&gt;&gt;
+  &lt;&lt;set $passageMode = "replace"&gt;&gt;
+&lt;&lt;else&gt;&gt;
+  &lt;&lt;set $passageMode = "replace"&gt;&gt;
+&lt;&lt;/if&gt;&gt;</pre></div><p>Inside an ordinary rendering passage, omit the title:</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;if hasTag("forest")&gt;&gt;
+  You are beneath the trees.
+&lt;&lt;/if&gt;&gt;
+Current tags: &lt;&lt;= tags().join(", ")&gt;&gt;</pre></div><p>Unknown passages return an empty tag array. JavaScript may use <code>Duplex.tags()</code> and <code>Duplex.hasTag()</code>.</p></section>
+
+<section id="api" class="section"><header><span>Extension</span><h2>JavaScript API</h2></header><div class="table"><div><code>Duplex.go(title)</code><span>Navigate to a passage.</span></div><div><code>Duplex.back()</code><span>Restore the previous history moment.</span></div><div><code>Duplex.restart()</code><span>Reset and return to the start.</span></div><div><code>Duplex.mode()</code><span>Return append or replace.</span></div><div><code>Duplex.tags(title?)</code><span>Return a passage’s tags.</span></div><div><code>Duplex.hasTag(title?, tag)</code><span>Test one passage tag.</span></div><div><code>Duplex.audio</code><span>Native audio registry.</span></div><div><code>Duplex.UI</code><span>Dialog and UI API.</span></div><div><code>Duplex.UIBarL / UIBarR</code><span>Sidebar controllers.</span></div><div><code>Duplex.widgets</code><span>Registered widgets.</span></div></div><p>Globals include <code>State</code>, <code>setup</code>, <code>Config</code>, <code>SimpleAudio</code>, <code>UI</code>, <code>UIBarL</code>, and <code>UIBarR</code>.</p></section>
+
+<section id="reference" class="section"><header><span>At a glance</span><h2>Reference and limits</h2></header><div class="columns"><div><h3>Special passages</h3><div class="table"><div><code>StoryInit</code><span>Startup initialization.</span></div><div><code>StoryCaption</code><span>Left-bar caption.</span></div><div><code>StoryMenu</code><span>Left-bar menu.</span></div><div><code>StoryLeftBar</code><span>Custom left content.</span></div><div><code>StoryRightBar</code><span>Custom right content.</span></div></div></div><div><h3>Included facilities</h3><ul><li>Story JavaScript and Stylesheet</li><li><code>widget</code>-tagged passages</li><li>Back and Restart</li><li>Single browser save</li><li>Responsive dual sidebars</li><li>Twine 2 and Tweego packaging</li></ul></div></div><div class="warning"><b>Compatibility boundary</b><p>Duplex is not SugarCube or Harlowe. It implements a selected SugarCube-like authoring surface, not every macro, API, save feature, edge case, or third-party extension.</p></div><div class="license"><span>License</span><b>MIT</b><p>Copyright © 2026 Neston Linden Rainer</p></div></section>
+</main></div>
+<footer><img src="duplex-logo.png" alt=""><span>Duplex 1.3.1 documentation</span><a href="#overview">Back to top ↑</a></footer>
+<script>
+  const sections=[...document.querySelectorAll('.section')];
+  document.querySelector('#search').addEventListener('input',event=>{const term=event.target.value.trim().toLowerCase();sections.forEach(section=>section.classList.toggle('filtered',Boolean(term)&&!section.textContent.toLowerCase().includes(term)))});
+  document.querySelectorAll('.codebar button').forEach(button=>button.addEventListener('click',async()=>{const text=button.closest('.code').querySelector('pre').textContent;try{await navigator.clipboard.writeText(text)}catch{const area=document.createElement('textarea');area.value=text;document.body.append(area);area.select();document.execCommand('copy');area.remove()}button.textContent='Copied';setTimeout(()=>button.textContent='Copy',1200)}));
+</script>
+</body>
+</html>
