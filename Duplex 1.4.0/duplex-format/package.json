@@ -1,0 +1,13 @@
+{
+  "name": "duplex-twine-format",
+  "private": true,
+  "version": "1.4.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node tests/runtime.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

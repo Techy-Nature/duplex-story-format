@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{STORY_NAME}}</title>
+  <style>
+    :root { color-scheme: dark; --duplex-accent:#83c5be; --duplex-bg:#17191d; --duplex-panel:#22252b; --duplex-text:#f1f3f5; --duplex-muted:#aeb5bd; --duplex-bar-width:17rem; --duplex-bar-stowed:3.25rem; --duplex-left-space:var(--duplex-bar-width); --duplex-right-space:var(--duplex-bar-width); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--duplex-bg); color:var(--duplex-text); font:18px/1.65 system-ui,sans-serif; }
+    #duplex-shell { width:min(48rem,calc(100% - 2rem)); margin:0 auto; padding:3rem 0 7rem; transform:translateX(calc((var(--duplex-left-space) - var(--duplex-right-space))/2)); transition:transform .2s ease; }
+    .duplex-ui-bar { position:fixed; z-index:20; inset-block:0; width:var(--duplex-bar-width); padding:1rem; overflow:auto; background:var(--duplex-panel); border-color:#ffffff20; transition:width .2s ease,transform .2s ease; }
+    .duplex-ui-bar[data-side="left"] { left:0; border-right:1px solid; }
+    .duplex-ui-bar[data-side="right"] { right:0; border-left:1px solid; }
+    .duplex-ui-bar.is-hidden { visibility:hidden; }
+    .duplex-ui-bar.is-stowed { width:var(--duplex-bar-stowed); overflow:hidden; }
+    .duplex-ui-bar.is-stowed .duplex-bar-body { display:none; }
+    .duplex-bar-toggle { position:sticky; top:0; float:right; width:2.25rem; padding:.35rem; }
+    .duplex-ui-bar[data-side="right"] .duplex-bar-toggle { float:left; }
+    .duplex-bar-title { margin:.2rem 0 1.5rem; font-size:1.2rem; }
+    .duplex-bar-section { margin:1rem 0; padding-top:1rem; border-top:1px solid #ffffff20; }
+    .duplex-bar-actions { display:grid; gap:.5rem; }
+    .duplex-bar-actions button { width:100%; }
+    #duplex-dialog { width:min(34rem,calc(100% - 2rem)); color:var(--duplex-text); background:var(--duplex-panel); border:1px solid #ffffff30; border-radius:.75rem; padding:0; }
+    #duplex-dialog::backdrop { background:#000a; }
+    #duplex-dialog-body { padding:1.5rem; }
+    #duplex-dialog-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:.5rem; padding:1rem 1.5rem; border-top:1px solid #ffffff20; }
+    button,.duplex-link { color:var(--duplex-accent); cursor:pointer; }
+    button { border:1px solid color-mix(in srgb,var(--duplex-accent) 50%,transparent); border-radius:.5rem; background:var(--duplex-panel); padding:.55rem .8rem; font:inherit; }
+    button:disabled { cursor:not-allowed; opacity:.45; }
+    .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
+    .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
+    .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
+    .duplex-error { border-left:.25rem solid #ef476f; padding:.7rem 1rem; background:#ef476f18; }
+    tw-storydata { display:none; }
+    @keyframes duplex-in { from { opacity:0; transform:translateY(.25rem); } }
+    @media (max-width:1100px) { :root { --duplex-left-space:var(--duplex-bar-stowed); --duplex-right-space:var(--duplex-bar-stowed); } .duplex-ui-bar:not(.is-stowed) { box-shadow:0 0 2rem #0008; } }
+    @media (max-width:650px) { #duplex-shell { width:min(100% - 5rem,48rem); } }
+    @media (prefers-reduced-motion:reduce) { .duplex-passage { animation:none; } }
+  </style>
+</head>
+<body>
+  <aside id="ui-bar" class="duplex-ui-bar" data-side="left" aria-label="Left story bar">
+    <button class="duplex-bar-toggle" type="button" aria-label="Toggle left bar">☰</button>
+    <div class="duplex-bar-body">
+      <h1 id="duplex-story-title" class="duplex-bar-title">{{STORY_NAME}}</h1>
+      <div id="story-caption" class="duplex-bar-section"></div>
+      <nav id="story-menu" class="duplex-bar-section" aria-label="Story menu"></nav>
+      <div id="story-left-bar" class="duplex-bar-section"></div>
+      <div class="duplex-bar-actions duplex-bar-section">
+        <button id="duplex-back" type="button">Back</button>
+        <button id="duplex-restart" type="button">Restart</button>
+        <button id="duplex-saves" type="button">Saves</button>
+        <button id="duplex-settings" type="button">Settings</button>
+      </div>
+    </div>
+  </aside>
+  <main id="duplex-shell"><div id="duplex-passages" aria-live="polite"></div></main>
+  <aside id="ui-bar-right" class="duplex-ui-bar" data-side="right" aria-label="Right story bar">
+    <button class="duplex-bar-toggle" type="button" aria-label="Toggle right bar">☰</button>
+    <div class="duplex-bar-body">
+      <h2 class="duplex-bar-title">Story</h2>
+      <div class="duplex-bar-section"><strong>Passage</strong><div id="duplex-current-passage">—</div></div>
+      <div class="duplex-bar-section"><strong>Display</strong><div id="duplex-current-mode">—</div></div>
+      <div id="story-right-bar" class="duplex-bar-section"></div>
+    </div>
+  </aside>
+  <dialog id="duplex-dialog"><div id="duplex-dialog-body"></div><div id="duplex-dialog-actions"></div></dialog>
+  {{STORY_DATA}}
+  <script>
+  (() => {
+    'use strict';
+    const data = document.querySelector('tw-storydata');
+    const output = document.querySelector('#duplex-passages');
+    const passages = new Map();
+    const initial = Object.create(null);
+    const State = window.State = { variables: Object.create(null), history: [] };
+    const setup = window.setup = Object.create(null);
+    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true } };
+    let activeRenderTitle = null;
+    const deferred = new Map();
+    const widgets = new Map();
+    let nextControlId = 0;
+    const AudioEngine = window.SimpleAudio = {
+      tracks: new Map(), groups: new Map(), playlists: new Map(), volume: 1, muted: false, muteOnHide: false
+    };
+
+    data.querySelectorAll('tw-passagedata').forEach(el => passages.set(el.getAttribute('name'), {
+      name: el.getAttribute('name'), pid: el.getAttribute('pid'), tags: (el.getAttribute('tags') || '').split(/\s+/).filter(Boolean), text: el.textContent
+    }));
+
+    function tags(passageName) {
+      const title=passageName == null ? (activeRenderTitle || State.history.at(-1)?.title) : String(passageName);
+      return passages.has(title) ? [...passages.get(title).tags] : [];
+    }
+    function hasTag(passageName,tagName) {
+      if (tagName === undefined) return tags().includes(String(passageName));
+      return tags(passageName).includes(String(tagName));
+    }
+    window.tags=tags;
+    window.hasTag=hasTag;
+
+    data.querySelectorAll('style[type="text/twine-css"]').forEach(source => {
+      const style = document.createElement('style'); style.textContent = source.textContent; document.head.append(style);
+    });
+    function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
+    function mode() {
+      const chosen = Config.displayMode ?? State.variables.passageMode ?? State.variables.displayMode ?? 'replace';
+      return chosen === 'append' || chosen === true ? 'append' : 'replace';
+    }
+    function jsExpr(source) {
+      return source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!').replace(/\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/_([A-Za-z_]\w*)/g,'State.temporary.$1');
+    }
+    function evaluate(source) {
+      try { return Function('State','setup','Config','return (' + jsExpr(source) + ')')(State,setup,Config); }
+      catch (error) { throw new Error('Could not evaluate “' + source + '”: ' + error.message); }
+    }
+    function execute(source) {
+      const normalized=source.replace(/^(\s*[$_]\w+(?:\.[A-Za-z_]\w*)*)\s+to\s+/, '$1 = ');
+      return Function('State','setup','Config','Duplex',jsExpr(normalized))(State,setup,Config,window.Duplex);
+    }
+    function assign(source) { execute(source); return ''; }
+    function escapeHtml(value) { const el=document.createElement('span'); el.textContent=String(value ?? ''); return el.innerHTML; }
+    function tokens(source) { return source.match(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\[\[[\s\S]*?\]\]|[^\s]+/g) || []; }
+    function value(token) {
+      if (token == null) return undefined;
+      if (/^(["'])[\s\S]*\1$/.test(token)) { try { return Function('return ('+token+')')(); } catch (_) { return token.slice(1,-1); } }
+      return evaluate(token);
+    }
+    function receiver(token) { return /^(["'])[\s\S]*\1$/.test(token) ? value(token) : token; }
+    function setReceiver(name,value) { Function('State',jsExpr(name)+' = arguments[1]')(State,value); }
+    function getReceiver(name) { return evaluate(name); }
+    function action(payload) { const id='duplex-action-'+(++nextControlId); deferred.set(id,payload); return id; }
+    function container(text,name) {
+      const open=text.match(new RegExp('^<<'+name+'(?:\\s+([\\s\\S]*?))?>>','i'));
+      if (!open) return null;
+      const re=new RegExp('<<(?:\\/'+name+'|'+name+'(?:\\s+[\\s\\S]*?)?)>>','gi'); re.lastIndex=open[0].length;
+      let depth=1, token;
+      while ((token=re.exec(text))) {
+        if (token[0].toLowerCase().startsWith('<</')) depth--; else depth++;
+        if (!depth) return {args:open[1]||'',body:text.slice(open[0].length,token.index),length:re.lastIndex};
+      }
+      throw new Error('Missing <</'+name+'>>.');
+    }
+    function conditional(text) {
+      const re = /<<(if|elseif)\s+([\s\S]*?)>>|<<else>>|<<\/if>>/g;
+      let first = re.exec(text); if (!first || first.index !== 0 || first[1] !== 'if') return null;
+      let depth=1, cursor=re.lastIndex, branches=[], condition=first[2], token;
+      while ((token=re.exec(text))) {
+        if (token[1] === 'if') depth++;
+        else if (token[0] === '<</if>>') depth--;
+        if (depth === 1 && (token[1] === 'elseif' || token[0] === '<<else>>')) {
+          branches.push({condition,text:text.slice(cursor,token.index)}); condition=token[1] === 'elseif' ? token[2] : null; cursor=re.lastIndex;
+        } else if (depth === 0) {
+          branches.push({condition,text:text.slice(cursor,token.index)});
+          return {length:re.lastIndex, html:compile((branches.find(b => b.condition === null || evaluate(b.condition)) || {text:''}).text)};
+        }
+      }
+      throw new Error('Missing <</if>>.');
+    }
+    function switchMacro(text) {
+      const block=container(text,'switch'), selected=evaluate(block.args);
+      const re=/<<(case)(?:\s+([\s\S]*?))?>>|<<default>>/gi, branches=[]; let token,cursor=0,current=null;
+      while ((token=re.exec(block.body))) { if (current) { current.text=block.body.slice(cursor,token.index); branches.push(current); } current={values:token[1] ? tokens(token[2]).map(value) : null,text:''}; cursor=re.lastIndex; }
+      if (current) { current.text=block.body.slice(cursor); branches.push(current); }
+      const found=branches.find(branch=>branch.values===null || branch.values.some(item=>item===selected));
+      return {length:block.length,html:found ? compile(found.text) : ''};
+    }
+    function scriptMacro(text) {
+      const block=container(text,'script'), outputBuffer=document.createElement('span');
+      if (/^twinescript$/i.test(block.args.trim())) execute(block.body);
+      else Function('State','setup','Config','output','Duplex',block.body)(State,setup,Config,outputBuffer,window.Duplex);
+      return {length:block.length,html:outputBuffer.innerHTML};
+    }
+    function interactive(text,name) {
+      const block=container(text,name), argv=tokens(block.args), label=value(argv[0]), target=argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
+      const id=action({kind:name,body:block.body,target});
+      const tag=name==='button'?'button':'a', href=tag==='a'?' href="#"':'';
+      return {length:block.length,html:'<'+tag+href+' class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(label)+'</'+tag+'>'};
+    }
+    function optionControls(text,name) {
+      const block=container(text,name), argv=tokens(block.args), recv=receiver(argv.shift()), flags=new Set(argv.map(x=>x.toLowerCase())), options=[];
+      const re=/<<option\s+([\s\S]*?)>>|<<optionsfrom\s+([\s\S]*?)>>/gi; let match;
+      while ((match=re.exec(block.body))) {
+        if (match[1]) { const a=tokens(match[1]), label=value(a[0]), val=a[1] && a[1].toLowerCase()!=='selected' ? value(a[1]) : label; options.push({label,val,selected:a.some(x=>x.toLowerCase()==='selected')}); }
+        else { const collection=evaluate(match[2]); if (Array.isArray(collection)||collection instanceof Set) [...collection].forEach(v=>options.push({label:v,val:v})); else if(collection instanceof Map) collection.forEach((v,k)=>options.push({label:k,val:v})); else Object.entries(collection||{}).forEach(([k,v])=>options.push({label:k,val:v})); }
+      }
+      let index=options.findIndex(o=>o.selected); if(flags.has('autoselect')) index=options.findIndex(o=>o.val===getReceiver(recv)); if(index<0) index=0;
+      if (options[index]) setReceiver(recv,options[index].val);
+      const id=action({kind:name,receiver:recv,options,once:flags.has('once'),index});
+      if(name==='cycle') return {length:block.length,html:'<a href="#" class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(options[index]?.label??'')+'</a>'};
+      return {length:block.length,html:'<select data-duplex-action="'+id+'">'+options.map((o,i)=>'<option value="'+i+'"'+(i===index?' selected':'')+'>'+escapeHtml(o.label)+'</option>').join('')+'</select>'};
+    }
+    function inputMacro(name,argSource) {
+      const a=tokens(argSource), recv=receiver(a.shift()), id=action({kind:name,receiver:recv});
+      if(name==='checkbox') { const off=value(a[0]),on=value(a[1]), checked=a.includes('checked') || (a.includes('autocheck') && getReceiver(recv)===on); deferred.get(id).off=off; deferred.get(id).on=on; setReceiver(recv,checked?on:off); return '<input type="checkbox" data-duplex-action="'+id+'"'+(checked?' checked':'')+'>' }
+      if(name==='radiobutton') { const checkedValue=value(a[0]),checked=a.includes('checked') || (a.includes('autocheck') && getReceiver(recv)===checkedValue); deferred.get(id).value=checkedValue; if(checked)setReceiver(recv,checkedValue); return '<input type="radio" name="'+escapeHtml(recv)+'" data-duplex-action="'+id+'"'+(checked?' checked':'')+'>' }
+      const defaultValue=value(a[0]); setReceiver(recv,defaultValue); const autofocus=a.includes('autofocus')?' autofocus':'', passage=a.find((x,i)=>i>0 && x!=='autofocus'); deferred.get(id).target=passage?value(passage):null;
+      if(name==='textarea') return '<textarea data-duplex-action="'+id+'"'+autofocus+'>'+escapeHtml(defaultValue)+'</textarea>';
+      return '<input type="'+(name==='numberbox'?'number':'text')+'" value="'+escapeHtml(defaultValue)+'" data-duplex-action="'+id+'"'+autofocus+'>';
+    }
+    function cacheAudio(argSource) {
+      const a=tokens(argSource), id=value(a.shift()), audio=document.createElement('audio'); audio.preload='auto';
+      a.map(value).forEach(raw=>{ let src=String(raw),type=''; const spec=src.match(/^([a-z0-9]+)\|(.+)$/i); if(spec){type='audio/'+spec[1];src=spec[2];} if(passages.has(src))src=passages.get(src).text.trim(); const node=document.createElement('source');node.src=src;if(type)node.type=type;audio.append(node); });
+      AudioEngine.tracks.set(String(id),audio); return '';
+    }
+    function audioSelection(idList) {
+      const ids=String(idList).split(/\s+/), result=new Set();
+      ids.forEach(id=>{ if(id===':all')AudioEngine.tracks.forEach(v=>result.add(v)); else if(AudioEngine.groups.has(id))AudioEngine.groups.get(id).forEach(t=>AudioEngine.tracks.has(t)&&result.add(AudioEngine.tracks.get(t))); else if(AudioEngine.tracks.has(id))result.add(AudioEngine.tracks.get(id)); }); return [...result];
+    }
+    function mediaCall(media,method,...args){ try { const result=media[method]?.(...args); if(result?.catch)result.catch(()=>{}); } catch(_){} }
+    function fade(media,seconds,target){ const start=media.volume,begin=Date.now(),duration=Math.max(0.01,seconds)*1000; mediaCall(media,'play'); const timer=setInterval(()=>{const p=Math.min(1,(Date.now()-begin)/duration);media.volume=start+(target-start)*p;if(p>=1){clearInterval(timer);if(target===0&&Config.audio.pauseOnFadeToZero)mediaCall(media,'pause');}},50); }
+    function audioActions(mediaList,argv,playlist) {
+      for(let i=0;i<argv.length;i++){const cmd=String(argv[i]).toLowerCase(); for(const media of mediaList){ if(cmd==='play')mediaCall(media,'play'); else if(cmd==='pause')mediaCall(media,'pause'); else if(cmd==='stop'){mediaCall(media,'pause');media.currentTime=0;} else if(cmd==='load')mediaCall(media,'load'); else if(cmd==='unload'){mediaCall(media,'pause');media.removeAttribute('src');mediaCall(media,'load');} else if(cmd==='mute')media.muted=true; else if(cmd==='unmute')media.muted=false; else if(cmd==='loop')media.loop=true; else if(cmd==='unloop')media.loop=false; else if(cmd==='volume')media.volume=Math.max(0,Math.min(1,Number(value(argv[++i])))); else if(cmd==='time')media.currentTime=Number(value(argv[++i])); else if(cmd==='fadein')fade(media,5,1); else if(cmd==='fadeout')fade(media,5,0); else if(cmd==='fadeto')fade(media,5,Number(value(argv[++i]))); else if(cmd==='fadeoverto'){const seconds=Number(value(argv[++i])),level=Number(value(argv[++i]));fade(media,seconds,level);} else if(cmd==='goto'){const passage=value(argv[++i]);media.addEventListener('ended',()=>go(String(passage)),{once:true});} } if(playlist){if(cmd==='shuffle')playlist.shuffle=true;if(cmd==='unshuffle')playlist.shuffle=false;} }
+      return '';
+    }
+    function audioContainer(text,name) {
+      const block=container(text,name), a=tokens(block.args), id=String(value(a[0])), tracks=[];
+      for(const match of block.body.matchAll(/<<track\s+([\s\S]*?)>>/gi)){const ta=tokens(match[1]),trackId=String(value(ta.shift()));tracks.push({id:trackId,actions:ta});}
+      if(name==='createaudiogroup') AudioEngine.groups.set(id,new Set(tracks.map(t=>t.id)));
+      else AudioEngine.playlists.set(id,{tracks,shuffle:false,volume:1,muted:false});
+      return {length:block.length,html:''};
+    }
+    function defineWidgets() {
+      passages.forEach(passage=>{
+        if(!passage.tags.includes('widget'))return;
+        let rest=passage.text;
+        while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}
+      });
+    }
+    function invokeWidget(text,name) {
+      const definition=widgets.get(name), open=text.match(new RegExp('^<<'+name+'(?:\\s+([\\s\\S]*?))?>>','i'));let body='',length=open[0].length;
+      if(definition.container){const block=container(text,name);body=block.body;length=block.length;}
+      const raw=open[1]||'',parsed=tokens(raw).map(token=>{try{return value(token);}catch(_){return token;}});parsed.raw=raw;parsed.full=raw;parsed.name=name;
+      const hadArgs=Object.hasOwn(State.temporary,'args'),oldArgs=State.temporary.args,hadContents=Object.hasOwn(State.temporary,'contents'),oldContents=State.temporary.contents,hadLegacy=Object.hasOwn(State.variables,'args'),oldLegacy=State.variables.args;
+      State.temporary.args=parsed;State.variables.args=parsed;if(definition.container)State.temporary.contents=body;
+      try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
+    }
+    function compile(source) {
+      let out='', i=0;
+      while (i < source.length) {
+        const rest=source.slice(i);
+        if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
+        if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
+        if (/^<<script(?:\s|>>)/i.test(rest)) { const found=scriptMacro(rest);out+=found.html;i+=found.length;continue; }
+        const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
+        if(interactiveName){const found=interactive(rest,interactiveName);out+=found.html;i+=found.length;continue;}
+        const optionName=rest.match(/^<<(cycle|listbox)\b/i)?.[1]?.toLowerCase();
+        if(optionName){const found=optionControls(rest,optionName);out+=found.html;i+=found.length;continue;}
+        const audioBlock=rest.match(/^<<(createaudiogroup|createplaylist)\b/i)?.[1]?.toLowerCase();
+        if(audioBlock){const found=audioContainer(rest,audioBlock);out+=found.html;i+=found.length;continue;}
+        const macro=rest.match(/^<<(set|run|unset|print|=|checkbox|radiobutton|numberbox|textbox|textarea|cacheaudio|audio|masteraudio|playlist|removeaudiogroup|removeplaylist|waitforaudio)\s*([\s\S]*?)>>/i);
+        if (macro) {
+          const name=macro[1].toLowerCase(),args=macro[2];
+          if(name==='set')out+=assign(args); else if(name==='run'){execute(args);}
+          else if(name==='unset'){for(const item of args.split(/\s*,\s*|\s+/).filter(Boolean))Function('State','delete '+jsExpr(item))(State);}
+          else if(name==='print'||name==='=')out+=escapeHtml(evaluate(args));
+          else if(['checkbox','radiobutton','numberbox','textbox','textarea'].includes(name))out+=inputMacro(name,args);
+          else if(name==='cacheaudio')out+=cacheAudio(args);
+          else if(name==='audio'){const a=tokens(args),ids=value(a.shift());out+=audioActions(audioSelection(ids),a);}
+          else if(name==='playlist'){const a=tokens(args),id=String(value(a.shift())),list=AudioEngine.playlists.get(id);if(list)out+=audioActions(list.tracks.map(t=>AudioEngine.tracks.get(t.id)).filter(Boolean),a,list);}
+          else if(name==='masteraudio'){const a=tokens(args);for(let x=0;x<a.length;x++){const cmd=a[x].toLowerCase();if(cmd==='volume')AudioEngine.volume=Number(value(a[++x]));else if(cmd==='mute')AudioEngine.muted=true;else if(cmd==='unmute')AudioEngine.muted=false;else if(cmd==='muteonhide')AudioEngine.muteOnHide=true;else if(cmd==='nomuteonhide')AudioEngine.muteOnHide=false;else audioActions([...AudioEngine.tracks.values()],[cmd]);} [...AudioEngine.tracks.values()].forEach(t=>{t.muted=AudioEngine.muted;t.volume=Math.min(t.volume,AudioEngine.volume);});}
+          else if(name==='removeaudiogroup')AudioEngine.groups.delete(String(value(tokens(args)[0])));
+          else if(name==='removeplaylist')AudioEngine.playlists.delete(String(value(tokens(args)[0])));
+          else if(name==='waitforaudio')Promise.all([...AudioEngine.tracks.values()].map(t=>t.readyState>=3?Promise.resolve():new Promise(resolve=>{t.addEventListener('canplaythrough',resolve,{once:true});t.addEventListener('error',resolve,{once:true});mediaCall(t,'load');})));
+          i += macro[0].length; continue;
+        }
+        const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
+        if(widgetName&&widgets.has(widgetName)){const found=invokeWidget(rest,widgetName);out+=found.html;i+=found.length;continue;}
+        const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
+        if (link) {
+          let label,target,body=link[1];
+          if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
+          else if (body.includes('<-')) [target,label]=body.split(/<-(.+)/s);
+          else if (body.includes('|')) [label,target]=body.split(/\|(.+)/s);
+          else label=target=body;
+          out += '<a href="#" class="duplex-link" data-passage="' + escapeHtml(target.trim()) + '">' + escapeHtml(label.trim()) + '</a>';
+          i += link[0].length; continue;
+        }
+        const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);
+        if (variable) { out += escapeHtml(evaluate(variable[0])); i += variable[0].length; continue; }
+        out += source[i++];
+      }
+      return out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');
+    }
+    function makeBar(element,spaceProperty) {
+      const api={
+        destroy(){element.remove();document.documentElement.style.setProperty(spaceProperty,'0px');return api;},
+        hide(){element.classList.add('is-hidden');return api;},
+        show(){element.classList.remove('is-hidden');return api;},
+        isHidden(){return element.classList.contains('is-hidden');},
+        isStowed(){return element.classList.contains('is-stowed');},
+        stow(noAnimation){if(noAnimation)element.style.transition='none';element.classList.add('is-stowed');document.documentElement.style.setProperty(spaceProperty,'var(--duplex-bar-stowed)');requestAnimationFrame(()=>element.style.removeProperty('transition'));return api;},
+        unstow(noAnimation){if(noAnimation)element.style.transition='none';element.classList.remove('is-stowed');document.documentElement.style.setProperty(spaceProperty,'var(--duplex-bar-width)');requestAnimationFrame(()=>element.style.removeProperty('transition'));return api;},
+        update(){UI.update();return api;}
+      };
+      element.querySelector('.duplex-bar-toggle').addEventListener('click',()=>api.isStowed()?api.unstow():api.stow());
+      return api;
+    }
+    const UIBarL=window.UIBarL=makeBar(document.querySelector('#ui-bar'),'--duplex-left-space');
+    const UIBarR=window.UIBarR=makeBar(document.querySelector('#ui-bar-right'),'--duplex-right-space');
+    window.UIBar=UIBarL;
+    window.UIBarRight=UIBarR;
+    window.UIBars={left:UIBarL,right:UIBarR};
+    function closeDialog(closeFn) { const dialog=document.querySelector('#duplex-dialog'); if(dialog.open)dialog.close(); if(typeof closeFn==='function')closeFn(); }
+    function dialog(title,body,buttons=[],closeFn) {
+      const box=document.querySelector('#duplex-dialog'),content=document.querySelector('#duplex-dialog-body'),actions=document.querySelector('#duplex-dialog-actions');
+      content.innerHTML='<h2>'+escapeHtml(title)+'</h2>'+body; actions.replaceChildren();
+      [...buttons,{label:'Close',action:()=>closeDialog(closeFn)}].forEach(def=>{const button=document.createElement('button');button.type='button';button.textContent=def.label;button.addEventListener('click',def.action);actions.append(button);});
+      if(!box.open)box.showModal(); return box;
+    }
+    function storyId(){return data.getAttribute('ifid')||data.getAttribute('name')||document.title;}
+    function saveKey(){return 'duplex-save-'+storyId();}
+    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:'1.4.0',savedAt:new Date().toISOString(),history:clone(State.history),variables:clone(State.variables)};}
+    function validateSave(value,{allowLegacy=false}={}) {
+      if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
+      const legacy=!value.format&&allowLegacy&&Array.isArray(value.history)&&value.variables&&typeof value.variables==='object';
+      if(!legacy&&(value.format!=='DuplexSave'||value.schema!==1))throw new Error('This is not a supported Duplex save file.');
+      if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
+      if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
+      value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
+      return {history:clone(value.history),variables:clone(value.variables)};
+    }
+    function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();return true;}
+    function restoreSave(value,options){return applySave(validateSave(value,options));}
+    function parseSave(text,options){let value;try{value=JSON.parse(text);}catch{throw new Error('The selected file is not valid JSON.');}return validateSave(value,options);}
+    function safeFilename(){return (data.getAttribute('name')||document.title||'duplex-story').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'duplex-story';}
+    const Save=window.Save={
+      serialize(){return JSON.stringify(savePayload(),null,2);},
+      parse(text){return parseSave(text);},
+      save(){localStorage.setItem(saveKey(),Save.serialize());return true;},
+      load(){const raw=localStorage.getItem(saveKey());if(!raw)return false;const value=JSON.parse(raw);restoreSave(value,{allowLegacy:true});return true;},
+      delete(){localStorage.removeItem(saveKey());return true;},
+      export(filename){const blob=new Blob([Save.serialize()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename||safeFilename()+'-save.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);return link.download;},
+      import(source){if(typeof source==='string'){applySave(parseSave(source));localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Save.import(text));restoreSave(source);localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}
+    };
+    const UI=window.UI={
+      alert(message,options,closeFn){dialog(options?.title||'Alert','<p>'+escapeHtml(message)+'</p>',[],closeFn);},
+      restart(){dialog('Restart','<p>Restart the story from the beginning?</p>',[{label:'Restart',action:()=>{closeDialog();restart();}}]);},
+      saves(options,closeFn){
+        const has=localStorage.getItem(saveKey())!==null;
+        dialog(options?.title||'Saves','<p>'+(has?'A browser save is available.':'No browser save exists yet.')+'</p><p>Export a backup to keep your progress safe or move it to another browser.</p>',[
+          {label:'Save',action:()=>{Save.save();closeDialog(closeFn);}},
+          ...(has?[{label:'Load',action:()=>{try{Save.load();closeDialog(closeFn);}catch(error){UI.alert(error.message,{title:'Could not load save'},closeFn);}}}]:[]),
+          {label:'Export',action:()=>{Save.export();closeDialog(closeFn);}},
+          {label:'Import',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(!file)return;Save.import(file).then(()=>closeDialog(closeFn)).catch(error=>UI.alert(error.message,{title:'Could not import save'},closeFn));});picker.click();}},
+          ...(has?[{label:'Delete',action:()=>{Save.delete();closeDialog(closeFn);}}]:[])
+        ],closeFn);
+      },
+      settings(options,closeFn){dialog(options?.title||'Settings','<p>Choose how passages are displayed.</p>',[
+        {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
+        {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
+      ],closeFn);},
+      update(){
+        const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
+        regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(region)region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';});
+        const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?.title||'—';if(display)display.textContent=mode();
+        document.dispatchEvent(new CustomEvent(':uiupdate')); return UI;
+      },
+      jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:title,action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
+      share(options,closeFn){const url=location.href;if(navigator.share)navigator.share({title:document.title,url}).finally(()=>closeFn?.());else dialog(options?.title||'Share','<p><a href="'+escapeHtml(url)+'">'+escapeHtml(url)+'</a></p>',[],closeFn);}
+    };
+    function render(title, restoreHtml) {
+      const passage=passages.get(title);
+      if (!passage) { output.insertAdjacentHTML('beforeend','<div class="duplex-error">Passage not found: ' + escapeHtml(title) + '</div>'); return; }
+      State.temporary=Object.create(null);
+      let html=restoreHtml;
+      const previousRenderTitle=activeRenderTitle; activeRenderTitle=title;
+      try { if (html == null) html=compile(passage.text); }
+      catch (error) { html='<div class="duplex-error">' + escapeHtml(error.message) + '</div>'; }
+      finally { activeRenderTitle=previousRenderTitle; }
+      const article=document.createElement('article'); article.className='duplex-passage'; article.dataset.passage=title;
+      article.innerHTML='<h2 class="duplex-passage-title">' + escapeHtml(title) + '</h2><div class="duplex-passage-body">' + html + '</div>';
+      output.append(article);
+      return html;
+    }
+    function go(title) {
+      if (!passages.has(title)) return render(title);
+      if (mode() === 'replace') output.replaceChildren();
+      const html=render(title);
+      State.history.push({title,html,variables:clone(State.variables),mode:mode()});
+      document.querySelector('#duplex-back').disabled=State.history.length < 2;
+      UI.update();
+      if (mode() === 'append') articleScroll(); else window.scrollTo({top:0,behavior:'instant'});
+    }
+    function articleScroll() { output.lastElementChild?.scrollIntoView({behavior:'smooth',block:'start'}); }
+    function rebuild() {
+      output.replaceChildren();
+      const visible = State.history.at(-1)?.mode === 'append' ? State.history : State.history.slice(-1);
+      visible.forEach(entry => render(entry.title,entry.html));
+      document.querySelector('#duplex-back').disabled=State.history.length < 2;
+      UI.update();
+    }
+    function restart() {
+      State.variables=clone(initial); State.history=[]; output.replaceChildren();
+      runInit(); Object.assign(initial,clone(State.variables)); go(startTitle());
+    }
+    function runInit() { const init=passages.get('StoryInit'); if (init) { try { compile(init.text); } catch(error) { console.error('StoryInit:',error); } } }
+    function startTitle() { return data.getAttribute('startnode') && [...passages.values()].find(p => p.pid === data.getAttribute('startnode'))?.name || 'Start'; }
+    function runDeferred(element,event) {
+      const item=deferred.get(element.dataset.duplexAction); if(!item)return;
+      if(item.kind==='checkbox')setReceiver(item.receiver,element.checked?item.on:item.off);
+      else if(item.kind==='radiobutton'){if(element.checked)setReceiver(item.receiver,item.value);}
+      else if(['textbox','textarea','numberbox'].includes(item.kind)){setReceiver(item.receiver,item.kind==='numberbox'?element.valueAsNumber:element.value);if(event.type==='keydown'&&event.key==='Enter'&&item.target)go(String(item.target));}
+      else if(item.kind==='listbox'){item.index=Number(element.value);setReceiver(item.receiver,item.options[item.index]?.val);}
+      else if(item.kind==='cycle'&&event.type==='click'){event.preventDefault();if(item.once&&item.index>=item.options.length-1)return;item.index=(item.index+1)%item.options.length;setReceiver(item.receiver,item.options[item.index]?.val);element.textContent=item.options[item.index]?.label??'';if(item.once&&item.index>=item.options.length-1)element.removeAttribute('href');}
+      else if(event.type==='click'){
+        event.preventDefault(); const html=compile(item.body||'');
+        if(item.kind==='linkappend'){element.insertAdjacentHTML('afterend',html);element.replaceWith(document.createTextNode(element.textContent));}
+        else if(item.kind==='linkprepend'){element.insertAdjacentHTML('beforebegin',html);element.replaceWith(document.createTextNode(element.textContent));}
+        else if(item.kind==='linkreplace')element.outerHTML=html;
+        if(item.target)go(String(item.target));
+      }
+    }
+    document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const link=event.target.closest('[data-passage]'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
+    document.addEventListener('change',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
+    document.addEventListener('input',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
+    document.addEventListener('keydown',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
+    document.addEventListener('visibilitychange',()=>{if(AudioEngine.muteOnHide)[...AudioEngine.tracks.values()].forEach(t=>t.muted=document.hidden||AudioEngine.muted);});
+    document.querySelector('#duplex-back').addEventListener('click',() => { if(State.history.length>1){ State.history.pop(); State.variables=clone(State.history.at(-1).variables); rebuild(); } });
+    document.querySelector('#duplex-restart').addEventListener('click',restart);
+    document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
+    document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
+    window.Duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,audio:AudioEngine,UI,Save,UIBarL,UIBarR,widgets};
+    if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
+    data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {
+      try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }
+    });
+    defineWidgets();
+    runInit(); Object.assign(initial,clone(State.variables)); go(startTitle());
+  })();
+  </script>
+</body>
+</html>
