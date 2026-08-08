@@ -1,4 +1,4 @@
-# Duplex 1.4.0
+# [Duplex 1.4.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
