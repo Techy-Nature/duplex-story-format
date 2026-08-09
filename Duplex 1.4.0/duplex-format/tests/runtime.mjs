@@ -33,6 +33,16 @@ const story = `<tw-storydata name="Test" startnode="1">
 <<bird "Nighthawk">>
 <<birdnote>>flies at dusk<</birdnote>>
 <<if hasTag("scrolling")>>current-tag-ok<</if>>
+// this line is hidden
+Visible before // this trailing comment is hidden
+/* this block is hidden */
+<<comment>>this macro is hidden and <<set $x = 500>><</comment>>
+<<markdown>>
+# Markdown heading
+**bold words** and [Duplex](https://example.test/)
+- first item
+- second item with $x
+<</markdown>>
 [[Next]]`,'scrolling opening')}
   ${passage('2','Next','Done')}
   ${passage('3','StoryCaption','Caption $x')}
@@ -67,6 +77,11 @@ assert(State.variables.x === 2 && State.variables.scripted,'run and script macro
 assert(Duplex.audio.tracks.size === 1 && Duplex.audio.groups.has(':ui') && Duplex.audio.playlists.has('music'),'audio registration macros');
 assert(State.variables.passageMode === 'append','StoryInit tags condition');
 assert(document.body.textContent.includes('current-tag-ok'),'current passage hasTag');
+const renderedPassage=document.querySelector('.duplex-passage-body').textContent;
+assert(!renderedPassage.includes('this line is hidden') && !renderedPassage.includes('this block is hidden') && !renderedPassage.includes('this macro is hidden'),'comment syntaxes');
+assert(renderedPassage.includes('Visible before') && !renderedPassage.includes('this trailing comment is hidden'),'inline comment');
+assert(document.querySelector('.duplex-passage-body h1')?.textContent === 'Markdown heading' && [...document.querySelectorAll('.duplex-passage-body strong')].some(element=>element.textContent==='bold words'),'markdown headings and emphasis');
+assert(document.querySelector('.duplex-passage-body a[href="https://example.test/"]') && document.querySelectorAll('.duplex-passage-body li').length===2 && document.body.textContent.includes('second item with 2'),'markdown links, lists, and variables');
 assert(JSON.stringify(dom.window.tags('Start'))===JSON.stringify(['scrolling','opening']) && dom.window.hasTag('Start','opening'),'tag helper values');
 assert(document.body.textContent.includes('Widget bird: Nighthawk'),'non-container widget');
 assert(document.body.textContent.includes('flies at dusk'),'container widget');

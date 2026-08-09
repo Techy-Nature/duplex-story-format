@@ -172,6 +172,30 @@
       else Function('State','setup','Config','output','Duplex',block.body)(State,setup,Config,outputBuffer,window.Duplex);
       return {length:block.length,html:outputBuffer.innerHTML};
     }
+    function markdownInline(source) {
+      return source.replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+        .replace(/__([^_]+)__/g,'<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g,'<em>$1</em>')
+        .replace(/_([^_]+)_/g,'<em>$1</em>')
+        .replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,alt,url,title)=>'<img src="'+escapeHtml(url)+'" alt="'+escapeHtml(alt)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>')
+        .replace(/\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,label,url,title)=>'<a href="'+escapeHtml(url)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>'+label+'</a>');
+    }
+    function markdownMacro(text) {
+      const block=container(text,'markdown'), lines=block.body.replace(/\r\n?/g,'\n').split('\n');
+      let html='', list=null;
+      const closeList=()=>{if(list){html+='</'+list+'>';list=null;}};
+      for(const line of lines) {
+        const heading=line.match(/^\s*(#{1,6})\s+(.+)$/), item=line.match(/^\s*(?:(-)|\d+\.)\s+(.+)$/), quote=line.match(/^\s*>\s?(.*)$/);
+        if(heading){closeList();const level=heading[1].length;html+='<h'+level+'>'+markdownInline(heading[2])+'</h'+level+'>';}
+        else if(item){const type=item[1]?'ul':'ol';if(list!==type){closeList();list=type;html+='<'+type+'>';}html+='<li>'+markdownInline(item[2])+'</li>';}
+        else if(quote){closeList();html+='<blockquote>'+markdownInline(quote[1])+'</blockquote>';}
+        else if(!line.trim()){closeList();}
+        else {closeList();html+='<p>'+markdownInline(line)+'</p>';}
+      }
+      closeList();
+      return {length:block.length,html:compile(html)};
+    }
     function interactive(text,name) {
       const block=container(text,name), argv=tokens(block.args), label=value(argv[0]), target=argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
       const id=action({kind:name,body:block.body,target});
@@ -240,6 +264,10 @@
       let out='', i=0;
       while (i < source.length) {
         const rest=source.slice(i);
+        if (rest.startsWith('/*')) { const end=rest.indexOf('*/',2);if(end<0)throw new Error('Missing */ for block comment.');i+=end+2;continue; }
+        if (rest.startsWith('//') && (i===0 || /\s/.test(source[i-1]))) { const end=rest.indexOf('\n');i+=end<0?rest.length:end;continue; }
+        if (/^<<comment(?:\s|>>)/i.test(rest)) { const found=container(rest,'comment');i+=found.length;continue; }
+        if (/^<<markdown(?:\s|>>)/i.test(rest)) { const found=markdownMacro(rest);out+=found.html;i+=found.length;continue; }
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
         if (/^<<script(?:\s|>>)/i.test(rest)) { const found=scriptMacro(rest);out+=found.html;i+=found.length;continue; }
