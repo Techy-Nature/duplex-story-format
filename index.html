@@ -13,7 +13,7 @@
 </head>
 <body>
 <header class="top"><a href="#overview"><img src="duplex-logo.png" alt="Duplex logo"><b>Duplex Docs</b></a><span>v1.4.0</span></header>
-<div class="shell"><aside><label>Search this page<input id="search" type="search" placeholder="widget, audio, tags…"></label><nav><b>On this page</b><a href="#overview">Overview</a><a href="#install">Install</a><a href="#modes">Display modes</a><a href="#core">Core syntax</a><a href="#logic">Logic &amp; scripting</a><a href="#interactive">Interactive</a><a href="#audio">Audio</a><a href="#ui">UI &amp; sidebars</a><a href="#saves">Saves &amp; backups</a><a href="#widgets">Widgets</a><a href="#tags">Passage tags</a><a href="#api">JavaScript API</a><a href="#reference">Reference</a></nav><p><b>Duplex is its own format.</b><br>SugarCube-like syntax with two display modes.</p></aside><main>
+<div class="shell"><aside><label>Search this page<input id="search" type="search" placeholder="widget, audio, tags…"></label><nav><b>On this page</b><a href="#overview">Overview</a><a href="#install">Install</a><a href="#modes">Display modes</a><a href="#core">Core syntax</a><a href="#comments-markdown">Comments &amp; Markdown</a><a href="#logic">Logic &amp; scripting</a><a href="#interactive">Interactive</a><a href="#audio">Audio</a><a href="#ui">UI &amp; sidebars</a><a href="#saves">Saves &amp; backups</a><a href="#widgets">Widgets</a><a href="#tags">Passage tags</a><a href="#api">JavaScript API</a><a href="#reference">Reference</a></nav><p><b>Duplex is its own format.</b><br>SugarCube-like syntax with two display modes.</p></aside><main>
 <section id="overview" class="hero"><div><span>Twine 2 story format · 1.4.0</span><h1>Two ways to tell<br><em>one story.</em></h1><p>Switch between a scrolling transcript and page-by-page passages without changing your authoring syntax.</p><a href="#install">Get started</a></div><img src="duplex-logo.png" alt="Setting sun joined to a moon"></section>
 <div class="cards"><article><b>One syntax</b><p>Variables, macros, widgets, links, audio, and controls.</p></article><article><b>Two modes</b><p>Append passages or replace the current page.</p></article><article><b>Two sidebars</b><p>Independent left and right UI bars.</p></article></div>
 
@@ -39,6 +39,26 @@ tweego -f duplex-1.4.0 -o story.html story.twee</pre></div></div></div><h3>Story
 &lt;&lt;set $visits += 1&gt;&gt;
 Hello, $name. Visit &lt;&lt;= $visits&gt;&gt;.
 &lt;&lt;unset $temporaryChoice&gt;&gt;</pre></div><h3>Operators</h3><p><code>is</code>, <code>is not</code>, <code>isnot</code>, <code>eq</code>, <code>neq</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>and</code>, <code>or</code>, and <code>not</code>, plus ordinary JavaScript operators.</p></section>
+
+<section id="comments-markdown" class="section"><header><span>Authoring helpers</span><h2>Comments and Markdown</h2></header><div class="columns"><div><h3>Passage comments</h3><p>Use <code>//</code> for a single-line comment, <code>/* ... */</code> for a block comment, or the <code>&lt;&lt;comment&gt;&gt;</code> container. Comments are not displayed, and macros inside them are not evaluated.</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>// A whole-line note
+The nest is empty. // A trailing note
+
+/* This note may
+span several lines. */
+
+&lt;&lt;comment&gt;&gt;
+  &lt;&lt;set $hidden = true&gt;&gt;
+  None of this is displayed or run.
+&lt;&lt;/comment&gt;&gt;</pre></div><p class="note">A <code>//</code> comment starts at the beginning of a line or after whitespace, so URLs such as <code>https://example.com</code> remain intact.</p></div><div><h3>Markdown container</h3><p>Wrap Markdown in <code>&lt;&lt;markdown&gt;&gt;...&lt;&lt;/markdown&gt;&gt;</code>. It supports headings, bold and italic emphasis, inline code, links, images, block quotes, and ordered or unordered lists. Duplex variables and macros are processed inside the result.</p><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;markdown&gt;&gt;
+# Field notes
+
+**Species:** $birdName
+
+- Seen at dusk
+- [Read more](https://example.com/birds)
+
+&gt; &lt;&lt;= $observation&gt;&gt;
+&lt;&lt;/markdown&gt;&gt;</pre></div></div></div><div class="table"><div><code>// comment</code><span>Ignore text through the end of the line.</span></div><div><code>/* comment */</code><span>Ignore a comment spanning part of a line or multiple lines.</span></div><div><code>&lt;&lt;comment&gt;&gt;…&lt;&lt;/comment&gt;&gt;</code><span>Ignore a container and do not evaluate its macros.</span></div><div><code>&lt;&lt;markdown&gt;&gt;…&lt;&lt;/markdown&gt;&gt;</code><span>Render supported Markdown while processing Duplex variables and macros.</span></div></div></section>
 
 <section id="logic" class="section"><header><span>Branching and code</span><h2>Logic and scripting</h2></header><div class="columns"><div><h3>If / elseif / else</h3><div class="code"><div class="codebar"><span>Twine</span><button>Copy</button></div><pre>&lt;&lt;if $keys &gt; 1&gt;&gt;
   Several keys.

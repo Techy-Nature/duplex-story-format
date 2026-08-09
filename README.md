@@ -43,12 +43,39 @@ Browser-based Twine generally cannot install a local `file://` URL. Host the fol
 - Conditions: `<<if condition>>...<<elseif condition>>...<<else>>...<</if>>`
 - Switches: `<<switch expression>><<case value>>...<<default>>...<</switch>>`
 - Scripting: `<<run>>`, `<<script>>`, and `<<unset>>`
+- Comments: `//` to the end of a line, `/* ... */` across lines, and `<<comment>>...<</comment>>`
+- Markdown: `<<markdown>>...<</markdown>>` supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
 - Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
 - Audio: `<<cacheaudio>>`, `<<audio>>`, `<<createaudiogroup>>`, `<<createplaylist>>`, `<<masteraudio>>`, `<<playlist>>`, `<<removeaudiogroup>>`, `<<removeplaylist>>`, and `<<waitforaudio>>`
 - Operators: `is`, `is not`, `isnot`, `and`, `or`, `not`, plus ordinary JavaScript operators
 - Story JavaScript and Story Stylesheet
 - Back and Restart controls
 - JavaScript API: `Duplex.go("Passage")`, `Duplex.back()`, `Duplex.restart()`, and `Duplex.mode()`
+
+### Comments and Markdown
+
+Comments are removed without rendering or running any macros inside them. A `//` comment begins at the start of a line or after whitespace; this means URLs such as `https://example.com` are left intact.
+
+```twine
+// A single-line comment
+The nest is empty. // This is also a comment
+/* A comment may
+span multiple lines. */
+<<comment>>Nothing here is displayed or evaluated.<</comment>>
+```
+
+Wrap Markdown in the `<<markdown>>` container. Duplex processes macros and variables within the rendered Markdown.
+
+```twine
+<<markdown>>
+# Field notes
+
+**Species:** $birdName
+
+- Seen at dusk
+- [Read more](https://example.com/birds)
+<</markdown>>
+```
 
 ## Left and right UI bars
 
