@@ -12,6 +12,7 @@ const passage = (pid,name,text,tags='') => `<tw-passagedata pid="${pid}" name="$
 const story = `<tw-storydata name="Test" startnode="1">
   ${passage('9','StoryInit',`<<if tags("Start").includes("scrolling")>><<set $passageMode = "append">><<elseif hasTag("Start", "pages")>><<set $passageMode = "replace">><<else>><<set $passageMode = "replace">><</if>>
 <<set $x = 1>>
+<<set $unsafe = "<script id='injected'>window.injectionRan = true;</script>">>
 <<cacheaudio "tone" "data:audio/wav;base64,UklGRg==">>
 <<createaudiogroup ":ui">><<track "tone">><</createaudiogroup>>
 <<createplaylist "music">><<track "tone" volume 0.5>><</createplaylist>>`)}
@@ -32,6 +33,13 @@ const story = `<tw-storydata name="Test" startnode="1">
 <<playlist "music" volume 0.4>>
 <<bird "Nighthawk">>
 <<birdnote>>flies at dusk<</birdnote>>
+<<speech "Captain">>Hello, $unsafe.
+
+<<if _args[0] === "Captain">>[[Trusted link->Next]] and <<bird "Nested">>.<</if>><</speech>>
+Unsafe naked: $unsafe
+Unsafe print: <<print $unsafe>>
+Unsafe shorthand: <<= $unsafe>>
+<<rawnote>><<if true>>raw source<</if>><</rawnote>>
 <<if hasTag("scrolling")>>current-tag-ok<</if>>
 // this line is hidden
 Visible before // this trailing comment is hidden
@@ -51,6 +59,8 @@ Visible before // this trailing comment is hidden
   ${passage('6','StoryRightBar','Right custom')}
   ${passage('7','Widgets',`<<widget "bird">>Widget bird: <<print _args[0]>><</widget>>
 <<widget "birdnote" container>><strong><<print _contents>></strong><</widget>>`,'widget')}
+  ${passage('8','More Widgets',`<<widget "speech" container>><div class="speech-text"><<= _contents>></div><</widget>>
+<<widget "rawnote" container>><code class="raw-contents"><<print _contentsRaw>></code><</widget>>`,'widget')}
 </tw-storydata>`;
 
 const html = format.source.replace('{{STORY_NAME}}','Test').replace('{{STORY_DATA}}',story);
@@ -85,6 +95,9 @@ assert(document.querySelector('.duplex-passage-body a[href="https://example.test
 assert(JSON.stringify(dom.window.tags('Start'))===JSON.stringify(['scrolling','opening']) && dom.window.hasTag('Start','opening'),'tag helper values');
 assert(document.body.textContent.includes('Widget bird: Nighthawk'),'non-container widget');
 assert(document.body.textContent.includes('flies at dusk'),'container widget');
+assert(document.querySelector('.speech-text [data-passage=Next]')?.textContent === 'Trusted link' && document.querySelector('.speech-text')?.textContent.includes('Widget bird: Nested'),'container widget compiles links, conditions, variables, and nested widgets with arguments available');
+assert(!document.querySelector('#injected') && !dom.window.injectionRan && document.body.textContent.includes("<script id='injected'>"),'ordinary values remain escaped for naked, print, and shorthand output');
+assert(document.querySelector('.raw-contents')?.textContent === '<<if true>>raw source<</if>>','container widget exposes original source through _contentsRaw');
 assert(document.querySelector('#story-caption').textContent.includes('Caption 2'),'StoryCaption UI update');
 assert(document.querySelector('#story-menu [data-passage=Next]'),'StoryMenu UI update');
 assert(document.querySelector('#story-left-bar').textContent.includes('Left custom'),'left custom passage');

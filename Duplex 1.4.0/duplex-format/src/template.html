@@ -120,7 +120,13 @@
       return Function('State','setup','Config','Duplex',jsExpr(normalized))(State,setup,Config,window.Duplex);
     }
     function assign(source) { execute(source); return ''; }
+    class CompiledMarkup {
+      constructor(html) { this.html=html; }
+      toString() { return this.html; }
+    }
+    function compiledMarkup(html) { return new CompiledMarkup(html); }
     function escapeHtml(value) { const el=document.createElement('span'); el.textContent=String(value ?? ''); return el.innerHTML; }
+    function renderValue(value) { return value instanceof CompiledMarkup ? value.html : escapeHtml(value); }
     function tokens(source) { return source.match(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\[\[[\s\S]*?\]\]|[^\s]+/g) || []; }
     function value(token) {
       if (token == null) return undefined;
@@ -256,9 +262,10 @@
       const definition=widgets.get(name), open=text.match(new RegExp('^<<'+name+'(?:\\s+([\\s\\S]*?))?>>','i'));let body='',length=open[0].length;
       if(definition.container){const block=container(text,name);body=block.body;length=block.length;}
       const raw=open[1]||'',parsed=tokens(raw).map(token=>{try{return value(token);}catch(_){return token;}});parsed.raw=raw;parsed.full=raw;parsed.name=name;
-      const hadArgs=Object.hasOwn(State.temporary,'args'),oldArgs=State.temporary.args,hadContents=Object.hasOwn(State.temporary,'contents'),oldContents=State.temporary.contents,hadLegacy=Object.hasOwn(State.variables,'args'),oldLegacy=State.variables.args;
-      State.temporary.args=parsed;State.variables.args=parsed;if(definition.container)State.temporary.contents=body;
-      try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
+      const hadArgs=Object.hasOwn(State.temporary,'args'),oldArgs=State.temporary.args,hadContents=Object.hasOwn(State.temporary,'contents'),oldContents=State.temporary.contents,hadContentsRaw=Object.hasOwn(State.temporary,'contentsRaw'),oldContentsRaw=State.temporary.contentsRaw,hadLegacy=Object.hasOwn(State.variables,'args'),oldLegacy=State.variables.args;
+      State.temporary.args=parsed;State.variables.args=parsed;
+      if(definition.container){State.temporary.contentsRaw=body;State.temporary.contents=compiledMarkup(compile(body));}
+      try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadContentsRaw)State.temporary.contentsRaw=oldContentsRaw;else delete State.temporary.contentsRaw;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
     }
     function compile(source) {
       let out='', i=0;
@@ -282,7 +289,7 @@
           const name=macro[1].toLowerCase(),args=macro[2];
           if(name==='set')out+=assign(args); else if(name==='run'){execute(args);}
           else if(name==='unset'){for(const item of args.split(/\s*,\s*|\s+/).filter(Boolean))Function('State','delete '+jsExpr(item))(State);}
-          else if(name==='print'||name==='=')out+=escapeHtml(evaluate(args));
+          else if(name==='print'||name==='=')out+=renderValue(evaluate(args));
           else if(['checkbox','radiobutton','numberbox','textbox','textarea'].includes(name))out+=inputMacro(name,args);
           else if(name==='cacheaudio')out+=cacheAudio(args);
           else if(name==='audio'){const a=tokens(args),ids=value(a.shift());out+=audioActions(audioSelection(ids),a);}
@@ -306,7 +313,7 @@
           i += link[0].length; continue;
         }
         const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);
-        if (variable) { out += escapeHtml(evaluate(variable[0])); i += variable[0].length; continue; }
+        if (variable) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
         out += source[i++];
       }
       return out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');
