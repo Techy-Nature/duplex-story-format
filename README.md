@@ -44,7 +44,7 @@ Browser-based Twine generally cannot install a local `file://` URL. Host the fol
 - Switches: `<<switch expression>><<case value>>...<<default>>...<</switch>>`
 - Scripting: `<<run>>`, `<<script>>`, and `<<unset>>`
 - Comments: `//` to the end of a line, `/* ... */` across lines, and `<<comment>>...<</comment>>`
-- Markdown: `<<markdown>>...<</markdown>>` supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
+- Markdown: `[markdown]`-tagged passages and `<<markdown>>...<</markdown>>` macro supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
 - Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
 - Audio: `<<cacheaudio>>`, `<<audio>>`, `<<createaudiogroup>>`, `<<createplaylist>>`, `<<masteraudio>>`, `<<playlist>>`, `<<removeaudiogroup>>`, `<<removeplaylist>>`, and `<<waitforaudio>>`
 - Operators: `is`, `is not`, `isnot`, `and`, `or`, `not`, plus ordinary JavaScript operators
