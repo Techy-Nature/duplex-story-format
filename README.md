@@ -115,6 +115,21 @@ Save.parse(jsonText);        // Validate and return save state.
 
 `Save.import(file)` returns a promise when passed a browser `File`. The API is available as both `Save` and `Duplex.Save`. Duplex still provides one browser slot rather than SugarCube's full multi-slot Save API.
 
+## Nested Bag Inventory
+
+Duplex 1.4.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Each populated bag has its own ID, definition/name, properties, item stacks, and child bags. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
+
+```text
+Travel pack (bag-1)
+└── Medicine pouch (bag-2)
+    └── Lockbox (bag-3)
+        └── vial
+```
+
+Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
+
+See [`Duplex 1.4.0/duplex-format/README.md`](Duplex%201.4.0/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
+
 ## Widgets
 
 Create one or more passages with the `widget` tag. Duplex processes their `<<widget>>` definitions during startup.
@@ -178,18 +193,3 @@ The generated `format.js` is the file Twine installs.
 ## License
 
 MIT.
-
-## Nested bag inventory
-
-Duplex 1.4.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Each populated bag has its own ID, definition/name, properties, item stacks, and child bags. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
-
-```text
-Travel pack (bag-1)
-└── Medicine pouch (bag-2)
-    └── Lockbox (bag-3)
-        └── vial
-```
-
-Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
-
-See [`Duplex 1.4.0/duplex-format/README.md`](Duplex%201.4.0/duplex-format/README.md#nested-bag-inventory) for API and interaction details.
