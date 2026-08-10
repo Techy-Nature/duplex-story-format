@@ -76,6 +76,7 @@ const dom = new JSDOM(html, {
     window.HTMLMediaElement.prototype.play = () => Promise.resolve();
     window.HTMLMediaElement.prototype.pause = () => {};
     window.HTMLMediaElement.prototype.load = () => {};
+    window.confirm = () => true;
   }
 });
 const { document, State, Duplex, Save } = dom.window;
@@ -107,12 +108,40 @@ dom.window.UIBar.hide();assert(dom.window.UIBar.isHidden(),'left bar hide');dom.
 dom.window.UIBarRight.stow(true);assert(dom.window.UIBarRight.isStowed(),'right bar stow');dom.window.UIBarRight.unstow(true);
 assert(dom.window.UIBarL===dom.window.UIBar && dom.window.UIBarR===dom.window.UIBarRight,'short UI bar names and aliases');
 assert(Duplex.Save===Save && typeof Save.export==='function' && typeof Save.import==='function','Save API globals');
+const { Inventory }=dom.window;
+const pack=Inventory.createBag({id:'pack',name:'Pack'},{id:'pack',properties:{capacity:20}});
+const pouch=Inventory.createBag({id:'pouch',name:'Pouch'},{id:'pouch',properties:{color:'red'}});
+Inventory.addItem('pouch',{name:'Coin',quantity:4});
+const tiny=Inventory.createBag({id:'tiny',name:'Tiny'},{id:'tiny'});
+Inventory.moveBag('tiny','pouch');
+Inventory.moveBag('pouch','pack');
+assert(pack.children[0]===pouch&&pouch.items[0].quantity===4&&pouch.children[0]===tiny,'bag movement preserves intact nested instances');
+let cycleRejected=false;try{Inventory.moveBag('pack','tiny');}catch(error){cycleRejected=/descendant/.test(error.message);}assert(cycleRejected,'bag ancestry cycle rejection');
+const stack=Inventory.createBag({id:'sack',name:'Sack'},{properties:{cloth:true},quantity:600});
+const merged=Inventory.createBag({id:'sack',name:'Sack'},{properties:{cloth:true},quantity:400});
+assert(stack===merged&&stack.quantity===1000,'compatible empty bags stack through 1000');
+Inventory.addItem(stack.id,{name:'Apple'});
+assert(stack.quantity===1&&Inventory.bags.some(bag=>bag!==stack&&bag.name==='Sack'&&bag.quantity===999),'populating a stacked bag splits one instance');
+const full=Inventory.createBag('Full',{properties:{capacity:0}});const before=JSON.stringify(Inventory.bags);
+let atomic=false;try{Inventory.unpackBag('pouch',full.id);}catch(error){atomic=/capacity/.test(error.message);}assert(atomic&&JSON.stringify(Inventory.bags)===before,'failed unpack is atomic');
+Inventory.openBag('pack');
+const pouchRow=document.querySelector('[data-bag-id="pouch"]');pouchRow.click();await new Promise(resolve=>setTimeout(resolve,250));
+assert(Inventory.activeBagId==='pouch','single click opens nested bag');
+Inventory.openBag('pack');document.querySelector('[data-bag-id="pouch"]').dispatchEvent(new dom.window.MouseEvent('dblclick',{bubbles:true}));
+assert(pouch.items.length===0&&pouch.children.length===0&&pack.items.some(item=>item.name==='Coin')&&pack.children.includes(tiny),'double click unpacks immediate contents');
+Inventory.moveBag('tiny','pouch');Inventory.openBag('pouch');document.querySelector('#duplex-dialog-actions button').click();
+assert(pouch.children.length===0&&pack.children.includes(tiny),'Take Everything button matches double click unpack');
+const safeRoom=Inventory.createBag('Safe Room',{room:true,id:'safe'}),safeNest=Inventory.createBag('Safe Nest',{parentId:safeRoom.id,id:'safe-nest'});Inventory.addItem(safeNest.id,{name:'Map'});Inventory.leaveRoom(safeRoom.id,true);
+assert(Inventory.getBag('safe-nest').items[0].name==='Map','safe room preserves nested hierarchy');
+const danger=Inventory.createBag('Danger Room',{room:true,id:'danger'}),dangerChild=Inventory.createBag('Danger Child',{parentId:danger.id,id:'danger-child'});Inventory.addItem(dangerChild.id,{name:'Ash'});Inventory.leaveRoom(danger.id,false);
+assert(!Inventory.getBag('danger')&&!Inventory.getBag('danger-child')&&Inventory.getBag('pouch'),'danger room cleanup recursively removes only that room tree');
 Save.save();
 const exported=Save.serialize(),parsed=JSON.parse(exported);
 assert(parsed.format==='DuplexSave'&&parsed.schema===1&&parsed.story==='Test'&&parsed.history.length===1,'portable save payload');
 State.variables.x=99;
 Save.import(exported);
 assert(State.variables.x===2&&dom.window.localStorage.getItem('duplex-save-Test'),'JSON save import and browser persistence');
+assert(Inventory.getBag('safe-nest')?.items[0].name==='Map','nested inventory survives save export/import');
 let wrongStory=false;try{Save.import(JSON.stringify({...parsed,story:'Other Story'}));}catch(error){wrongStory=/different story/.test(error.message);}
 assert(wrongStory,'reject wrong-story save');
 let damaged=false;try{Save.import('{broken');}catch(error){damaged=/valid JSON/.test(error.message);}
@@ -135,7 +164,9 @@ assert(State.variables.text === 'changed','textbox');
 
 document.querySelector('[data-passage=Next]').click();
 assert(document.querySelectorAll('article').length === 2,'append navigation');
+Inventory.createBag('Temporary',{id:'temporary'});
 document.querySelector('#duplex-back').click();
 assert(document.querySelectorAll('article').length === 1,'back navigation');
+assert(!Inventory.getBag('temporary')&&Inventory.getBag('safe-nest'),'Back restores the complete prior inventory hierarchy');
 
 console.log('Duplex runtime tests passed.');
