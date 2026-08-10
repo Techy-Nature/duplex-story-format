@@ -109,6 +109,11 @@ dom.window.UIBarRight.stow(true);assert(dom.window.UIBarRight.isStowed(),'right 
 assert(dom.window.UIBarL===dom.window.UIBar && dom.window.UIBarR===dom.window.UIBarRight,'short UI bar names and aliases');
 assert(Duplex.Save===Save && typeof Save.export==='function' && typeof Save.import==='function','Save API globals');
 const { Inventory }=dom.window;
+State.variables.inventory=['author-owned'];dom.window.UI.update();
+assert(State.variables.inventory[0]==='author-owned'&&Inventory.bags.length===0,'inventory state does not collide with the author-owned $inventory variable');
+const numbered=Inventory.createBag('Numbered',{id:'bag-50'}),generated=Inventory.createBag('Generated');
+assert(numbered.id==='bag-50'&&generated.id==='bag-51','explicit generated-style IDs advance automatic bag IDs');
+let duplicateRejected=false;try{Inventory.createBag('Duplicate',{id:'bag-50'});}catch(error){duplicateRejected=/already exists/.test(error.message);}assert(duplicateRejected&&Inventory.getBag('bag-50')===numbered,'duplicate explicit bag IDs are rejected');
 const pack=Inventory.createBag({id:'pack',name:'Pack'},{id:'pack',properties:{capacity:20}});
 const pouch=Inventory.createBag({id:'pouch',name:'Pouch'},{id:'pouch',properties:{color:'red'}});
 Inventory.addItem('pouch',{name:'Coin',quantity:4});
