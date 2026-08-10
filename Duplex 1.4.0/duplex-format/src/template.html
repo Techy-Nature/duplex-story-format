@@ -375,18 +375,28 @@
     };
     /* Bags are a JSON forest.  A child is always the actual bag object, never a
        reference to item stacks which could accidentally flatten its contents. */
-    function inventoryState(){return State.variables.inventory??={bags:[],nextId:1};}
+    function inventoryState(){
+      if(!State.variables.__duplex||typeof State.variables.__duplex!=='object'||Array.isArray(State.variables.__duplex))State.variables.__duplex={};
+      return State.variables.__duplex.inventory??={bags:[],nextId:1};
+    }
     function bagEmpty(bag){return !bag.items.length&&!bag.children.length;}
+    function nextBagId(){const state=inventoryState();let id;do{id='bag-'+state.nextId++;}while(locateBag(id));return id;}
+    function reserveBagId(requested){
+      if(requested==null)return nextBagId();
+      const state=inventoryState(),id=String(requested);if(locateBag(id))throw new Error('Bag ID already exists.');
+      const generated=id.match(/^bag-(\d+)$/);if(generated){const following=Number(generated[1])+1;if(Number.isSafeInteger(following)&&following>state.nextId)state.nextId=following;}
+      return id;
+    }
     function normalizeBag(definition,options={}){
-      const state=inventoryState(),definitionValue=typeof definition==='object'?definition:{name:String(definition)};
-      return {id:String(options.id??'bag-'+state.nextId++),definition:clone(definitionValue),name:String(options.name??definitionValue.name??definitionValue.id??'Bag'),quantity:Math.max(1,Math.min(1000,Number(options.quantity)||1)),properties:clone(options.properties??definitionValue.properties??{}),items:clone(options.items??[]),children:clone(options.children??[]),room:Boolean(options.room)};
+      const definitionValue=typeof definition==='object'?definition:{name:String(definition)};
+      return {id:reserveBagId(options.id),definition:clone(definitionValue),name:String(options.name??definitionValue.name??definitionValue.id??'Bag'),quantity:Math.max(1,Math.min(1000,Number(options.quantity)||1)),properties:clone(options.properties??definitionValue.properties??{}),items:clone(options.items??[]),children:clone(options.children??[]),room:Boolean(options.room)};
     }
     function walkBags(visitor,bags=inventoryState().bags,parent=null){for(const bag of bags){if(visitor(bag,parent,bags)===false)return false;if(walkBags(visitor,bag.children,bag)===false)return false;}return true;}
     function locateBag(id){let result;walkBags((bag,parent,collection)=>{if(bag.id===String(id)){result={bag,parent,collection};return false;}});return result;}
     function assertBagShape(bag){bag.items??=[];bag.children??=[];bag.properties??={};bag.quantity=Math.max(1,Math.min(1000,Number(bag.quantity)||1));return bag;}
     function splitForContents(location){
       const bag=location.bag;if(bag.quantity===1)return bag;
-      const remainder=clone(bag);remainder.id='bag-'+inventoryState().nextId++;remainder.quantity=bag.quantity-1;bag.quantity=1;
+      const remainder=clone(bag);remainder.id=nextBagId();remainder.quantity=bag.quantity-1;bag.quantity=1;
       location.collection.splice(location.collection.indexOf(bag)+1,0,remainder);return bag;
     }
     function isDescendant(source,destination){let found=false;walkBags(bag=>{if(bag.id===destination.id){found=true;return false;}},source.children,source);return found;}

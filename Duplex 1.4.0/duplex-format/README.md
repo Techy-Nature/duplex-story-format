@@ -181,7 +181,7 @@ MIT.
 
 ## Nested bag inventory
 
-Duplex 1.4.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Each populated bag has its own ID, definition/name, properties, item stacks, and child bags. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
+Duplex 1.4.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Internal inventory data is stored in Duplex's reserved `$__duplex` namespace, so stories remain free to use `$inventory` for their own data. Each populated bag has its own unique ID, definition/name, properties, item stacks, and child bags. Explicit duplicate IDs are rejected, and an explicit `bag-N` ID advances automatic ID generation. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
 
 ```text
 Travel pack (bag-1)
