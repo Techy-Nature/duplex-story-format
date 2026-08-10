@@ -28,6 +28,9 @@
     button,.duplex-link { color:var(--duplex-accent); cursor:pointer; }
     button { border:1px solid color-mix(in srgb,var(--duplex-accent) 50%,transparent); border-radius:.5rem; background:var(--duplex-panel); padding:.55rem .8rem; font:inherit; }
     button:disabled { cursor:not-allowed; opacity:.45; }
+    .duplex-inventory-list { display:grid; gap:.5rem; margin:1rem 0; padding:0; list-style:none; }
+    .duplex-bag-row { display:flex; align-items:center; gap:.75rem; width:100%; text-align:left; }
+    .duplex-bag-row .duplex-bag-name { flex:1; }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
     .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
@@ -62,6 +65,7 @@
       <h2 class="duplex-bar-title">Story</h2>
       <div class="duplex-bar-section"><strong>Passage</strong><div id="duplex-current-passage">—</div></div>
       <div class="duplex-bar-section"><strong>Display</strong><div id="duplex-current-mode">—</div></div>
+      <div class="duplex-bar-section"><strong>Inventory</strong><div id="duplex-inventory-summary">0 bags</div></div>
       <div id="story-right-bar" class="duplex-bar-section"></div>
     </div>
   </aside>
@@ -369,6 +373,39 @@
       export(filename){const blob=new Blob([Save.serialize()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename||safeFilename()+'-save.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);return link.download;},
       import(source){if(typeof source==='string'){applySave(parseSave(source));localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Save.import(text));restoreSave(source);localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}
     };
+    /* Bags are a JSON forest.  A child is always the actual bag object, never a
+       reference to item stacks which could accidentally flatten its contents. */
+    function inventoryState(){return State.variables.inventory??={bags:[],nextId:1};}
+    function bagEmpty(bag){return !bag.items.length&&!bag.children.length;}
+    function normalizeBag(definition,options={}){
+      const state=inventoryState(),definitionValue=typeof definition==='object'?definition:{name:String(definition)};
+      return {id:String(options.id??'bag-'+state.nextId++),definition:clone(definitionValue),name:String(options.name??definitionValue.name??definitionValue.id??'Bag'),quantity:Math.max(1,Math.min(1000,Number(options.quantity)||1)),properties:clone(options.properties??definitionValue.properties??{}),items:clone(options.items??[]),children:clone(options.children??[]),room:Boolean(options.room)};
+    }
+    function walkBags(visitor,bags=inventoryState().bags,parent=null){for(const bag of bags){if(visitor(bag,parent,bags)===false)return false;if(walkBags(visitor,bag.children,bag)===false)return false;}return true;}
+    function locateBag(id){let result;walkBags((bag,parent,collection)=>{if(bag.id===String(id)){result={bag,parent,collection};return false;}});return result;}
+    function assertBagShape(bag){bag.items??=[];bag.children??=[];bag.properties??={};bag.quantity=Math.max(1,Math.min(1000,Number(bag.quantity)||1));return bag;}
+    function splitForContents(location){
+      const bag=location.bag;if(bag.quantity===1)return bag;
+      const remainder=clone(bag);remainder.id='bag-'+inventoryState().nextId++;remainder.quantity=bag.quantity-1;bag.quantity=1;
+      location.collection.splice(location.collection.indexOf(bag)+1,0,remainder);return bag;
+    }
+    function isDescendant(source,destination){let found=false;walkBags(bag=>{if(bag.id===destination.id){found=true;return false;}},source.children,source);return found;}
+    function capacityOkay(bag,itemCount,childCount){const capacity=Number(bag.properties.capacity??Infinity);return itemCount+childCount<=capacity;}
+    function refreshInventory(){UI?.update?.();if(Inventory.activeBagId&&document.querySelector('#duplex-dialog')?.open)Inventory.openBag(Inventory.activeBagId);}
+    const Inventory=window.Inventory={
+      get bags(){return inventoryState().bags;},activeBagId:null,
+      createBag(definition,options={}){const bag=normalizeBag(definition,options);if(!bagEmpty(bag))bag.quantity=1;const destination=options.parentId?locateBag(options.parentId)?.bag:null,collection=destination?.children??inventoryState().bags;if(destination){if(bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination,destination.items.length,destination.children.length+1))throw new Error('Bag capacity exceeded.');splitForContents(locateBag(destination.id));}const compatible=bagEmpty(bag)&&collection.find(other=>bagEmpty(assertBagShape(other))&&!other.room&&!bag.room&&other.name===bag.name&&JSON.stringify(other.definition)===JSON.stringify(bag.definition)&&JSON.stringify(other.properties)===JSON.stringify(bag.properties)&&other.quantity+bag.quantity<=1000);if(compatible){compatible.quantity+=bag.quantity;return compatible;}collection.push(bag);return bag;},
+      getBag(id){return locateBag(id)?.bag??null;},
+      addItem(id,item){const location=locateBag(id);if(!location)throw new Error('Bag not found.');if(!capacityOkay(location.bag,location.bag.items.length+1,location.bag.children.length))throw new Error('Bag capacity exceeded.');const bag=splitForContents(location),stack=clone(item);stack.quantity=Math.max(1,Math.min(1000,Number(stack.quantity)||1));bag.items.push(stack);refreshInventory();return bag;},
+      openBag(id){const location=locateBag(id),bag=location?.bag;if(!bag)throw new Error('Bag not found.');Inventory.activeBagId=bag.id;const items=bag.items.map(stack=>'<li>'+escapeHtml(stack.name??stack.definition??'Item')+(stack.quantity>1?' × '+stack.quantity:'')+'</li>').join('');const children=bag.children.map(child=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(child.id)+'" data-parent-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(child.name)+'"><span class="duplex-bag-name">'+escapeHtml(child.name)+'</span><span>× '+child.quantity+'</span></button></li>').join('');return dialog(bag.name,'<ul class="duplex-inventory-list">'+items+children+'</ul>',[{label:'Take Everything',action:()=>Inventory.requestUnpack(bag.id,location.parent?.id)}]);},
+      moveBag(sourceId,destinationId){const source=locateBag(sourceId),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be moved into itself or one of its descendants.');if(source.bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination.bag,destination.bag.items.length,destination.bag.children.length+1))throw new Error('Bag capacity exceeded.');const target=splitForContents(destination);source.collection.splice(source.collection.indexOf(source.bag),1);target.children.push(source.bag);refreshInventory();return source.bag;},
+      unpackBag(id,destinationId){const source=locateBag(id),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be unpacked into itself or one of its descendants.');const target=destination.bag;if(target.room&&source.bag.room)throw new Error('A room cannot be placed inside another bag.');const added=source.bag.items.length+source.bag.children.length;if(!capacityOkay(target,target.items.length+source.bag.items.length,target.children.length+source.bag.children.length))throw new Error('Bag capacity exceeded.');for(const child of source.bag.children)if(child.room||child===target||isDescendant(child,target))throw new Error('Unpacking would create an invalid bag hierarchy.');if(!added)return source.bag;splitForContents(destination);target.items.push(...source.bag.items);target.children.push(...source.bag.children);source.bag.items=[];source.bag.children=[];refreshInventory();return source.bag;},
+      requestUnpack(id,destinationId){const bag=locateBag(id)?.bag;if(!bag)throw new Error('Bag not found.');const destination=destinationId??locateBag(id)?.parent?.id;if(!destination)throw new Error('Choose a destination bag before unpacking.');if(bagEmpty(bag)||window.confirm('Take everything from '+bag.name+'?'))return Inventory.unpackBag(id,destination);return false;},
+      leaveRoom(id,safe=true){const location=locateBag(id);if(!location||!location.bag.room)throw new Error('Room not found.');if(!safe)location.collection.splice(location.collection.indexOf(location.bag),1);refreshInventory();return safe?location.bag:null;}
+    };
+    let bagClickTimer;
+    document.addEventListener('click',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);bagClickTimer=setTimeout(()=>Inventory.openBag(row.dataset.bagId),220);});
+    document.addEventListener('dblclick',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);Inventory.requestUnpack(row.dataset.bagId,row.dataset.parentBagId);});
     const UI=window.UI={
       alert(message,options,closeFn){dialog(options?.title||'Alert','<p>'+escapeHtml(message)+'</p>',[],closeFn);},
       restart(){dialog('Restart','<p>Restart the story from the beginning?</p>',[{label:'Restart',action:()=>{closeDialog();restart();}}]);},
@@ -390,6 +427,7 @@
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
         regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(region)region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';});
         const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?.title||'—';if(display)display.textContent=mode();
+        const summary=document.querySelector('#duplex-inventory-summary');if(summary){let count=0;walkBags(()=>{count++;});summary.textContent=count+' bag'+(count===1?'':'s');}
         document.dispatchEvent(new CustomEvent(':uiupdate')); return UI;
       },
       jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:title,action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
@@ -411,6 +449,7 @@
     }
     function go(title) {
       if (!passages.has(title)) return render(title);
+      if(State.history.length)State.history.at(-1).variables=clone(State.variables);
       if (mode() === 'replace') output.replaceChildren();
       const html=render(title);
       State.history.push({title,html,variables:clone(State.variables),mode:mode()});
