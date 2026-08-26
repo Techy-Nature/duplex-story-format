@@ -368,7 +368,7 @@
         const optionName=rest.match(/^<<(cycle|listbox)\b/i)?.[1]?.toLowerCase();
         if(optionName){const found=optionControls(rest,optionName);out+=found.html;i+=found.length;continue;}
         const audioBlock=rest.match(/^<<(createaudiogroup|createplaylist)\b/i)?.[1]?.toLowerCase();
-        if(audioBlock){const found=audioContainer(rest,audioBlock);out+=found.html;i+=found.length;continue;}
+        if(audioBlock){const found=container(rest,audioBlock);if(context.restricted)out+=restrictedError(audioBlock,context);else out+=audioContainer(rest,audioBlock).html;i+=found.length;continue;}
         const macro=rest.match(/^<<(set|run|unset|print|=|checkbox|radiobutton|numberbox|textbox|textarea|cacheaudio|audio|masteraudio|playlist|removeaudiogroup|removeplaylist|waitforaudio)\s*([\s\S]*?)>>/i);
         if (macro) {
           const name=macro[1].toLowerCase(),args=macro[2];
@@ -531,7 +531,8 @@
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
-      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history:clone(value.history),variables:clone(value.variables),warnings};
+      const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode}));
+      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),warnings};
     }
     function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
     function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}

@@ -149,16 +149,19 @@ const extensionMod={schema:1,id:'example.quest-pack',name:'Quest Pack',version:'
   {id:'after-hook',target:'Next',placement:'after',content:'after-one <<script>>window.modScriptRan=true;<</script>> <<include \"UnsafeInclude\">>'},
   {id:'unsafe-print',target:'Next',placement:'after',content:'<<print this.alert(\"escaped\")>>'},
   {id:'unsafe-set',target:'Next',placement:'after',content:'<<set $result to fetch(\"https://example.com\")>>'},
-  {id:'unsafe-html',target:'Next',placement:'after',content:'<img src=\"invalid\" onerror=\"alert(1)\"><a href=\"javascript:alert(1)\" onclick=\"alert(1)\">raw-danger</a> <<markdown>>\n[markdown-danger](javascript:alert(1))\n<</markdown>>'}
+  {id:'unsafe-html',target:'Next',placement:'after',content:'<img src=\"invalid\" onerror=\"alert(1)\"><a href=\"javascript:alert(1)\" onclick=\"alert(1)\">raw-danger</a> <<markdown>>\n[markdown-danger](javascript:alert(1))\n<</markdown>>'},
+  {id:'unsafe-audio-group',target:'Next',placement:'after',content:'<<createaudiogroup \"mod-group\">><<track \"tone\">><</createaudiogroup>>'},
+  {id:'unsafe-playlist',target:'Next',placement:'after',content:'<<createplaylist \"mod-playlist\">><<track \"tone\">><</createplaylist>>'}
 ]};
 const normalizedExtension=Duplex.mods.register(extensionMod);Duplex.go('Next');
 let extensionText=document.querySelector('article:last-child .duplex-passage-body').textContent;
 assert(extensionText.indexOf('before-one')<extensionText.indexOf('before-two')&&extensionText.indexOf('before-two')<extensionText.indexOf('Done')&&extensionText.indexOf('Done')<extensionText.indexOf('after-one'),'before/after extensions use stable import and manifest order');
-assert(normalizedExtension.passageExtensions.length===6&&Duplex.mods.get(extensionMod.id).passageExtensions.length===6,'normalized extensions exposed through list/get APIs');
+assert(normalizedExtension.passageExtensions.length===8&&Duplex.mods.get(extensionMod.id).passageExtensions.length===8,'normalized extensions exposed through list/get APIs');
 assert(JSON.stringify(dom.window.tags('DuplexMod:example.quest-pack:after-hook'))===JSON.stringify(['mod','restricted'])&&dom.window.hasTag('DuplexMod:example.quest-pack:after-hook','restricted'),'virtual passage lookup and restricted tags');
 assert(State.variables.modSafe===7&&extensionText.includes('conditional-ok')&&extensionText.includes('switch-safe')&&document.querySelector('article:last-child [data-passage=Start]'),'safe restricted conditionals, switches, printing, links, variables, and controls compile');
 assert(!dom.window.modScriptRan&&!dom.window.modNestedRan&&consoleErrors.some(message=>message.includes('after-hook')&&message.includes('script')),'restricted scripts and nested-include scripts are blocked with context');
 assert(!dom.window.browserEscape&&!Object.hasOwn(State.variables,'result'),'restricted expressions cannot access browser globals or execute functions');
+assert(!Duplex.audio.groups.has('mod-group')&&!Duplex.audio.playlists.has('mod-playlist'),'restricted audio group and playlist definitions cannot register');
 const extensionBody=document.querySelector('article:last-child .duplex-passage-body');
 assert(!extensionBody.querySelector('[onerror],[onclick]')&&[...extensionBody.querySelectorAll('a')].filter(link=>/danger/.test(link.textContent)).every(link=>!link.hasAttribute('href')),'restricted HTML removes event handlers and dangerous raw/Markdown URLs');
 assert(!Save.serialize().includes('before-one')&&!Save.serialize().includes('after-one'),'save history excludes rendered mod extension HTML');
@@ -247,6 +250,8 @@ assert(wrongStory,'reject wrong-story save');
 let damaged=false;try{Save.import('{broken');}catch(error){damaged=/valid JSON/.test(error.message);}
 assert(damaged,'reject malformed save');
 const legacy={...parsed};delete legacy.mods;Save.import(legacy);assert(State.variables.x===2,'older save without mod metadata loads');
+const oldHistorySave={...parsed,variables:{...parsed.variables,x:42},history:[{title:'Start',html:'<p>old-history-output</p>',variables:{...parsed.variables,x:42},mode:'replace'}]};
+Save.import(oldHistorySave);assert(State.variables.x===42&&document.querySelector('.duplex-passage-body').textContent.includes('old-history-output'),'old html history entries migrate without recompiling passage side effects');Save.import(exported);
 await Duplex.mods.disable('another-author.alchemy');const warnings=Duplex.mods.checkSave([{id:'missing.mod',version:'1.0.0'},{id:'another-author.alchemy',version:'1.0.0'},{id:'plain-object.mod',version:'9.0.0'}]);assert(warnings.length===3&&warnings.some(message=>message.includes('disabled')),'missing, disabled, and mismatched save mods warn without rejection');await Duplex.mods.enable('another-author.alchemy');
 Save.import({...parsed,mods:[{id:'missing.mod',version:'1.0.0'}]});assert(document.querySelector('#duplex-dialog-body').textContent.includes('missing.mod 1.0.0')&&document.querySelector('#duplex-dialog-body').textContent.includes('save was loaded'),'save mod warnings are displayed to players after loading');document.querySelector('#duplex-dialog-actions button:last-child').click();
 Duplex.mods.open();assert(document.querySelector('#duplex-mod-list').textContent.includes('Alchemy'),'mod manager lists installed mods');document.querySelector('#duplex-dialog-actions button:last-child').click();
