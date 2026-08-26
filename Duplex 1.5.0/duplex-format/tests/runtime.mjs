@@ -18,6 +18,12 @@ const story = `<tw-storydata name="Test" startnode="1">
 <<createaudiogroup ":ui">><<track "tone">><</createaudiogroup>>
 <<createplaylist "music">><<track "tone" volume 0.5>><</createplaylist>>`)}
   ${passage('1','Start',`<<run $x += 1>>
+<<set $section to "ExpressionInclude">>
+Literal: <<include "LiteralInclude">>
+Expression: <<include $section>>
+Missing: <<include "DoesNotExist">>
+Nested: <<include "NestedInclude">>
+Recursive: <<include "RecursiveA">>
 <<script>>State.variables.scripted = true;<</script>>
 <<switch $x>><<case 2>>switch-ok<<default>>switch-bad<</switch>>
 <<button "Add">><<set $x += 3>><</button>>
@@ -62,13 +68,23 @@ Visible before // this trailing comment is hidden
 <<widget "birdnote" container>><strong><<print _contents>></strong><</widget>>`,'widget')}
   ${passage('8','More Widgets',`<<widget "speech" container>><div class="speech-text"><<= _contents>></div><</widget>>
 <<widget "rawnote" container>><code class="raw-contents"><<print _contentsRaw>></code><</widget>>`,'widget')}
+  ${passage('10','LiteralInclude','literal-include-ok')}
+  ${passage('11','ExpressionInclude','expression-include-ok')}
+  ${passage('12','NestedInclude','nested-before <<include "NestedLeaf">> nested-after')}
+  ${passage('13','NestedLeaf','<<set $includedMacro to "macro-include-ok">>$includedMacro')}
+  ${passage('14','RecursiveA','recursive-a <<include "RecursiveB">>')}
+  ${passage('15','RecursiveB','recursive-b <<include "RecursiveA">>')}
 </tw-storydata>`;
 
 const html = format.source.replace('{{STORY_NAME}}','Test').replace('{{STORY_DATA}}',story);
+const consoleWarnings=[];
+const consoleErrors=[];
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
   url: 'https://example.test/story',
   beforeParse(window) {
+    window.console.warn=(...args)=>consoleWarnings.push(args.join(' '));
+    window.console.error=(...args)=>consoleErrors.push(args.join(' '));
     window.scrollTo = () => {};
     window.requestAnimationFrame = callback => callback();
     window.HTMLElement.prototype.scrollIntoView = () => {};
@@ -93,8 +109,15 @@ assert(document.body.textContent.includes('switch-ok'),'switch macro');
 assert(State.variables.x === 2 && State.variables.scripted,'run and script macros');
 assert(Duplex.audio.tracks.size === 1 && Duplex.audio.groups.has(':ui') && Duplex.audio.playlists.has('music'),'audio registration macros');
 assert(State.variables.passageMode === 'append','StoryInit tags condition');
-assert(document.body.textContent.includes('current-tag-ok'),'current passage hasTag');
 const renderedPassage=document.querySelector('.duplex-passage-body').textContent;
+assert(renderedPassage.includes('literal-include-ok'),'literal passage include');
+assert(renderedPassage.includes('expression-include-ok'),'variable/expression passage include');
+assert(renderedPassage.includes('macro-include-ok')&&State.variables.includedMacro==='macro-include-ok','macros in included passages are processed');
+assert(renderedPassage.includes('nested-before')&&renderedPassage.includes('nested-after'),'nested passage includes');
+assert(!renderedPassage.includes('DoesNotExist')&&consoleWarnings.some(message=>message.includes('DoesNotExist')),'missing include renders nothing and warns with passage name');
+assert(renderedPassage.includes('recursive-a')&&renderedPassage.includes('recursive-b')&&consoleErrors.some(message=>message.includes('RecursiveA -> RecursiveB -> RecursiveA')),'recursive includes are stopped with a useful error');
+assert(State.history.length===1&&State.history[0].title==='Start','includes do not navigate, change the current passage, or add history entries');
+assert(document.body.textContent.includes('current-tag-ok'),'current passage hasTag');
 assert(!renderedPassage.includes('this line is hidden') && !renderedPassage.includes('this block is hidden') && !renderedPassage.includes('this macro is hidden'),'comment syntaxes');
 assert(renderedPassage.includes('Visible before') && !renderedPassage.includes('this trailing comment is hidden'),'inline comment');
 assert(document.querySelector('.duplex-passage-body h1')?.textContent === 'Markdown heading' && [...document.querySelectorAll('.duplex-passage-body strong')].some(element=>element.textContent==='bold words'),'markdown headings and emphasis');
