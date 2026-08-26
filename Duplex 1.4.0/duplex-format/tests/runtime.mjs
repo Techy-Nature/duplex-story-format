@@ -111,6 +111,7 @@ assert(Duplex.Save===Save && typeof Save.export==='function' && typeof Save.impo
 const { Inventory }=dom.window;
 State.variables.inventory=['author-owned'];dom.window.UI.update();
 assert(State.variables.inventory[0]==='author-owned'&&Inventory.bags.length===0,'inventory state does not collide with the author-owned $inventory variable');
+assert(dom.window.Duplex.inventory===Inventory,'Duplex.inventory aliases the global Inventory API');
 const numbered=Inventory.createBag('Numbered',{id:'bag-50'}),generated=Inventory.createBag('Generated');
 assert(numbered.id==='bag-50'&&generated.id==='bag-51','explicit generated-style IDs advance automatic bag IDs');
 let duplicateRejected=false;try{Inventory.createBag('Duplicate',{id:'bag-50'});}catch(error){duplicateRejected=/already exists/.test(error.message);}assert(duplicateRejected&&Inventory.getBag('bag-50')===numbered,'duplicate explicit bag IDs are rejected');
