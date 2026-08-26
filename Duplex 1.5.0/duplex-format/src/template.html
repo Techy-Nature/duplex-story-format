@@ -86,6 +86,7 @@
     const deferred = new Map();
     const widgets = new Map();
     const includeStack = [];
+    const compileContexts = [];
     const MAX_INCLUDE_DEPTH = 50;
     let nextControlId = 0;
     const AudioEngine = window.SimpleAudio = {
@@ -130,6 +131,7 @@
       return source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!').replace(/\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/_([A-Za-z_]\w*)/g,'State.temporary.$1');
     }
     function evaluate(source) {
+      const context=compileContexts.at(-1);if(context?.restricted){const raw=source.trim();if(/(?:=>|;|\b(?:new|function|eval|Function|constructor|prototype|__proto__|window|document|globalThis|setup|Config|Duplex)\b)/.test(raw)||/(^|[^.\w])(?!tags\b|hasTag\b)[A-Za-z_$][\w$]*\s*\(/.test(raw))throw new Error('Unsafe expression blocked in restricted mod passage "'+context.sourcePassage+'".');}
       try { return Function('State','setup','Config','return (' + jsExpr(source) + ')')(State,setup,Config); }
       catch (error) { throw new Error('Could not evaluate “' + source + '”: ' + error.message); }
     }
@@ -222,7 +224,7 @@
     }
     function interactive(text,name) {
       const block=container(text,name), argv=tokens(block.args), label=value(argv[0]), target=argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
-      const id=action({kind:name,body:block.body,target});
+      const id=action({kind:name,body:block.body,target,context:{...(compileContexts.at(-1)||{} )}});
       const tag=name==='button'?'button':'a', href=tag==='a'?' href="#"':'';
       return {length:block.length,html:'<'+tag+href+' class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(label)+'</'+tag+'>'};
     }
@@ -285,8 +287,12 @@
       if(definition.container){State.temporary.contentsRaw=body;State.temporary.contents=compiledMarkup(compile(body));}
       try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadContentsRaw)State.temporary.contentsRaw=oldContentsRaw;else delete State.temporary.contentsRaw;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
     }
-    function includePassage(argSource) {
-      const title=String(evaluate(argSource));
+    function restrictedError(name,context) {
+      const source=context.sourcePassage||'restricted mod passage', message='Blocked <<'+name+'>> in restricted mod passage "'+source+'".';
+      console.error('Duplex restricted compilation: '+message);return '<span class="duplex-error">'+escapeHtml(message)+'</span>';
+    }
+    function includeNamedPassage(title,context) {
+      title=String(title);
       const passage=passages.get(title);
       if(!passage){console.warn('Duplex <<include>>: passage not found: "'+title+'".');return '';}
       if(includeStack.includes(title)){
@@ -298,12 +304,14 @@
         return '';
       }
       includeStack.push(title);
-      try{return compile(passage.text);}
+      try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};if(!passage.virtualMod&&passageExtensions.has(title)){const group=passageExtensions.get(title),parts=[];group.before.forEach(entry=>parts.push(includeNamedPassage(entry.name,{restricted:true,sourcePassage:entry.name})));parts.push(compile(passage.text,next));group.after.forEach(entry=>parts.push(includeNamedPassage(entry.name,{restricted:true,sourcePassage:entry.name})));return parts.join('');}return compile(passage.text,next);}
       finally{includeStack.pop();}
     }
-    function compile(source) {
+    function includePassage(argSource,context) { return includeNamedPassage(String(evaluate(argSource)),context); }
+    function compile(source,context) {
+      context=context||compileContexts.at(-1)||{restricted:false,sourcePassage:activeRenderTitle};compileContexts.push(context);
       let out='', i=0;
-      while (i < source.length) {
+      try { while (i < source.length) {
         const rest=source.slice(i);
         if (rest.startsWith('/*')) { const end=rest.indexOf('*/',2);if(end<0)throw new Error('Missing */ for block comment.');i+=end+2;continue; }
         if (rest.startsWith('//') && (i===0 || /\s/.test(source[i-1]))) { const end=rest.indexOf('\n');i+=end<0?rest.length:end;continue; }
@@ -311,9 +319,9 @@
         if (/^<<markdown(?:\s|>>)/i.test(rest)) { const found=markdownMacro(rest);out+=found.html;i+=found.length;continue; }
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
-        if (/^<<script(?:\s|>>)/i.test(rest)) { const found=scriptMacro(rest);out+=found.html;i+=found.length;continue; }
+        if (/^<<script(?:\s|>>)/i.test(rest)) { const found=container(rest,'script');if(context.restricted)out+=restrictedError('script',context);else out+=scriptMacro(rest).html;i+=found.length;continue; }
         const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
-        if(include){out+=includePassage(include[1]);i+=include[0].length;continue;}
+        if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
         const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
         if(interactiveName){const found=interactive(rest,interactiveName);out+=found.html;i+=found.length;continue;}
         const optionName=rest.match(/^<<(cycle|listbox)\b/i)?.[1]?.toLowerCase();
@@ -323,7 +331,8 @@
         const macro=rest.match(/^<<(set|run|unset|print|=|checkbox|radiobutton|numberbox|textbox|textarea|cacheaudio|audio|masteraudio|playlist|removeaudiogroup|removeplaylist|waitforaudio)\s*([\s\S]*?)>>/i);
         if (macro) {
           const name=macro[1].toLowerCase(),args=macro[2];
-          if(name==='set')out+=assign(args); else if(name==='run'){execute(args);}
+          if(context.restricted&&['run','unset','cacheaudio','audio','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio'].includes(name)){out+=restrictedError(name,context);}
+          else if(name==='set'){if(context.restricted&&!/^\s*[$_]\w+(?:\.[A-Za-z_]\w*)*\s+(?:to|=)\s+(?!.*(?:\b(?:Function|eval|window|document|globalThis|Duplex|setup|Config)\b|=>|;|\bnew\b))/s.test(args))out+=restrictedError('set',context);else out+=assign(args);} else if(name==='run'){execute(args);}
           else if(name==='unset'){for(const item of args.split(/\s*,\s*|\s+/).filter(Boolean))Function('State','delete '+jsExpr(item))(State);}
           else if(name==='print'||name==='=')out+=renderValue(evaluate(args));
           else if(['checkbox','radiobutton','numberbox','textbox','textarea'].includes(name))out+=inputMacro(name,args);
@@ -337,7 +346,8 @@
           i += macro[0].length; continue;
         }
         const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
-        if(widgetName&&widgets.has(widgetName)){const found=invokeWidget(rest,widgetName);out+=found.html;i+=found.length;continue;}
+        if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[^>]*>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
+        const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
         const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
         if (link) {
           let label,target,body=link[1];
@@ -353,6 +363,7 @@
         out += source[i++];
       }
       return out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');
+      } finally { compileContexts.pop(); }
     }
     function makeBar(element,spaceProperty) {
       const api={
@@ -382,7 +393,20 @@
     }
     function storyId(){return data.getAttribute('ifid')||data.getAttribute('name')||document.title;}
     const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
-    const installedMods=new Map();
+    const installedMods=new Map(), passageExtensions=new Map();
+    const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
+    const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
+    let nextModOrder=0;
+    function rebuildPassageExtensions(){
+      passages.forEach((passage,title)=>{if(passage.virtualMod)passages.delete(title);});passageExtensions.clear();
+      [...installedMods.values()].filter(record=>record.enabled).sort((a,b)=>a.order-b.order).forEach(record=>record.manifest.passageExtensions.forEach((extension,index)=>{
+        const name='DuplexMod:'+record.manifest.id+':'+extension.id;
+        if(passages.has(name))throw new Error('Virtual mod passage name collides with an existing passage: '+name+'.');
+        passages.set(name,{name,pid:null,tags:['mod','restricted'],text:extension.content,virtualMod:true,modId:record.manifest.id,extensionId:extension.id});
+        const group=passageExtensions.get(extension.target)||{before:[],after:[]};group[extension.placement].push({name,order:record.order,index});passageExtensions.set(extension.target,group);
+      }));
+    }
+    function compileStoryPassage(title){return includeNamedPassage(title,{restricted:false,sourcePassage:title});}
     function modError(message,manifest){throw new Error('Could not import '+(manifest?.name?'“'+manifest.name+'”':'mod')+': '+message);}
     function plainObject(value){if(!value||Object.prototype.toString.call(value)!=='[object Object]')return false;const prototype=Object.getPrototypeOf(value);return prototype===null||prototype===Object.prototype||(prototype?.constructor?.name==='Object'&&Object.keys(prototype).length===0&&Object.getPrototypeOf(prototype)===null);}
     function validateJson(value,path='manifest',seen=new Set()){
@@ -412,6 +436,19 @@
       if(input.forStory!==undefined&&input.forStory!==storyId()&&input.forStory!==(data.getAttribute('name')||document.title))modError('forStory does not match this story ('+storyId()+').',input);
       if(input.requires!==undefined&&!plainObject(input.requires))modError('requires must be a plain JSON object.',input);
       if(input.requires?.duplex!==undefined&&!compatible(input.requires.duplex))modError('requires.duplex '+input.requires.duplex+' is incompatible with Duplex '+DUPLEX_VERSION+'.',input);
+      if(input.passageExtensions!==undefined&&!Array.isArray(input.passageExtensions))modError('passageExtensions must be an array.',input);
+      const extensionIds=new Set(),passageExtensions=(input.passageExtensions??[]).map((extension,index)=>{
+        const path='passageExtensions['+index+']';if(!plainObject(extension))modError(path+' must be a plain JSON object.',input);
+        if(!validId(extension.id))modError(path+'.id is missing or invalid.',input);if(extensionIds.has(extension.id))modError(path+'.id duplicates “'+extension.id+'”.',input);extensionIds.add(extension.id);
+        if(typeof extension.target!=='string'||!extension.target)modError(path+'.target must be a nonempty passage name.',input);
+        const target=passages.get(extension.target);if(!target||target.virtualMod)modError(path+'.target “'+extension.target+'” is not an existing base story passage.',input);
+        if(PROTECTED_MOD_TARGETS.has(extension.target))modError(path+'.target “'+extension.target+'” is protected.',input);
+        const protectedTag=target.tags.find(tag=>PROTECTED_MOD_TAGS.has(tag.toLowerCase()));if(protectedTag)modError(path+'.target “'+extension.target+'” has protected tag “'+protectedTag+'”.',input);
+        if(extension.placement!=='before'&&extension.placement!=='after')modError(path+'.placement must be exactly “before” or “after”.',input);
+        if(typeof extension.content!=='string')modError(path+'.content must be a string.',input);
+        const virtualName='DuplexMod:'+input.id+':'+extension.id;if(passages.has(virtualName))modError(path+' would collide with passage “'+virtualName+'”.',input);
+        return {id:extension.id,target:extension.target,placement:extension.placement,content:extension.content};
+      });
       const ids=new Set(),items=input.items.map((item,index)=>{
         const path='items['+index+']';if(!plainObject(item))modError(path+' must be a plain object.',input);
         if(!validId(item.id))modError(path+'.id is missing or invalid.',input);if(ids.has(item.id))modError(path+'.id duplicates “'+item.id+'”.',input);ids.add(item.id);
@@ -421,20 +458,20 @@
         if(item.tags!==undefined&&(!Array.isArray(item.tags)||item.tags.some(tag=>typeof tag!=='string')))modError(path+'.tags must be an array of strings.',input);
         return {...clone(item),id:item.id,name:item.name,description:item.description===undefined?'':String(item.description),type:item.type===undefined?'item':String(item.type),quantity:Math.max(1,Math.min(1000,Number(quantity)||1)),properties:clone(item.properties??{}),tags:clone(item.tags??[])};
       });
-      return {...clone(input),items};
+      return {...clone(input),items,passageExtensions};
     }
     function modDatabase(){return new Promise((resolve,reject)=>{if(!window.indexedDB){resolve(null);return;}const request=indexedDB.open('duplex-mods-'+storyId(),1);request.onupgradeneeded=()=>request.result.createObjectStore('mods',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
     async function persistMod(record){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').put(clone(record));request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
     async function deleteMod(id){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').delete(id);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
-    async function loadMods(){const db=await modDatabase();if(!db)return [];const records=await new Promise((resolve,reject)=>{const request=db.transaction('mods').objectStore('mods').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});db.close();const errors=[];for(const record of records){try{const manifest=normalizeMod(record.manifest);installedMods.set(manifest.id,{manifest,enabled:record.enabled!==false});}catch(error){errors.push(error.message);try{await persistMod({...record,enabled:false});}catch(_){}}}return errors;}
+    async function loadMods(){const db=await modDatabase();if(!db)return [];const records=await new Promise((resolve,reject)=>{const request=db.transaction('mods').objectStore('mods').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});db.close();const errors=[];for(const record of records){try{const manifest=normalizeMod(record.manifest);installedMods.set(manifest.id,{manifest,enabled:record.enabled!==false,order:Number.isInteger(record.order)?record.order:nextModOrder++});nextModOrder=Math.max(nextModOrder,(Number.isInteger(record.order)?record.order:0)+1);}catch(error){errors.push(error.message);try{await persistMod({...record,enabled:false});}catch(_){}}}rebuildPassageExtensions();return errors;}
     const Mods={
-      register(modData){const manifest=normalizeMod(modData);if(installedMods.has(manifest.id))modError('a mod with id “'+manifest.id+'” is already installed.',manifest);installedMods.set(manifest.id,{manifest,enabled:true});return clone(manifest);},
-      import(source){if(typeof source==='string'){let value;try{value=JSON.parse(source);}catch(_){throw new Error('Could not import mod: the source is not valid JSON.');}return Mods.import(value);}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Mods.import(text));const manifest=Mods.register(source);return persistMod({id:manifest.id,enabled:true,manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);throw error;});},
+      register(modData){const manifest=normalizeMod(modData);if(installedMods.has(manifest.id))modError('a mod with id “'+manifest.id+'” is already installed.',manifest);installedMods.set(manifest.id,{manifest,enabled:true,order:nextModOrder++});rebuildPassageExtensions();return clone(manifest);},
+      import(source){if(typeof source==='string'){let value;try{value=JSON.parse(source);}catch(_){throw new Error('Could not import mod: the source is not valid JSON.');}return Mods.import(value);}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Mods.import(text));const manifest=Mods.register(source);return persistMod({id:manifest.id,enabled:true,order:installedMods.get(manifest.id).order,manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);rebuildPassageExtensions();throw error;});},
       list(){return [...installedMods.values()].map(record=>({...clone(record.manifest),enabled:record.enabled}));},get(id){const record=installedMods.get(String(id));return record?{...clone(record.manifest),enabled:record.enabled}:null;},has(id){return installedMods.has(String(id));},
-      async remove(id){id=String(id);if(!installedMods.has(id))return false;await deleteMod(id);installedMods.delete(id);return true;},
+      async remove(id){id=String(id);if(!installedMods.has(id))return false;await deleteMod(id);installedMods.delete(id);rebuildPassageExtensions();return true;},
       getItem(modId,itemId){const record=installedMods.get(String(modId));if(!record||!record.enabled)return null;const item=record.manifest.items.find(entry=>entry.id===String(itemId));return item?clone(item):null;},
       createItem(modId,itemId,overrides={}){const definition=Mods.getItem(modId,itemId);if(!definition)throw new Error('Enabled mod item not found: '+modId+':'+itemId+'.');if(!plainObject(overrides))throw new Error('Item overrides must be a plain object.');const reserved=['id','modId','definitionId'];for(const key of Object.keys(overrides))if(reserved.includes(key))throw new Error('The reserved item property “'+key+'” cannot be overridden.');const result={...definition,...clone(overrides),id:String(modId)+':'+String(itemId),modId:String(modId),definitionId:String(itemId)};if(!Number.isInteger(result.quantity)||result.quantity<1||result.quantity>1000)throw new Error('Item quantity must be an integer between 1 and 1000.');result.properties=clone(result.properties??{});result.tags=clone(result.tags??[]);return result;},
-      async enable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=true;try{await persistMod({id:record.manifest.id,enabled:true,manifest:record.manifest});}catch(error){record.enabled=false;throw error;}return true;},async disable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=false;try{await persistMod({id:record.manifest.id,enabled:false,manifest:record.manifest});}catch(error){record.enabled=true;throw error;}return true;},isEnabled(id){return installedMods.get(String(id))?.enabled===true;},
+      async enable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=true;try{await persistMod({id:record.manifest.id,enabled:true,order:record.order,manifest:record.manifest});}catch(error){record.enabled=false;throw error;}rebuildPassageExtensions();return true;},async disable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=false;try{await persistMod({id:record.manifest.id,enabled:false,order:record.order,manifest:record.manifest});}catch(error){record.enabled=true;throw error;}rebuildPassageExtensions();return true;},isEnabled(id){return installedMods.get(String(id))?.enabled===true;},
       checkSave(mods){const warnings=[];(Array.isArray(mods)?mods:[]).forEach(expected=>{if(!expected||typeof expected.id!=='string'||typeof expected.version!=='string')return;const found=installedMods.get(expected.id);if(!found)warnings.push(expected.id+' '+expected.version+' — missing');else if(!found.enabled)warnings.push(expected.id+' '+expected.version+' — installed but disabled');else if(found.manifest.version!==expected.version)warnings.push(expected.id+' '+expected.version+' — installed version is '+found.manifest.version);});return warnings;},
       open(){renderMods();}
     };
@@ -544,7 +581,7 @@
       State.temporary=Object.create(null);
       let html=restoreHtml;
       const previousRenderTitle=activeRenderTitle; activeRenderTitle=title;
-      try { if (html == null) html=compile(passage.text); }
+      try { if (html == null) html=compileStoryPassage(title); }
       catch (error) { html='<div class="duplex-error">' + escapeHtml(error.message) + '</div>'; }
       finally { activeRenderTitle=previousRenderTitle; }
       const article=document.createElement('article'); article.className='duplex-passage'; article.dataset.passage=title;
@@ -584,7 +621,7 @@
       else if(item.kind==='listbox'){item.index=Number(element.value);setReceiver(item.receiver,item.options[item.index]?.val);}
       else if(item.kind==='cycle'&&event.type==='click'){event.preventDefault();if(item.once&&item.index>=item.options.length-1)return;item.index=(item.index+1)%item.options.length;setReceiver(item.receiver,item.options[item.index]?.val);element.textContent=item.options[item.index]?.label??'';if(item.once&&item.index>=item.options.length-1)element.removeAttribute('href');}
       else if(event.type==='click'){
-        event.preventDefault(); const html=compile(item.body||'');
+        event.preventDefault(); const html=compile(item.body||'',item.context);
         if(item.kind==='linkappend'){element.insertAdjacentHTML('afterend',html);element.replaceWith(document.createTextNode(element.textContent));}
         else if(item.kind==='linkprepend'){element.insertAdjacentHTML('beforebegin',html);element.replaceWith(document.createTextNode(element.textContent));}
         else if(item.kind==='linkreplace')element.outerHTML=html;
