@@ -1,6 +1,6 @@
 # [Duplex 1.5.0](https://techy-nature.github.io/duplex-story-format/)
 
-Duplex is a small, installable Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
+Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
 ## Choose the mode in `StoryInit`
 
@@ -44,7 +44,7 @@ Browser-based Twine generally cannot install a local `file://` URL. Host the fol
 - Switches: `<<switch expression>><<case value>>...<<default>>...<</switch>>`
 - Scripting: `<<run>>`, `<<script>>`, and `<<unset>>`
 - Comments: `//` to the end of a line, `/* ... */` across lines, and `<<comment>>...<</comment>>`
-- Markdown: `<<markdown>>...<</markdown>>` supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
+- Markdown: `[markdown]`-tagged passages and `<<markdown>>...<</markdown>>` macro supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
 - Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
 - Audio: `<<cacheaudio>>`, `<<audio>>`, `<<createaudiogroup>>`, `<<createplaylist>>`, `<<masteraudio>>`, `<<playlist>>`, `<<removeaudiogroup>>`, `<<removeplaylist>>`, and `<<waitforaudio>>`
 - Operators: `is`, `is not`, `isnot`, `and`, `or`, `not`, plus ordinary JavaScript operators
@@ -115,6 +115,25 @@ Save.parse(jsonText);        // Validate and return save state.
 
 `Save.import(file)` returns a promise when passed a browser `File`. The API is available as both `Save` and `Duplex.Save`. Duplex still provides one browser slot rather than SugarCube's full multi-slot Save API.
 
+## Data-only JSON mods
+
+Duplex 1.5.0 supports validated item-definition and passageExtended JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex%201.5.0/duplex-format/MODS.md) and its [complete example manifest](Duplex%201.5.0/duplex-format/examples/more-birds.json).
+
+## Nested Bag Inventory
+
+Duplex 1.5.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Each populated bag has its own ID, definition/name, properties, item stacks, and child bags. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
+
+```text
+Travel pack (bag-1)
+└── Medicine pouch (bag-2)
+    └── Lockbox (bag-3)
+        └── vial
+```
+
+Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
+
+See [`Duplex 1.5.0/duplex-format/README.md`](Duplex%201.5.0/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
+
 ## Widgets
 
 Create one or more passages with the `widget` tag. Duplex processes their `<<widget>>` definitions during startup.
@@ -178,26 +197,3 @@ The generated `format.js` is the file Twine installs.
 ## License
 
 MIT.
-
-## Nested bag inventory
-
-Duplex 1.5.0 represents inventory as a JSON-serializable hierarchy of stable bag instances. Internal inventory data is stored in Duplex's reserved `$__duplex` namespace, so stories remain free to use `$inventory` for their own data. Each populated bag has its own unique ID, definition/name, properties, item stacks, and child bags. Explicit duplicate IDs are rejected, and an explicit `bag-N` ID advances automatic ID generation. Only compatible empty bags stack (up to 1000); a bag is automatically split from an empty stack before it receives contents.
-
-```text
-Travel pack (bag-1)
-└── Medicine pouch (bag-2)
-    └── Lockbox (bag-3)
-        └── vial
-```
-
-Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
-
-Use `Inventory.openBag(id)` to display a bag, `Inventory.moveBag(sourceId, destinationId)` to move an intact branch, and `Inventory.unpackBag(bagId, destinationId)` to transfer only immediate contents. Nested rows support pointer and keyboard activation, while the visible **Take Everything** button provides the same confirmed unpack action as double-click.
-
-## Data-only JSON mods
-
-Duplex 1.5.0 can install validated, item-only JSON mods in per-story IndexedDB storage. Open the built-in **Mods** manager or use `Duplex.mods`; create item instances with `Duplex.mods.createItem()` and add them through `Duplex.inventory.addItem()`. Mod imports never award items and never create `$inventory`. See [MODS.md](MODS.md) and [the complete example](examples/more-birds.json).
-
-## Mod passage extensions
-
-JSON mods can safely add restricted Duplex markup before or after an existing base-story passage. See [the complete manifest format, protected-target list, ordering, and restricted macro policy](MODS.md#restricted-passage-extensions). Extensions are virtual `mod restricted` passages; disabling a mod immediately removes its contribution without changing the original passage.
