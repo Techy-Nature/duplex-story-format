@@ -4,3 +4,5 @@
 .webp
 .bin
 .bat
+
+**/node_modules/
