@@ -54,6 +54,7 @@
         <button id="duplex-back" type="button">Back</button>
         <button id="duplex-restart" type="button">Restart</button>
         <button id="duplex-saves" type="button">Saves</button>
+        <button id="duplex-mods" type="button">Mods</button>
         <button id="duplex-settings" type="button">Settings</button>
       </div>
     </div>
@@ -360,8 +361,70 @@
       if(!box.open)box.showModal(); return box;
     }
     function storyId(){return data.getAttribute('ifid')||data.getAttribute('name')||document.title;}
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const installedMods=new Map();
+    function modError(message,manifest){throw new Error('Could not import '+(manifest?.name?'“'+manifest.name+'”':'mod')+': '+message);}
+    function plainObject(value){if(!value||Object.prototype.toString.call(value)!=='[object Object]')return false;const prototype=Object.getPrototypeOf(value);return prototype===null||prototype===Object.prototype||(prototype?.constructor?.name==='Object'&&Object.keys(prototype).length===0&&Object.getPrototypeOf(prototype)===null);}
+    function validateJson(value,path='manifest',seen=new Set()){
+      if(value===null||typeof value==='string'||typeof value==='boolean')return;
+      if(typeof value==='number'){if(!Number.isFinite(value))throw new Error(path+' must contain only finite JSON numbers.');return;}
+      if(typeof value!=='object')throw new Error(path+' contains a value that is not JSON-safe.');
+      if(seen.has(value))throw new Error(path+' contains a circular reference.');seen.add(value);
+      if(Array.isArray(value))value.forEach((entry,index)=>validateJson(entry,path+'['+index+']',seen));
+      else {if(!plainObject(value))throw new Error(path+' must be a plain JSON object.');for(const key of Object.keys(value)){if(dangerousKeys.has(key))throw new Error(path+'.'+key+' is not allowed.');validateJson(value[key],path+'.'+key,seen);}}
+      seen.delete(value);
+    }
+    function validId(value){return typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);}
+    function versionParts(value){const match=String(value).match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);return match?match.slice(1).map(Number):null;}
+    function compareVersion(left,right){for(let i=0;i<3;i++){if(left[i]!==right[i])return left[i]-right[i];}return 0;}
+    function compatible(requirement){
+      if(typeof requirement!=='string'||!requirement.trim())return false;
+      const current=versionParts(DUPLEX_VERSION);return requirement.trim().split(/\s+/).every(term=>{const match=term.match(/^(>=|<=|>|<|=|\^|~)?(\d+\.\d+\.\d+)$/);if(!match)return false;const wanted=versionParts(match[2]),cmp=compareVersion(current,wanted),op=match[1]||'=';if(op==='>=')return cmp>=0;if(op==='<=')return cmp<=0;if(op==='>')return cmp>0;if(op==='<')return cmp<0;if(op==='^')return current[0]===wanted[0]&&cmp>=0;if(op==='~')return current[0]===wanted[0]&&current[1]===wanted[1]&&cmp>=0;return cmp===0;});
+    }
+    function normalizeMod(input){
+      try{validateJson(input);}catch(error){modError(error.message,input);}
+      if(!plainObject(input))modError('the root must be a plain JSON object.',input);
+      if(!Number.isInteger(input.schema)||input.schema!==MOD_SCHEMA)modError('schema must be the supported integer 1.',input);
+      if(!validId(input.id))modError('id must be a case-sensitive identifier containing only letters, numbers, dots, underscores, or hyphens.',input);
+      if(typeof input.name!=='string'||!input.name.trim())modError('name must be a nonempty string.',input);
+      if(typeof input.version!=='string'||!input.version.trim())modError('version must be a nonempty string.',input);
+      if(!Array.isArray(input.items))modError('items must be an array.',input);
+      if(input.forStory!==undefined&&input.forStory!==storyId()&&input.forStory!==(data.getAttribute('name')||document.title))modError('forStory does not match this story ('+storyId()+').',input);
+      if(input.requires!==undefined&&!plainObject(input.requires))modError('requires must be a plain JSON object.',input);
+      if(input.requires?.duplex!==undefined&&!compatible(input.requires.duplex))modError('requires.duplex '+input.requires.duplex+' is incompatible with Duplex '+DUPLEX_VERSION+'.',input);
+      const ids=new Set(),items=input.items.map((item,index)=>{
+        const path='items['+index+']';if(!plainObject(item))modError(path+' must be a plain object.',input);
+        if(!validId(item.id))modError(path+'.id is missing or invalid.',input);if(ids.has(item.id))modError(path+'.id duplicates “'+item.id+'”.',input);ids.add(item.id);
+        if(typeof item.name!=='string'||!item.name.trim())modError(path+'.name must be a nonempty string.',input);
+        const quantity=item.quantity===undefined?1:item.quantity;if(!Number.isInteger(quantity)||quantity<1||quantity>1000)modError(path+'.quantity must be an integer between 1 and 1000.',input);
+        if(item.properties!==undefined&&!plainObject(item.properties))modError(path+'.properties must be a plain JSON object.',input);
+        if(item.tags!==undefined&&(!Array.isArray(item.tags)||item.tags.some(tag=>typeof tag!=='string')))modError(path+'.tags must be an array of strings.',input);
+        return {...clone(item),id:item.id,name:item.name,description:item.description===undefined?'':String(item.description),type:item.type===undefined?'item':String(item.type),quantity:Math.max(1,Math.min(1000,Number(quantity)||1)),properties:clone(item.properties??{}),tags:clone(item.tags??[])};
+      });
+      return {...clone(input),items};
+    }
+    function modDatabase(){return new Promise((resolve,reject)=>{if(!window.indexedDB){resolve(null);return;}const request=indexedDB.open('duplex-mods-'+storyId(),1);request.onupgradeneeded=()=>request.result.createObjectStore('mods',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
+    async function persistMod(record){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').put(clone(record));request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
+    async function deleteMod(id){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').delete(id);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
+    async function loadMods(){const db=await modDatabase();if(!db)return [];const records=await new Promise((resolve,reject)=>{const request=db.transaction('mods').objectStore('mods').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});db.close();const errors=[];for(const record of records){try{const manifest=normalizeMod(record.manifest);installedMods.set(manifest.id,{manifest,enabled:record.enabled!==false});}catch(error){errors.push(error.message);try{await persistMod({...record,enabled:false});}catch(_){}}}return errors;}
+    const Mods={
+      register(modData){const manifest=normalizeMod(modData);if(installedMods.has(manifest.id))modError('a mod with id “'+manifest.id+'” is already installed.',manifest);installedMods.set(manifest.id,{manifest,enabled:true});return clone(manifest);},
+      import(source){if(typeof source==='string'){let value;try{value=JSON.parse(source);}catch(_){throw new Error('Could not import mod: the source is not valid JSON.');}return Mods.import(value);}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Mods.import(text));const manifest=Mods.register(source);return persistMod({id:manifest.id,enabled:true,manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);throw error;});},
+      list(){return [...installedMods.values()].map(record=>({...clone(record.manifest),enabled:record.enabled}));},get(id){const record=installedMods.get(String(id));return record?{...clone(record.manifest),enabled:record.enabled}:null;},has(id){return installedMods.has(String(id));},
+      async remove(id){id=String(id);if(!installedMods.has(id))return false;await deleteMod(id);installedMods.delete(id);return true;},
+      getItem(modId,itemId){const record=installedMods.get(String(modId));if(!record||!record.enabled)return null;const item=record.manifest.items.find(entry=>entry.id===String(itemId));return item?clone(item):null;},
+      createItem(modId,itemId,overrides={}){const definition=Mods.getItem(modId,itemId);if(!definition)throw new Error('Enabled mod item not found: '+modId+':'+itemId+'.');if(!plainObject(overrides))throw new Error('Item overrides must be a plain object.');const reserved=['id','modId','definitionId'];for(const key of Object.keys(overrides))if(reserved.includes(key))throw new Error('The reserved item property “'+key+'” cannot be overridden.');const result={...definition,...clone(overrides),id:String(modId)+':'+String(itemId),modId:String(modId),definitionId:String(itemId)};if(!Number.isInteger(result.quantity)||result.quantity<1||result.quantity>1000)throw new Error('Item quantity must be an integer between 1 and 1000.');result.properties=clone(result.properties??{});result.tags=clone(result.tags??[]);return result;},
+      async enable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=true;try{await persistMod({id:record.manifest.id,enabled:true,manifest:record.manifest});}catch(error){record.enabled=false;throw error;}return true;},async disable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=false;try{await persistMod({id:record.manifest.id,enabled:false,manifest:record.manifest});}catch(error){record.enabled=true;throw error;}return true;},isEnabled(id){return installedMods.get(String(id))?.enabled===true;},
+      checkSave(mods){const warnings=[];(Array.isArray(mods)?mods:[]).forEach(expected=>{if(!expected||typeof expected.id!=='string'||typeof expected.version!=='string')return;const found=installedMods.get(expected.id);if(!found)warnings.push(expected.id+' '+expected.version+' — missing');else if(!found.enabled)warnings.push(expected.id+' '+expected.version+' — installed but disabled');else if(found.manifest.version!==expected.version)warnings.push(expected.id+' '+expected.version+' — installed version is '+found.manifest.version);});return warnings;},
+      open(){renderMods();}
+    };
+    function renderMods(message='',isError=false){
+      dialog('Mods','<p id="duplex-mod-message"></p><div id="duplex-mod-list"></div>',[{label:'Import JSON',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(file)Promise.resolve(Mods.import(file)).then(mod=>renderMods('Imported '+mod.name+'.')).catch(error=>renderMods(error.message,true));});picker.click();}}]);
+      const notice=document.querySelector('#duplex-mod-message');notice.textContent=message;notice.className=isError?'duplex-error':'';const list=document.querySelector('#duplex-mod-list');
+      Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=mod.id+' · '+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
+    }
     function saveKey(){return 'duplex-save-'+storyId();}
-    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:'1.4.0',savedAt:new Date().toISOString(),history:clone(State.history),variables:clone(State.variables)};}
+    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:clone(State.history),variables:clone(State.variables)};}
     function validateSave(value,{allowLegacy=false}={}) {
       if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
       const legacy=!value.format&&allowLegacy&&Array.isArray(value.history)&&value.variables&&typeof value.variables==='object';
@@ -369,9 +432,10 @@
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
-      return {history:clone(value.history),variables:clone(value.variables)};
+      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history:clone(value.history),variables:clone(value.variables),warnings};
     }
-    function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();return true;}
+    function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
+    function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}
     function restoreSave(value,options){return applySave(validateSave(value,options));}
     function parseSave(text,options){let value;try{value=JSON.parse(text);}catch{throw new Error('The selected file is not valid JSON.');}return validateSave(value,options);}
     function safeFilename(){return (data.getAttribute('name')||document.title||'duplex-story').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'duplex-story';}
@@ -434,9 +498,9 @@
         const has=localStorage.getItem(saveKey())!==null;
         dialog(options?.title||'Saves','<p>'+(has?'A browser save is available.':'No browser save exists yet.')+'</p><p>Export a backup to keep your progress safe or move it to another browser.</p>',[
           {label:'Save',action:()=>{Save.save();closeDialog(closeFn);}},
-          ...(has?[{label:'Load',action:()=>{try{Save.load();closeDialog(closeFn);}catch(error){UI.alert(error.message,{title:'Could not load save'},closeFn);}}}]:[]),
+          ...(has?[{label:'Load',action:()=>{try{closeDialog();Save.load();closeFn?.();}catch(error){UI.alert(error.message,{title:'Could not load save'},closeFn);}}}]:[]),
           {label:'Export',action:()=>{Save.export();closeDialog(closeFn);}},
-          {label:'Import',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(!file)return;Save.import(file).then(()=>closeDialog(closeFn)).catch(error=>UI.alert(error.message,{title:'Could not import save'},closeFn));});picker.click();}},
+          {label:'Import',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(!file)return;closeDialog();Save.import(file).then(()=>closeFn?.()).catch(error=>UI.alert(error.message,{title:'Could not import save'},closeFn));});picker.click();}},
           ...(has?[{label:'Delete',action:()=>{Save.delete();closeDialog(closeFn);}}]:[])
         ],closeFn);
       },
@@ -515,14 +579,12 @@
     document.querySelector('#duplex-back').addEventListener('click',() => { if(State.history.length>1){ State.history.pop(); State.variables=clone(State.history.at(-1).variables); rebuild(); } });
     document.querySelector('#duplex-restart').addEventListener('click',restart);
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
+    document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,UI,Save,UIBarL,UIBarR,widgets};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,UI,Save,UIBarL,UIBarR,widgets,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
-    data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {
-      try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }
-    });
-    defineWidgets();
-    runInit(); Object.assign(initial,clone(State.variables)); go(startTitle());
+    function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
+    if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}
   })();
   </script>
 </body>
