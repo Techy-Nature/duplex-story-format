@@ -85,6 +85,8 @@
     let activeRenderTitle = null;
     const deferred = new Map();
     const widgets = new Map();
+    const includeStack = [];
+    const MAX_INCLUDE_DEPTH = 50;
     let nextControlId = 0;
     const AudioEngine = window.SimpleAudio = {
       tracks: new Map(), groups: new Map(), playlists: new Map(), volume: 1, muted: false, muteOnHide: false
@@ -283,6 +285,22 @@
       if(definition.container){State.temporary.contentsRaw=body;State.temporary.contents=compiledMarkup(compile(body));}
       try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadContentsRaw)State.temporary.contentsRaw=oldContentsRaw;else delete State.temporary.contentsRaw;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
     }
+    function includePassage(argSource) {
+      const title=String(evaluate(argSource));
+      const passage=passages.get(title);
+      if(!passage){console.warn('Duplex <<include>>: passage not found: "'+title+'".');return '';}
+      if(includeStack.includes(title)){
+        console.error('Duplex <<include>>: recursive include blocked: '+[...includeStack,title].join(' -> ')+'.');
+        return '';
+      }
+      if(includeStack.length>=MAX_INCLUDE_DEPTH){
+        console.error('Duplex <<include>>: maximum include depth of '+MAX_INCLUDE_DEPTH+' exceeded while including "'+title+'".');
+        return '';
+      }
+      includeStack.push(title);
+      try{return compile(passage.text);}
+      finally{includeStack.pop();}
+    }
     function compile(source) {
       let out='', i=0;
       while (i < source.length) {
@@ -294,6 +312,8 @@
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
         if (/^<<script(?:\s|>>)/i.test(rest)) { const found=scriptMacro(rest);out+=found.html;i+=found.length;continue; }
+        const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
+        if(include){out+=includePassage(include[1]);i+=include[0].length;continue;}
         const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
         if(interactiveName){const found=interactive(rest,interactiveName);out+=found.html;i+=found.length;continue;}
         const optionName=rest.match(/^<<(cycle|listbox)\b/i)?.[1]?.toLowerCase();
