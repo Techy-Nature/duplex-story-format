@@ -75,6 +75,7 @@ Visible before // this trailing comment is hidden
   ${passage('14','RecursiveA','recursive-a <<include "RecursiveB">>')}
   ${passage('15','RecursiveB','recursive-b <<include "RecursiveA">>')}
   ${passage('16','UnsafeInclude','nested-script <<script>>window.modNestedRan=true;<</script>>')}
+  ${passage('17','DuplexMod:collision.mod:hook','base collision passage')}
 </tw-storydata>`;
 
 const html = format.source.replace('{{STORY_NAME}}','Test').replace('{{STORY_DATA}}',story);
@@ -95,6 +96,8 @@ const dom = new JSDOM(html, {
     window.HTMLMediaElement.prototype.pause = () => {};
     window.HTMLMediaElement.prototype.load = () => {};
     window.confirm = () => true;
+    window.browserEscape = false;
+    window.alert = window.fetch = () => { window.browserEscape = true; };
   }
 });
 const { document, State, Duplex, duplex, Save } = dom.window;
@@ -143,18 +146,25 @@ const validMod={schema:1,id:'neston.more-birds',name:'More Birds',version:'1.0.0
 const extensionMod={schema:1,id:'example.quest-pack',name:'Quest Pack',version:'1.0.0',items:[],passageExtensions:[
   {id:'first-before',target:'Next',placement:'before',content:'before-one <<set $modSafe to 7>><<if $modSafe === 7>>conditional-ok<</if>><<switch $modSafe>><<case 7>>switch-safe<</switch>> [[Safe link->Start]] <<button \"Safe button\">><<set $modClicked to true>><</button>>'},
   {id:'second-before',target:'Next',placement:'before',content:'before-two'},
-  {id:'after-hook',target:'Next',placement:'after',content:'after-one <<script>>window.modScriptRan=true;<</script>> <<include \"UnsafeInclude\">>'}
+  {id:'after-hook',target:'Next',placement:'after',content:'after-one <<script>>window.modScriptRan=true;<</script>> <<include \"UnsafeInclude\">>'},
+  {id:'unsafe-print',target:'Next',placement:'after',content:'<<print this.alert(\"escaped\")>>'},
+  {id:'unsafe-set',target:'Next',placement:'after',content:'<<set $result to fetch(\"https://example.com\")>>'},
+  {id:'unsafe-html',target:'Next',placement:'after',content:'<img src=\"invalid\" onerror=\"alert(1)\"><a href=\"javascript:alert(1)\" onclick=\"alert(1)\">raw-danger</a> <<markdown>>\n[markdown-danger](javascript:alert(1))\n<</markdown>>'}
 ]};
 const normalizedExtension=Duplex.mods.register(extensionMod);Duplex.go('Next');
 let extensionText=document.querySelector('article:last-child .duplex-passage-body').textContent;
 assert(extensionText.indexOf('before-one')<extensionText.indexOf('before-two')&&extensionText.indexOf('before-two')<extensionText.indexOf('Done')&&extensionText.indexOf('Done')<extensionText.indexOf('after-one'),'before/after extensions use stable import and manifest order');
-assert(normalizedExtension.passageExtensions.length===3&&Duplex.mods.get(extensionMod.id).passageExtensions.length===3,'normalized extensions exposed through list/get APIs');
+assert(normalizedExtension.passageExtensions.length===6&&Duplex.mods.get(extensionMod.id).passageExtensions.length===6,'normalized extensions exposed through list/get APIs');
 assert(JSON.stringify(dom.window.tags('DuplexMod:example.quest-pack:after-hook'))===JSON.stringify(['mod','restricted'])&&dom.window.hasTag('DuplexMod:example.quest-pack:after-hook','restricted'),'virtual passage lookup and restricted tags');
 assert(State.variables.modSafe===7&&extensionText.includes('conditional-ok')&&extensionText.includes('switch-safe')&&document.querySelector('article:last-child [data-passage=Start]'),'safe restricted conditionals, switches, printing, links, variables, and controls compile');
 assert(!dom.window.modScriptRan&&!dom.window.modNestedRan&&consoleErrors.some(message=>message.includes('after-hook')&&message.includes('script')),'restricted scripts and nested-include scripts are blocked with context');
+assert(!dom.window.browserEscape&&!Object.hasOwn(State.variables,'result'),'restricted expressions cannot access browser globals or execute functions');
+const extensionBody=document.querySelector('article:last-child .duplex-passage-body');
+assert(!extensionBody.querySelector('[onerror],[onclick]')&&[...extensionBody.querySelectorAll('a')].filter(link=>/danger/.test(link.textContent)).every(link=>!link.hasAttribute('href')),'restricted HTML removes event handlers and dangerous raw/Markdown URLs');
+assert(!Save.serialize().includes('before-one')&&!Save.serialize().includes('after-one'),'save history excludes rendered mod extension HTML');
 const laterExtension={schema:1,id:'later.quest-pack',name:'Later Pack',version:'1.0.0',items:[],passageExtensions:[{id:'later-after',target:'Next',placement:'after',content:'after-two'}]};Duplex.mods.register(laterExtension);Duplex.go('Next');extensionText=document.querySelector('article:last-child .duplex-passage-body').textContent;
 assert(extensionText.indexOf('after-one')<extensionText.indexOf('after-two'),'multiple mods use stable import order');
-await Duplex.mods.disable(extensionMod.id);Duplex.go('Next');assert(!document.querySelector('article:last-child .duplex-passage-body').textContent.includes('before-one'),'disabled mod contributes no extensions');
+await Duplex.mods.disable(extensionMod.id);Duplex.go('Next');assert(!document.querySelector('article:last-child .duplex-passage-body').textContent.includes('before-one'),'disabled mod contributes no extensions');Duplex.go('Start');Duplex.back();assert(!document.querySelector('article:last-child .duplex-passage-body').textContent.includes('before-one'),'back navigation reconstructs history without disabled extensions');
 await Duplex.mods.enable(extensionMod.id);Duplex.go('Next');assert(document.querySelector('article:last-child .duplex-passage-body').textContent.includes('before-one'),'re-enabling restores extensions');
 await Duplex.mods.remove(extensionMod.id);await Duplex.mods.remove(laterExtension.id);Duplex.go('Next');assert(!document.querySelector('article:last-child .duplex-passage-body').textContent.includes('before-one')&&!dom.window.hasTag('DuplexMod:example.quest-pack:after-hook','mod'),'removing mod removes extensions and virtual passages');
 for(const [bad,message] of [
@@ -166,6 +176,7 @@ for(const [bad,message] of [
   [{...extensionMod,id:'bad-placement',passageExtensions:[{id:'x',target:'Next',placement:'around',content:''}]},'invalid placement']
 ]){let failed=false;try{Duplex.mods.register(bad);}catch(_){failed=true;}assert(failed,message+' rejected');}
 for(const target of ['StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar']){let failed=false;try{Duplex.mods.register({...extensionMod,id:'protected-'+target.toLowerCase(),passageExtensions:[{id:'x',target,placement:'after',content:''}]});}catch(_){failed=true;}assert(failed,target+' protected');}
+let collisionFailed=false;try{Duplex.mods.register({...extensionMod,id:'collision.mod',passageExtensions:[{id:'hook',target:'Next',placement:'after',content:'collision'}]});}catch(_){collisionFailed=true;}assert(collisionFailed&&!Duplex.mods.has('collision.mod')&&dom.window.tags('DuplexMod:collision.mod:hook').length===0,'virtual passage collision rejection is transactional and preserves the base passage');
 
 [...document.querySelectorAll('article')].slice(1).forEach(article=>article.remove());State.history.splice(1);
 const registered=Duplex.mods.register(validMod);
