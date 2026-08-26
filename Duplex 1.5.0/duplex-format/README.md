@@ -197,3 +197,7 @@ Use `Inventory.openBag(id)` to display a bag, `Inventory.moveBag(sourceId, desti
 ## Data-only JSON mods
 
 Duplex 1.5.0 can install validated, item-only JSON mods in per-story IndexedDB storage. Open the built-in **Mods** manager or use `Duplex.mods`; create item instances with `Duplex.mods.createItem()` and add them through `Duplex.inventory.addItem()`. Mod imports never award items and never create `$inventory`. See [MODS.md](MODS.md) and [the complete example](examples/more-birds.json).
+
+## Mod passage extensions
+
+JSON mods can safely add restricted Duplex markup before or after an existing base-story passage. See [the complete manifest format, protected-target list, ordering, and restricted macro policy](MODS.md#restricted-passage-extensions). Extensions are virtual `mod restricted` passages; disabling a mod immediately removes its contribution without changing the original passage.

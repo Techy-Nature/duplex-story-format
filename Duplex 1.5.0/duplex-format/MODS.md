@@ -40,3 +40,31 @@ Duplex.inventory.addItem(playerBagId, item);
 Schema 1 is JSON data only. Duplex rejects non-JSON values, cycles, non-finite numbers, and dangerous object keys (`__proto__`, `prototype`, and `constructor`) at every depth. The UI displays metadata as text. Manifests cannot name or run functions and are never used to fetch URLs. JavaScript mods are not supported.
 
 Saves include only enabled mod IDs and versions, not definitions. Loading an older save without this metadata remains supported. A missing or different installed version produces a warning but does not reject the save, install a mod, or delete orphaned inventory items.
+
+## Restricted passage extensions
+
+A schema 1 manifest may include `passageExtensions` (mods which omit it, including item-only mods, remain compatible). Each entry has a mod-local identifier, the exact name of a passage already present in the base story, a placement of exactly `before` or `after`, and Duplex markup:
+
+```json
+{
+  "schema": 1,
+  "id": "example.quest-pack",
+  "name": "Example Quest Pack",
+  "version": "1.0.0",
+  "items": [],
+  "passageExtensions": [{
+    "id": "haunted-house-hook",
+    "target": "Town Square",
+    "placement": "after",
+    "content": "<<if $hauntedHouseStarted>>[[Investigate the old house->Old House]]<</if>>"
+  }]
+}
+```
+
+The target must exist in the base story when the mod is imported; mods cannot introduce a target for another mod. Duplex rejects duplicate or invalid extension IDs, missing targets, and targets tagged `widget`, `grammar`, `script`, or `stylesheet`. It also protects initialization, configuration, UI, and internal passages: `StoryInit`, `StoryTitle`, `StoryCaption`, `StoryMenu`, `StoryLeftBar`, `StoryRightBar`, `StoryInterface`, `StoryDisplayTitle`, `StoryAuthor`, `StorySubtitle`, `StoryShare`, `StorySettings`, `PassageHeader`, and `PassageFooter`.
+
+Enabled extensions are represented internally as non-navigable `DuplexMod:<mod-id>:<extension-id>` passages tagged `mod restricted`. Their content is not copied into the target or save history. History stores only the compiled base-passage output; extension output is reconstructed from the currently enabled manifests when history is rebuilt, loaded, or revisited. Duplex renders all `before` extensions, the unchanged base output, then all `after` extensions. Ordering is installed-mod import order followed by manifest order, and the stored import order is restored between sessions. Disabling or removing a mod removes its virtual passages and its contribution to rebuilt history; enabling it reconstructs them without re-importing.
+
+Restricted mode propagates through every nested `<<include>>`. Quest-oriented `<<if>>`/`<<elseif>>`/`<<else>>`, `<<switch>>`/`<<case>>`/`<<default>>`, `<<print>>`, links, buttons, input controls, includes, and simple `<<set>>` assignments remain available. Their expressions use a limited interpreter—not JavaScript—and support string, number, Boolean, null, and undefined literals; story and temporary variable property reads; parentheses; safe arithmetic, comparisons, and Boolean operators; `tags()`, `hasTag()`, and `.includes()`. Calls to browser globals or arbitrary functions, computed property access, object construction, and assignment expressions are not part of the grammar.
+
+Duplex also sanitizes all restricted output, including raw markup and Markdown output, through an element and attribute allowlist. Event-handler attributes, executable/embedded elements, `javascript:`/`vbscript:` URLs, and non-image or non-base64 `data:` URLs are removed. Duplex blocks `<<script>>`, `<<run>>`, `<<unset>>`, widget definitions and calls, audio-registration/control macros, unsupported expressions, and assignments other than controlled story/temporary variable paths. A blocked macro renders a localized error and is logged with its virtual passage name; unrelated passage rendering continues.
