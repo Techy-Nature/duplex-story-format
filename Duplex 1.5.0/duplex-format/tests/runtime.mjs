@@ -126,9 +126,10 @@ let rejected=0;for(const bad of [
   validMod,
   {...validMod,id:'bad-schema',schema:2},
   {...validMod,id:'wrong-story',forStory:'Elsewhere'},
-  {...validMod,id:'bad-quantity',items:[{id:'bad',name:'Bad',quantity:1001}]}
+  {...validMod,id:'bad-quantity',items:[{id:'bad',name:'Bad',quantity:1001}]},
+  {...validMod,id:'decimal-quantity',items:[{id:'bad',name:'Bad',quantity:1.5}]}
 ]){try{Duplex.mods.register(bad);}catch(_){rejected++;}}try{await Duplex.mods.import('{broken');}catch(_){rejected++;}try{await Duplex.mods.import('{"schema":1,"id":"danger","name":"Danger","version":"1","items":[],"nested":{"__proto__":{}}}');}catch(_){rejected++;}
-assert(rejected===7&&!Duplex.mods.has('duplicate-items')&&!Duplex.mods.has('bad-schema'),'invalid, duplicate, dangerous, incompatible, and malformed mods rejected atomically');
+assert(rejected===8&&!Duplex.mods.has('duplicate-items')&&!Duplex.mods.has('bad-schema'),'invalid, duplicate, dangerous, incompatible, and malformed mods rejected atomically');
 await Duplex.mods.disable(validMod.id);assert(!Duplex.mods.isEnabled(validMod.id)&&Duplex.mods.getItem(validMod.id,'nighthawk-feather')===null,'disabled mod hides definitions');await Duplex.mods.enable(validMod.id);assert(Duplex.mods.isEnabled(validMod.id),'mod re-enabled');
 assert(!Object.hasOwn(State.variables,'inventory'),'mod registration does not create $inventory');
 State.variables.inventory=['author-owned'];dom.window.UI.update();
@@ -178,7 +179,8 @@ assert(wrongStory,'reject wrong-story save');
 let damaged=false;try{Save.import('{broken');}catch(error){damaged=/valid JSON/.test(error.message);}
 assert(damaged,'reject malformed save');
 const legacy={...parsed};delete legacy.mods;Save.import(legacy);assert(State.variables.x===2,'older save without mod metadata loads');
-const warnings=Duplex.mods.checkSave([{id:'missing.mod',version:'1.0.0'},{id:'another-author.alchemy',version:'9.0.0'}]);assert(warnings.length===2,'missing and mismatched save mods warn without rejection');
+await Duplex.mods.disable('another-author.alchemy');const warnings=Duplex.mods.checkSave([{id:'missing.mod',version:'1.0.0'},{id:'another-author.alchemy',version:'1.0.0'},{id:'plain-object.mod',version:'9.0.0'}]);assert(warnings.length===3&&warnings.some(message=>message.includes('disabled')),'missing, disabled, and mismatched save mods warn without rejection');await Duplex.mods.enable('another-author.alchemy');
+Save.import({...parsed,mods:[{id:'missing.mod',version:'1.0.0'}]});assert(document.querySelector('#duplex-dialog-body').textContent.includes('missing.mod 1.0.0')&&document.querySelector('#duplex-dialog-body').textContent.includes('save was loaded'),'save mod warnings are displayed to players after loading');document.querySelector('#duplex-dialog-actions button:last-child').click();
 Duplex.mods.open();assert(document.querySelector('#duplex-mod-list').textContent.includes('Alchemy'),'mod manager lists installed mods');document.querySelector('#duplex-dialog-actions button:last-child').click();
 await Duplex.mods.import({...validMod,id:'hostile.mod',name:'<img src=x onerror=alert(1)>',description:'<script>bad()</script>'});Duplex.mods.open();assert(!document.querySelector('#duplex-mod-list img')&&!document.querySelector('#duplex-mod-list script')&&document.querySelector('#duplex-mod-list').textContent.includes('<img'),'mod manager treats hostile metadata as text');document.querySelector('#duplex-dialog-actions button:last-child').click();
 dom.window.UI.alert('Hello');assert(document.querySelector('#duplex-dialog').hasAttribute('open') && document.querySelector('#duplex-dialog-body').textContent.includes('Hello'),'UI alert');document.querySelector('#duplex-dialog-actions button:last-child').click();

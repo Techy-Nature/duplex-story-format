@@ -6,7 +6,7 @@ Duplex 1.5.0 supports browser-installed JSON mods containing item definitions. I
 
 A manifest requires `schema` (currently `1`), a case-sensitive `id`, nonempty `name` and `version`, and an `items` array. Optional metadata includes `author`, `description`, `forStory`, and `requires.duplex` (for example `">=1.5.0"`). `forStory` must equal the story IFID or name.
 
-Each item requires a local `id` and nonempty `name`. Defaults are `description: ""`, `type: "item"`, `quantity: 1`, `properties: {}`, and `tags: []`. Quantities must be from 1 through the inventory stack limit of 1000. See [`examples/more-birds.json`](examples/more-birds.json) for a complete manifest.
+Each item requires a local `id` and nonempty `name`. Defaults are `description: ""`, `type: "item"`, `quantity: 1`, `properties: {}`, and `tags: []`. Quantities must be integers from 1 through the inventory stack limit of 1000. See [`examples/more-birds.json`](examples/more-birds.json) for a complete manifest.
 
 IDs allow ASCII letters, numbers, dots, underscores, and hyphens. An item's runtime identity is `mod-id:item-id`; therefore two mods may both define `healing-potion` without a collision. Duplicate IDs within a mod and duplicate installed mod IDs are rejected rather than overwritten.
 

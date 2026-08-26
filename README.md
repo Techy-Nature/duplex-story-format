@@ -196,4 +196,4 @@ MIT.
 
 ## Data-only JSON mods
 
-Duplex 1.5.0 supports validated item-definition JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex%201.4.0/duplex-format/MODS.md) and its [complete example manifest](Duplex%201.4.0/duplex-format/examples/more-birds.json).
+Duplex 1.5.0 supports validated item-definition JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex%201.5.0/duplex-format/MODS.md) and its [complete example manifest](Duplex%201.5.0/duplex-format/examples/more-birds.json).
