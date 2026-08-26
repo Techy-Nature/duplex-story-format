@@ -1,13 +1,14 @@
 {
   "name": "duplex-twine-format",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "test": "node build.mjs && node tests/runtime.mjs"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.1.0"
   }
 }

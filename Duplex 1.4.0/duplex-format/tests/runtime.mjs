@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
+import { indexedDB } from 'fake-indexeddb';
 
 let format;
 vm.runInNewContext(await readFile(new URL('../format.js', import.meta.url), 'utf8'), {
@@ -82,7 +83,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.4.0','format version');
+assert(format.version === '1.5.0','format version');
 assert(document.body.textContent.includes('switch-ok'),'switch macro');
 assert(State.variables.x === 2 && State.variables.scripted,'run and script macros');
 assert(Duplex.audio.tracks.size === 1 && Duplex.audio.groups.has(':ui') && Duplex.audio.playlists.has('music'),'audio registration macros');
@@ -109,6 +110,27 @@ dom.window.UIBarRight.stow(true);assert(dom.window.UIBarRight.isStowed(),'right 
 assert(dom.window.UIBarL===dom.window.UIBar && dom.window.UIBarR===dom.window.UIBarRight,'short UI bar names and aliases');
 assert(Duplex.Save===Save && typeof Save.export==='function' && typeof Save.import==='function','Save API globals');
 const { Inventory }=dom.window;
+const validMod={schema:1,id:'neston.more-birds',name:'More Birds',version:'1.0.0',author:'Neston',forStory:'Test',requires:{duplex:'>=1.5.0'},items:[{id:'nighthawk-feather',name:'Nighthawk Feather',properties:{value:15},tags:['bird']}]};
+const registered=Duplex.mods.register(validMod);
+assert(registered.items[0].quantity===1&&Duplex.mods.has(validMod.id)&&Duplex.mods.isEnabled(validMod.id),'register valid mod and item defaults');
+const definition=Duplex.mods.getItem(validMod.id,'nighthawk-feather'),first=Duplex.mods.createItem(validMod.id,'nighthawk-feather',{quantity:2}),second=Duplex.mods.createItem(validMod.id,'nighthawk-feather');
+first.properties.value=99;first.tags.push('changed');
+assert(first.id==='neston.more-birds:nighthawk-feather'&&first.modId===validMod.id&&first.definitionId==='nighthawk-feather'&&first.quantity===2,'created item identity and quantity override');
+assert(second!==first&&definition.properties.value===15&&Duplex.mods.getItem(validMod.id,'nighthawk-feather').tags.length===1,'definitions and instances are independent');
+await Duplex.mods.import(JSON.stringify({...validMod,id:'another-author.alchemy',name:'Alchemy',items:[{id:'nighthawk-feather',name:'Other Feather'}]}));
+await Duplex.mods.import({...validMod,id:'plain-object.mod',name:'Plain Object'});
+assert(Duplex.mods.createItem('another-author.alchemy','nighthawk-feather').id==='another-author.alchemy:nighthawk-feather'&&Duplex.mods.has('plain-object.mod'),'JSON string and plain object import with namespacing');
+const file=new dom.window.File([JSON.stringify({...validMod,id:'file.mod',name:'File Mod'})],'mod.json',{type:'application/json'});file.text=()=>Promise.resolve(JSON.stringify({...validMod,id:'file.mod',name:'File Mod'}));await Duplex.mods.import(file);assert(Duplex.mods.has('file.mod'),'File import');
+let rejected=0;for(const bad of [
+  {...validMod,id:'duplicate-items',items:[validMod.items[0],validMod.items[0]]},
+  validMod,
+  {...validMod,id:'bad-schema',schema:2},
+  {...validMod,id:'wrong-story',forStory:'Elsewhere'},
+  {...validMod,id:'bad-quantity',items:[{id:'bad',name:'Bad',quantity:1001}]}
+]){try{Duplex.mods.register(bad);}catch(_){rejected++;}}try{await Duplex.mods.import('{broken');}catch(_){rejected++;}try{await Duplex.mods.import('{"schema":1,"id":"danger","name":"Danger","version":"1","items":[],"nested":{"__proto__":{}}}');}catch(_){rejected++;}
+assert(rejected===7&&!Duplex.mods.has('duplicate-items')&&!Duplex.mods.has('bad-schema'),'invalid, duplicate, dangerous, incompatible, and malformed mods rejected atomically');
+await Duplex.mods.disable(validMod.id);assert(!Duplex.mods.isEnabled(validMod.id)&&Duplex.mods.getItem(validMod.id,'nighthawk-feather')===null,'disabled mod hides definitions');await Duplex.mods.enable(validMod.id);assert(Duplex.mods.isEnabled(validMod.id),'mod re-enabled');
+assert(!Object.hasOwn(State.variables,'inventory'),'mod registration does not create $inventory');
 State.variables.inventory=['author-owned'];dom.window.UI.update();
 assert(State.variables.inventory[0]==='author-owned'&&Inventory.bags.length===0,'inventory state does not collide with the author-owned $inventory variable');
 assert(dom.window.Duplex.inventory===Inventory,'Duplex.inventory aliases the global Inventory API');
@@ -118,6 +140,8 @@ let duplicateRejected=false;try{Inventory.createBag('Duplicate',{id:'bag-50'});}
 const pack=Inventory.createBag({id:'pack',name:'Pack'},{id:'pack',properties:{capacity:20}});
 const pouch=Inventory.createBag({id:'pouch',name:'Pouch'},{id:'pouch',properties:{color:'red'}});
 Inventory.addItem('pouch',{name:'Coin',quantity:4});
+Inventory.addItem('pouch',second);assert(pouch.items[1].modId===validMod.id,'created mod item added through existing inventory');
+await Duplex.mods.remove(validMod.id);assert(!Duplex.mods.has(validMod.id)&&pouch.items[1].id==='neston.more-birds:nighthawk-feather','removing a mod preserves inventory instances');
 const tiny=Inventory.createBag({id:'tiny',name:'Tiny'},{id:'tiny'});
 Inventory.moveBag('tiny','pouch');
 Inventory.moveBag('pouch','pack');
@@ -144,6 +168,7 @@ assert(!Inventory.getBag('danger')&&!Inventory.getBag('danger-child')&&Inventory
 Save.save();
 const exported=Save.serialize(),parsed=JSON.parse(exported);
 assert(parsed.format==='DuplexSave'&&parsed.schema===1&&parsed.story==='Test'&&parsed.history.length===1,'portable save payload');
+assert(parsed.mods.some(mod=>mod.id==='another-author.alchemy'&&mod.version==='1.0.0'),'save metadata includes enabled mod IDs and versions');
 State.variables.x=99;
 Save.import(exported);
 assert(State.variables.x===2&&dom.window.localStorage.getItem('duplex-save-Test'),'JSON save import and browser persistence');
@@ -152,6 +177,10 @@ let wrongStory=false;try{Save.import(JSON.stringify({...parsed,story:'Other Stor
 assert(wrongStory,'reject wrong-story save');
 let damaged=false;try{Save.import('{broken');}catch(error){damaged=/valid JSON/.test(error.message);}
 assert(damaged,'reject malformed save');
+const legacy={...parsed};delete legacy.mods;Save.import(legacy);assert(State.variables.x===2,'older save without mod metadata loads');
+const warnings=Duplex.mods.checkSave([{id:'missing.mod',version:'1.0.0'},{id:'another-author.alchemy',version:'9.0.0'}]);assert(warnings.length===2,'missing and mismatched save mods warn without rejection');
+Duplex.mods.open();assert(document.querySelector('#duplex-mod-list').textContent.includes('Alchemy'),'mod manager lists installed mods');document.querySelector('#duplex-dialog-actions button:last-child').click();
+await Duplex.mods.import({...validMod,id:'hostile.mod',name:'<img src=x onerror=alert(1)>',description:'<script>bad()</script>'});Duplex.mods.open();assert(!document.querySelector('#duplex-mod-list img')&&!document.querySelector('#duplex-mod-list script')&&document.querySelector('#duplex-mod-list').textContent.includes('<img'),'mod manager treats hostile metadata as text');document.querySelector('#duplex-dialog-actions button:last-child').click();
 dom.window.UI.alert('Hello');assert(document.querySelector('#duplex-dialog').hasAttribute('open') && document.querySelector('#duplex-dialog-body').textContent.includes('Hello'),'UI alert');document.querySelector('#duplex-dialog-actions button:last-child').click();
 
 [...document.querySelectorAll('[data-duplex-action]')].find(el => el.textContent === 'Add').click();
@@ -174,5 +203,13 @@ Inventory.createBag('Temporary',{id:'temporary'});
 document.querySelector('#duplex-back').click();
 assert(document.querySelectorAll('article').length === 1,'back navigation');
 assert(!Inventory.getBag('temporary')&&Inventory.getBag('safe-nest'),'Back restores the complete prior inventory hierarchy');
+
+const persistentStory=`<tw-storydata name="Persistent Test" ifid="PERSISTENT-IFID" startnode="1">${passage('1','Start','Ready')}${passage('2','StoryInit','<<script>>State.variables.modWasReady = Duplex.mods.createItem("persist.mod", "token").id;<</script>>')}</tw-storydata>`;
+const persistentHtml=format.source.replace('{{STORY_NAME}}','Persistent Test').replace('{{STORY_DATA}}',persistentStory);
+const persistentOptions={runScripts:'dangerously',url:'https://example.test/persistent',beforeParse(window){window.indexedDB=indexedDB;window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}};
+const emptyPersistentHtml=format.source.replace('{{STORY_NAME}}','Persistent Test').replace('{{STORY_DATA}}',`<tw-storydata name="Persistent Test" ifid="PERSISTENT-IFID" startnode="1">${passage('1','Start','Ready')}</tw-storydata>`);
+const firstPersistent=new JSDOM(emptyPersistentHtml,persistentOptions);await firstPersistent.window.Duplex.ready;await firstPersistent.window.Duplex.mods.import({schema:1,id:'persist.mod',name:'Persistent',version:'1.0.0',items:[{id:'token',name:'Token'}]});firstPersistent.window.close();
+const restoredPersistent=new JSDOM(persistentHtml,persistentOptions);await restoredPersistent.window.Duplex.ready;
+assert(restoredPersistent.window.Duplex.mods.has('persist.mod')&&restoredPersistent.window.State.variables.modWasReady==='persist.mod:token','IndexedDB mods restore before StoryInit and the starting passage');restoredPersistent.window.close();
 
 console.log('Duplex runtime tests passed.');

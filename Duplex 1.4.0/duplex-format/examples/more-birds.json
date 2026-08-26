@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "neston.more-birds",
+  "name": "More Birds",
+  "version": "1.0.0",
+  "author": "Neston",
+  "description": "Adds paranormal bird-related objects.",
+  "forStory": "astralscape",
+  "requires": { "duplex": ">=1.5.0" },
+  "items": [
+    {
+      "id": "nighthawk-feather",
+      "name": "Nighthawk Feather",
+      "description": "A dusky feather that remains strangely warm.",
+      "type": "quest-item",
+      "quantity": 1,
+      "properties": { "value": 15, "weight": 0.01 },
+      "tags": ["bird", "paranormal"]
+    }
+  ]
+}
