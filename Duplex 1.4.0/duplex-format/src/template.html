@@ -505,7 +505,7 @@
     document.querySelector('#duplex-restart').addEventListener('click',restart);
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,audio:AudioEngine,UI,Save,UIBarL,UIBarR,widgets};
+    window.Duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,audio:AudioEngine,inventory:Inventory,UI,Save,UIBarL,UIBarR,widgets};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {
       try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }
