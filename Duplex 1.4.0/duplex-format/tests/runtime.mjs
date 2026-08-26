@@ -79,10 +79,15 @@ const dom = new JSDOM(html, {
     window.confirm = () => true;
   }
 });
-const { document, State, Duplex, Save } = dom.window;
+const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
 assert(format.version === '1.4.0','format version');
+assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
+assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
+const colors=dom.window.Array.from(['red','blue','green']);
+assert(colors.includes(duplex.random(colors)) && colors.includes(colors.random()),'random helper and array convenience return array items');
+assert(Object.getOwnPropertyDescriptor(dom.window.Array.prototype,'random')?.enumerable===false && !Object.keys(colors).includes('random'),'array random convenience is non-enumerable');
 assert(document.body.textContent.includes('switch-ok'),'switch macro');
 assert(State.variables.x === 2 && State.variables.scripted,'run and script macros');
 assert(Duplex.audio.tracks.size === 1 && Duplex.audio.groups.has(':ui') && Duplex.audio.playlists.has('music'),'audio registration macros');

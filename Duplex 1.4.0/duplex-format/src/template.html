@@ -101,6 +101,17 @@
       if (tagName === undefined) return tags().includes(String(passageName));
       return tags(passageName).includes(String(tagName));
     }
+    // duplex.random() is the recommended, safest way to select a random array item.
+    function random(array) {
+      if (!Array.isArray(array) || array.length === 0) return undefined;
+      return array[Math.floor(Math.random() * array.length)];
+    }
+    // Array#random() is a non-enumerable convenience for SugarCube familiarity.
+    if (!('random' in Array.prototype)) {
+      Object.defineProperty(Array.prototype,'random',{
+        value:function () { return random(this); }, configurable:true, writable:true
+      });
+    }
     window.tags=tags;
     window.hasTag=hasTag;
 
@@ -505,7 +516,7 @@
     document.querySelector('#duplex-restart').addEventListener('click',restart);
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,audio:AudioEngine,inventory:Inventory,UI,Save,UIBarL,UIBarR,widgets};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,UI,Save,UIBarL,UIBarR,widgets};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {
       try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }
