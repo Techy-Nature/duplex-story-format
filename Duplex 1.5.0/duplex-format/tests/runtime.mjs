@@ -32,6 +32,10 @@ Recursive: <<include "RecursiveA">>
 <<radiobutton "$pick" "bird" checked>>
 <<cycle "$cycle">><<option "A" 1>><<option "B" 2>><</cycle>>
 <<listbox "$list">><<option "One" 1>><<option "Two" 2>><</listbox>>
+<<set $target to { variable: "before" }>>
+<<set $targetlist to ["hare", "fox"]>>
+<<set $targetmap to { Owl: "owl", Hawk: "hawk" }>>
+<<dropdown $target.variable>><<option "deer">><<option "dog">><<options $targetlist[]>><<options $targetmap>><<option "hunted">><</dropdown>>
 <<numberbox "$num" 4>>
 <<textbox "$text" "hi">>
 <<textarea "$area" "long">>
@@ -281,8 +285,11 @@ const checkbox=document.querySelector('input[type=checkbox]'); checkbox.checked=
 assert(State.variables.check === true,'checkbox');
 const cycle=[...document.querySelectorAll('a[data-duplex-action]')].find(el=>el.textContent==='A');cycle.click();
 assert(State.variables.cycle === 2 && cycle.textContent === 'B','cycle');
-const select=document.querySelector('select');select.value='1';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+const [listbox,dropdown]=document.querySelectorAll('select');listbox.value='1';listbox.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
 assert(State.variables.list === 2,'listbox');
+assert([...dropdown.options].map(option=>option.textContent).join(',')==='deer,dog,hare,fox,Owl,Hawk,hunted'&&State.variables.target.variable==='deer','dropdown options from inline values, arrays, and object lists');
+dropdown.value='5';dropdown.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+assert(State.variables.target.variable==='hawk','dropdown updates an object variable receiver');
 const textbox=document.querySelector('input[type=text]');textbox.value='changed';textbox.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
 assert(State.variables.text === 'changed','textbox');
 
