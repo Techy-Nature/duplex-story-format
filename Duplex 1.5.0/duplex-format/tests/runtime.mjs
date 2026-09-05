@@ -76,6 +76,7 @@ Visible before // this trailing comment is hidden
   ${passage('15','RecursiveB','recursive-b <<include "RecursiveA">>')}
   ${passage('16','UnsafeInclude','nested-script <<script>>window.modNestedRan=true;<</script>>')}
   ${passage('17','DuplexMod:collision.mod:hook','base collision passage')}
+  ${passage('18','StorySettings','<strong id="author-settings">Author settings</strong>')}
 </tw-storydata>`;
 
 const html = format.source.replace('{{STORY_NAME}}','Test').replace('{{STORY_DATA}}',story);
@@ -137,6 +138,19 @@ assert(document.querySelector('#story-menu [data-passage=Next]'),'StoryMenu UI u
 assert(document.querySelector('#story-left-bar').textContent.includes('Left custom'),'left custom passage');
 assert(document.querySelector('#story-right-bar').textContent.includes('Right custom'),'right custom passage');
 assert(document.querySelector('#duplex-current-passage').textContent === 'Start','right status');
+assert(Duplex.shortcuts.get('inventory').shortcut==='Shift+I'&&Duplex.shortcuts.get('story-settings').shortcut==='Shift+Alt','built-in shortcut defaults');
+Duplex.shortcuts.add('test-action',{label:'Test action',defaultShortcut:'T',action:()=>{dom.window.shortcutAction=true;}});
+dom.window.UI.settings();
+assert(document.querySelector('#author-settings')&&[...document.querySelectorAll('.duplex-shortcut-row')].some(row=>row.textContent.includes('Inventory')&&row.querySelector('button').textContent==='Shift+I'),'StorySettings content and separate shortcut labels render accurately');
+const inventoryShortcutButton=document.querySelector('[data-shortcut-id="inventory"]');inventoryShortcutButton.click();
+inventoryShortcutButton.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Shift',shiftKey:true,bubbles:true,cancelable:true}));
+assert(inventoryShortcutButton.textContent==='Shift+…','shortcut recorder waits for a second key after a modifier');
+inventoryShortcutButton.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'J',shiftKey:true,bubbles:true,cancelable:true}));
+assert(inventoryShortcutButton.textContent==='Shift+J'&&Duplex.shortcuts.get('inventory').shortcut==='Shift+J'&&JSON.parse(dom.window.localStorage.getItem('duplex-shortcuts-Test')).inventory==='Shift+J','set shortcut updates button, runtime, and persistence immediately');
+document.querySelector('#duplex-dialog-actions button:last-child').click();
+document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'t',bubbles:true,cancelable:true}));assert(dom.window.shortcutAction,'author-added shortcut action');
+document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Alt',shiftKey:true,altKey:true,bubbles:true,cancelable:true}));assert(document.querySelector('#duplex-dialog').open&&document.querySelector('#author-settings'),'settings keyboard shortcut');document.querySelector('#duplex-dialog-actions button:last-child').click();
+document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'0',bubbles:true,cancelable:true}));assert(State.history.at(-1).title==='Next','zero activates the last visible story link');Duplex.back();
 dom.window.UIBar.hide();assert(dom.window.UIBar.isHidden(),'left bar hide');dom.window.UIBar.show().stow(true);assert(dom.window.UIBar.isStowed(),'left bar stow');dom.window.UIBar.unstow(true);
 dom.window.UIBarRight.stow(true);assert(dom.window.UIBarRight.isStowed(),'right bar stow');dom.window.UIBarRight.unstow(true);
 assert(dom.window.UIBarL===dom.window.UIBar && dom.window.UIBarR===dom.window.UIBarRight,'short UI bar names and aliases');
