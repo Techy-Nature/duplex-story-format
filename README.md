@@ -45,7 +45,18 @@ Browser-based Twine generally cannot install a local `file://` URL. Host the fol
 - Scripting: `<<run>>`, `<<script>>`, and `<<unset>>`
 - Comments: `//` to the end of a line, `/* ... */` across lines, and `<<comment>>...<</comment>>`
 - Markdown: `[markdown]`-tagged passages and `<<markdown>>...<</markdown>>` macro supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
-- Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
+- Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<dropdown>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
+
+Dropdowns write the selected value to a story variable or object property. Add individual choices with `<<option>>`, or populate choices from an array or object with `<<options>>` (the optional `[]` suffix makes the collection intent explicit):
+
+```twine
+<<dropdown $target.variable>>
+  <<option "deer">>
+  <<option "dog">>
+  <<options $targetlist[]>>
+  <<option "hunted">>
+<</dropdown>>
+```
 - Audio: `<<cacheaudio>>`, `<<audio>>`, `<<createaudiogroup>>`, `<<createplaylist>>`, `<<masteraudio>>`, `<<playlist>>`, `<<removeaudiogroup>>`, `<<removeplaylist>>`, and `<<waitforaudio>>`
 - Operators: `is`, `is not`, `isnot`, `and`, `or`, `not`, plus ordinary JavaScript operators
 - Story JavaScript and Story Stylesheet

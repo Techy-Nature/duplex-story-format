@@ -276,10 +276,10 @@
     }
     function optionControls(text,name) {
       const block=container(text,name), argv=tokens(block.args), recv=receiver(argv.shift()), flags=new Set(argv.map(x=>x.toLowerCase())), options=[];
-      const re=/<<option\s+([\s\S]*?)>>|<<optionsfrom\s+([\s\S]*?)>>/gi; let match;
+      const re=/<<option\s+([\s\S]*?)>>|<<(?:options|optionsfrom)\s+([\s\S]*?)>>/gi; let match;
       while ((match=re.exec(block.body))) {
         if (match[1]) { const a=tokens(match[1]), label=value(a[0]), val=a[1] && a[1].toLowerCase()!=='selected' ? value(a[1]) : label; options.push({label,val,selected:a.some(x=>x.toLowerCase()==='selected')}); }
-        else { const collection=evaluate(match[2]); if (Array.isArray(collection)||collection instanceof Set) [...collection].forEach(v=>options.push({label:v,val:v})); else if(collection instanceof Map) collection.forEach((v,k)=>options.push({label:k,val:v})); else Object.entries(collection||{}).forEach(([k,v])=>options.push({label:k,val:v})); }
+        else { const collection=evaluate(match[2].replace(/\[\]\s*$/,'')); if (Array.isArray(collection)||collection instanceof Set) [...collection].forEach(v=>options.push({label:v,val:v})); else if(collection instanceof Map) collection.forEach((v,k)=>options.push({label:k,val:v})); else Object.entries(collection||{}).forEach(([k,v])=>options.push({label:k,val:v})); }
       }
       let index=options.findIndex(o=>o.selected); if(flags.has('autoselect')) index=options.findIndex(o=>o.val===getReceiver(recv)); if(index<0) index=0;
       if (options[index]) setReceiver(recv,options[index].val);
@@ -370,7 +370,7 @@
         if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
         const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
         if(interactiveName){const found=interactive(rest,interactiveName);out+=found.html;i+=found.length;continue;}
-        const optionName=rest.match(/^<<(cycle|listbox)\b/i)?.[1]?.toLowerCase();
+        const optionName=rest.match(/^<<(cycle|dropdown|listbox)\b/i)?.[1]?.toLowerCase();
         if(optionName){const found=optionControls(rest,optionName);out+=found.html;i+=found.length;continue;}
         const audioBlock=rest.match(/^<<(createaudiogroup|createplaylist)\b/i)?.[1]?.toLowerCase();
         if(audioBlock){const found=container(rest,audioBlock);if(context.restricted)out+=restrictedError(audioBlock,context);else out+=audioContainer(rest,audioBlock).html;i+=found.length;continue;}
@@ -687,7 +687,7 @@
       if(item.kind==='checkbox')setReceiver(item.receiver,element.checked?item.on:item.off);
       else if(item.kind==='radiobutton'){if(element.checked)setReceiver(item.receiver,item.value);}
       else if(['textbox','textarea','numberbox'].includes(item.kind)){setReceiver(item.receiver,item.kind==='numberbox'?element.valueAsNumber:element.value);if(event.type==='keydown'&&event.key==='Enter'&&item.target)go(String(item.target));}
-      else if(item.kind==='listbox'){item.index=Number(element.value);setReceiver(item.receiver,item.options[item.index]?.val);}
+      else if(item.kind==='listbox'||item.kind==='dropdown'){item.index=Number(element.value);setReceiver(item.receiver,item.options[item.index]?.val);}
       else if(item.kind==='cycle'&&event.type==='click'){event.preventDefault();if(item.once&&item.index>=item.options.length-1)return;item.index=(item.index+1)%item.options.length;setReceiver(item.receiver,item.options[item.index]?.val);element.textContent=item.options[item.index]?.label??'';if(item.once&&item.index>=item.options.length-1)element.removeAttribute('href');}
       else if(event.type==='click'){
         event.preventDefault(); const html=compile(item.body||'',item.context);
