@@ -31,6 +31,10 @@
     .duplex-inventory-list { display:grid; gap:.5rem; margin:1rem 0; padding:0; list-style:none; }
     .duplex-bag-row { display:flex; align-items:center; gap:.75rem; width:100%; text-align:left; }
     .duplex-bag-row .duplex-bag-name { flex:1; }
+    .duplex-shortcut-list { display:grid; gap:.75rem; margin:1rem 0; }
+    .duplex-shortcut-row { display:grid; grid-template-columns:minmax(8rem,1fr) auto; align-items:center; gap:1rem; }
+    .duplex-shortcut-row button { min-width:8.5rem; }
+    .duplex-shortcut-help { color:var(--duplex-muted); font-size:.9rem; }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
     .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
@@ -87,6 +91,7 @@
     const widgets = new Map();
     const includeStack = [];
     const compileContexts = [];
+    let Shortcuts;
     const MAX_INCLUDE_DEPTH = 50;
     let nextControlId = 0;
     const AudioEngine = window.SimpleAudio = {
@@ -433,6 +438,29 @@
       if(!box.open)box.showModal(); return box;
     }
     function storyId(){return data.getAttribute('ifid')||data.getAttribute('name')||document.title;}
+    const shortcutStorageKey=()=> 'duplex-shortcuts-'+storyId();
+    const shortcutNames={Alt:'Alt',Control:'Ctrl',Meta:'Meta',Shift:'Shift',' ':'Space',ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right'};
+    const shortcutKey=key=>shortcutNames[key]||(/^.$/.test(key)?key.toUpperCase():key);
+    const shortcutParts=value=>String(value||'').split('+').map(part=>part.trim()).filter(Boolean);
+    const normalizeShortcut=value=>{
+      const parts=Array.isArray(value)?value:shortcutParts(value),modifiers=[],keys=[];
+      for(const raw of parts){const key=shortcutKey(raw);if(['Ctrl','Alt','Shift','Meta'].includes(key)){if(!modifiers.includes(key))modifiers.push(key);}else if(key&&!keys.includes(key))keys.push(key);}
+      const ordered=['Shift','Ctrl','Alt','Meta'].filter(key=>modifiers.includes(key)),combined=[...ordered,...keys];return combined.length<=2?combined.join('+'):'';
+    };
+    function storedShortcuts(){try{const saved=JSON.parse(localStorage.getItem(shortcutStorageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};}catch(_){return {};}}
+    const shortcutDefinitions=new Map();
+    function shortcutValue(definition){return normalizeShortcut(storedShortcuts()[definition.id]??definition.defaultShortcut);}
+    function shortcutEvent(event){const parts=[];if(event.ctrlKey)parts.push('Ctrl');if(event.altKey)parts.push('Alt');if(event.shiftKey)parts.push('Shift');if(event.metaKey)parts.push('Meta');const key=shortcutKey(event.key);if(!['Ctrl','Alt','Shift','Meta'].includes(key))parts.push(key);return normalizeShortcut(parts);}
+    function setShortcut(id,value){const definition=shortcutDefinitions.get(String(id));if(!definition)throw new Error('Shortcut not found.');const normalized=normalizeShortcut(value);if(!normalized)throw new Error('A shortcut must contain one or two keys.');const saved=storedShortcuts();saved[definition.id]=normalized;localStorage.setItem(shortcutStorageKey(),JSON.stringify(saved));return normalized;}
+    function renderShortcutSettings(options,closeFn){
+      const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
+      const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
+      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>',[
+        {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
+        {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
+      ],closeFn);
+      box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
+    }
     const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
@@ -579,6 +607,7 @@
     function refreshInventory(){UI?.update?.();if(Inventory.activeBagId&&document.querySelector('#duplex-dialog')?.open)Inventory.openBag(Inventory.activeBagId);}
     const Inventory=window.Inventory={
       get bags(){return inventoryState().bags;},activeBagId:null,
+      open(){const bags=inventoryState().bags.map(bag=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(bag.name)+'"><span class="duplex-bag-name">'+escapeHtml(bag.name)+'</span><span>× '+bag.quantity+'</span></button></li>').join('');return dialog('Inventory',bags?'<ul class="duplex-inventory-list">'+bags+'</ul>':'<p>Your inventory is empty.</p>');},
       createBag(definition,options={}){const bag=normalizeBag(definition,options);if(!bagEmpty(bag))bag.quantity=1;const destination=options.parentId?locateBag(options.parentId)?.bag:null,collection=destination?.children??inventoryState().bags;if(destination){if(bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination,destination.items.length,destination.children.length+1))throw new Error('Bag capacity exceeded.');splitForContents(locateBag(destination.id));}const compatible=bagEmpty(bag)&&collection.find(other=>bagEmpty(assertBagShape(other))&&!other.room&&!bag.room&&other.name===bag.name&&JSON.stringify(other.definition)===JSON.stringify(bag.definition)&&JSON.stringify(other.properties)===JSON.stringify(bag.properties)&&other.quantity+bag.quantity<=1000);if(compatible){compatible.quantity+=bag.quantity;return compatible;}collection.push(bag);return bag;},
       getBag(id){return locateBag(id)?.bag??null;},
       addItem(id,item){const location=locateBag(id);if(!location)throw new Error('Bag not found.');if(!capacityOkay(location.bag,location.bag.items.length+1,location.bag.children.length))throw new Error('Bag capacity exceeded.');const bag=splitForContents(location),stack=clone(item);stack.quantity=Math.max(1,Math.min(1000,Number(stack.quantity)||1));bag.items.push(stack);refreshInventory();return bag;},
@@ -604,10 +633,7 @@
           ...(has?[{label:'Delete',action:()=>{Save.delete();closeDialog(closeFn);}}]:[])
         ],closeFn);
       },
-      settings(options,closeFn){dialog(options?.title||'Settings','<p>Choose how passages are displayed.</p>',[
-        {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
-        {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
-      ],closeFn);},
+      settings(options,closeFn){return renderShortcutSettings(options,closeFn);},
       update(){
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
         regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(region)region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';});
@@ -674,14 +700,33 @@
     document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const link=event.target.closest('[data-passage]'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
     document.addEventListener('change',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
     document.addEventListener('input',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
-    document.addEventListener('keydown',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
+    function activateStoryChoice(number){const links=[...output.querySelectorAll('.duplex-passage-body [data-passage]')].filter(link=>!link.closest('[hidden]'));const link=number===0?links.at(-1):links[number-1];if(link)link.click();}
+    function runShortcut(definition,event){event.preventDefault();event.stopPropagation();if(typeof definition.action==='function')definition.action(event);else if(definition.selector)document.querySelector(definition.selector)?.click();}
+    Shortcuts=window.Shortcuts={
+      add(id,options={}){if(typeof id==='object'){options=id;id=options.id;}id=String(id||'');if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)||shortcutDefinitions.has(id))throw new Error('Shortcut ID is missing, invalid, or already registered.');const defaultShortcut=normalizeShortcut(options.defaultShortcut??options.shortcut);if(!defaultShortcut)throw new Error('A shortcut must contain one or two keys.');if(typeof options.action!=='function'&&typeof options.selector!=='string')throw new Error('A shortcut needs an action function or selector.');const definition={id,label:String(options.label||id),defaultShortcut,action:options.action,selector:options.selector};shortcutDefinitions.set(id,definition);return Shortcuts;},
+      get(id){const definition=shortcutDefinitions.get(String(id));return definition?{id:definition.id,label:definition.label,defaultShortcut:definition.defaultShortcut,shortcut:shortcutValue(definition)}:null;},
+      set:setShortcut,
+      list(){return [...shortcutDefinitions.values()].map(definition=>Shortcuts.get(definition.id));}
+    };
+    Shortcuts.add('inventory',{label:'Inventory',defaultShortcut:'Shift+I',action:()=>Inventory.open()});
+    Shortcuts.add('story-settings',{label:'Story settings',defaultShortcut:'Shift+Alt',action:()=>UI.settings()});
+    Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:restart});
+    Shortcuts.add('select',{label:'Select',defaultShortcut:'Enter',action:event=>{const target=document.activeElement;if(target&&target!==document.body&&typeof target.click==='function')target.click();}});
+    document.addEventListener('keydown',event=>{
+      const recorder=event.target.closest?.('[data-shortcut-id][data-recording]');
+      if(recorder){event.preventDefault();event.stopPropagation();if(event.key==='Escape'){delete recorder.dataset.recording;recorder.textContent=shortcutValue(shortcutDefinitions.get(recorder.dataset.shortcutId));return;}const value=shortcutEvent(event);if(!value)return;if(shortcutParts(value).length===1&&['Shift','Ctrl','Alt','Meta'].includes(value)){recorder.textContent=value+'+…';return;}recorder.textContent=setShortcut(recorder.dataset.shortcutId,value);delete recorder.dataset.recording;return;}
+      const control=event.target.closest?.('[data-duplex-action]');if(control){runDeferred(control,event);if(event.defaultPrevented)return;}
+      if(event.repeat||event.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+      const pressed=shortcutEvent(event),definition=[...shortcutDefinitions.values()].find(item=>shortcutValue(item)===pressed);if(definition){runShortcut(definition,event);return;}
+      if(!event.ctrlKey&&!event.altKey&&!event.shiftKey&&!event.metaKey&&/^\d$/.test(event.key)){event.preventDefault();activateStoryChoice(Number(event.key));}
+    });
     document.addEventListener('visibilitychange',()=>{if(AudioEngine.muteOnHide)[...AudioEngine.tracks.values()].forEach(t=>t.muted=document.hidden||AudioEngine.muted);});
     document.querySelector('#duplex-back').addEventListener('click',() => { if(State.history.length>1){ State.history.pop(); State.variables=clone(State.history.at(-1).variables); rebuild(); } });
     document.querySelector('#duplex-restart').addEventListener('click',restart);
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,UI,Save,UIBarL,UIBarR,widgets,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

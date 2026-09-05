@@ -97,6 +97,30 @@ The older `UIBar`, `UIBarRight`, `UIBars.left`, and `UIBars.right` names remain 
 
 The `UI` object provides `alert()`, `restart()`, `saves()`, `settings()`, `update()`, `jumpto()`, and `share()`.
 
+## Keyboard shortcuts and StorySettings
+
+Duplex includes keyboard shortcuts for **Inventory** (`Shift+I`), **Story settings** (`Shift+Alt`), **Reset story** (`Shift+Backspace`), and **Select** (`Enter`). Number keys follow the familiar keyboard layout for visible story links: `1` selects the first link, `2` the second, and so on, while `0` selects the last link. Shortcuts do not fire while the player is typing in an input.
+
+If a `StorySettings` passage exists, its compiled contents appear at the top of the Settings dialog. The built-in shortcut rows keep the action label separate from the shortcut button. A player selects that button and presses a one- or two-key shortcut; the new value is saved immediately for that story and the button displays the actual value. No additional save or apply button is needed.
+
+Authors can register additional actions from story JavaScript with `Duplex.shortcuts.add()`. Players can change registered bindings in Settings, but cannot add actions themselves:
+
+```js
+Duplex.shortcuts.add('journal', {
+  label: 'Open journal',
+  defaultShortcut: 'Shift+J',
+  selector: '#open-journal'
+});
+
+Duplex.shortcuts.add('map', {
+  label: 'Open map',
+  defaultShortcut: 'M',
+  action: () => setup.openMap()
+});
+```
+
+IDs must be unique. Each definition needs a label, a default shortcut of no more than two keys, and either an `action` function or a CSS `selector` for the button to activate. The read-only `Duplex.shortcuts.get(id)` and `Duplex.shortcuts.list()` methods expose effective player bindings; `set(id, shortcut)` is also available for author tooling.
+
 ## Saves and portable backups
 
 Duplex keeps one browser save per story and can export or import portable JSON backups. Open **Saves** in the left UI bar to use **Save**, **Load**, **Export**, **Import**, or **Delete**. Exported files include the story identity and are validated before import, so a save from another story or a damaged file will not replace the current progress.
