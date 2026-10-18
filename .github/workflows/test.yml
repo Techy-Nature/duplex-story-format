@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "Duplex 1.5.0/duplex-format"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: "Duplex 1.5.0/duplex-format/package-lock.json"
+      - run: npm ci
+      - name: Build and run runtime tests
+        run: npm test
+      - name: Check format.js matches src/template.html
+        run: git diff --exit-code -- format.js

@@ -324,6 +324,12 @@
         while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}
       });
     }
+    // compile() wraps its result in paragraph tags. A widget whose output is a
+    // single paragraph is unwrapped so <<name>> prints inline, mid-sentence.
+    function inlineWidgetHtml(html) {
+      const inner=html.replace(/^<p>/,'').replace(/<p>$/,'');
+      return /<\/?p[\s>]/i.test(inner)?html:inner;
+    }
     function invokeWidget(text,name) {
       const definition=widgets.get(name), open=text.match(new RegExp('^<<'+name+'(?:\\s+([\\s\\S]*?))?>>','i'));let body='',length=open[0].length;
       if(definition.container){const block=container(text,name);body=block.body;length=block.length;}
@@ -331,7 +337,7 @@
       const hadArgs=Object.hasOwn(State.temporary,'args'),oldArgs=State.temporary.args,hadContents=Object.hasOwn(State.temporary,'contents'),oldContents=State.temporary.contents,hadContentsRaw=Object.hasOwn(State.temporary,'contentsRaw'),oldContentsRaw=State.temporary.contentsRaw,hadLegacy=Object.hasOwn(State.variables,'args'),oldLegacy=State.variables.args;
       State.temporary.args=parsed;State.variables.args=parsed;
       if(definition.container){State.temporary.contentsRaw=body;State.temporary.contents=compiledMarkup(compile(body));}
-      try{return {length,html:compile(definition.body)};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadContentsRaw)State.temporary.contentsRaw=oldContentsRaw;else delete State.temporary.contentsRaw;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
+      try{return {length,html:inlineWidgetHtml(compile(definition.body))};}finally{if(hadArgs)State.temporary.args=oldArgs;else delete State.temporary.args;if(hadContents)State.temporary.contents=oldContents;else delete State.temporary.contents;if(hadContentsRaw)State.temporary.contentsRaw=oldContentsRaw;else delete State.temporary.contentsRaw;if(hadLegacy)State.variables.args=oldLegacy;else delete State.variables.args;}
     }
     function restrictedError(name,context) {
       const source=context.sourcePassage||'restricted mod passage', message='Blocked <<'+name+'>> in restricted mod passage "'+source+'".';
@@ -461,7 +467,7 @@
       ],closeFn);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);

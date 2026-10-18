@@ -43,6 +43,8 @@ Recursive: <<include "RecursiveA">>
 <<masteraudio volume 0.8>>
 <<playlist "music" volume 0.4>>
 <<bird "Nighthawk">>
+Inline before <<bird "Inline">> inline after
+<<twopara>>
 <<birdnote>>flies at dusk<</birdnote>>
 <<speech "Captain">>Hello, $unsafe.
 
@@ -69,6 +71,9 @@ Visible before // this trailing comment is hidden
   ${passage('5','StoryLeftBar','Left custom')}
   ${passage('6','StoryRightBar','Right custom')}
   ${passage('7','Widgets',`<<widget "bird">>Widget bird: <<print _args[0]>><</widget>>
+<<widget "twopara">>First widget paragraph.
+
+Second widget paragraph.<</widget>>
 <<widget "birdnote" container>><strong><<print _contents>></strong><</widget>>`,'widget')}
   ${passage('8','More Widgets',`<<widget "speech" container>><div class="speech-text"><<= _contents>></div><</widget>>
 <<widget "rawnote" container>><code class="raw-contents"><<print _contentsRaw>></code><</widget>>`,'widget')}
@@ -108,7 +113,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.5.0','format version');
+assert(format.version === '1.5.1','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -134,6 +139,8 @@ assert(document.querySelector('.duplex-passage-body a[href="https://example.test
 assert(JSON.stringify(dom.window.tags('Start'))===JSON.stringify(['scrolling','opening']) && dom.window.hasTag('Start','opening'),'tag helper values');
 assert(document.body.textContent.includes('Widget bird: Nighthawk'),'non-container widget');
 assert(document.body.textContent.includes('flies at dusk'),'container widget');
+assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.includes('Inline before Widget bird: Inline inline after')),'single-paragraph widget output stays inline');
+assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent==='First widget paragraph.')&&[...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.startsWith('Second widget paragraph.')),'multi-paragraph widget output keeps its paragraphs');
 assert(document.querySelector('.speech-text [data-passage=Next]')?.textContent === 'Trusted link' && document.querySelector('.speech-text')?.textContent.includes('Widget bird: Nested'),'container widget compiles links, conditions, variables, and nested widgets with arguments available');
 assert(!document.querySelector('#injected') && !dom.window.injectionRan && document.body.textContent.includes("<script id='injected'>"),'ordinary values remain escaped for naked, print, and shorthand output');
 assert(document.querySelector('.raw-contents')?.textContent === '<<if true>>raw source<</if>>','container widget exposes original source through _contentsRaw');
