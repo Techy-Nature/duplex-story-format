@@ -44,6 +44,8 @@ Recursive: <<include "RecursiveA">>
 <<playlist "music" volume 0.4>>
 <<bird "Nighthawk">>
 Inline before <<bird "Inline">> inline after
+Grammar call: [<<bird-call>>] kept [<<bird-call keep>>][<<bird-call keep>>] generic [<<grammar "bird-call">>]
+<<run Grammar.save("call-line", "$savedCall")>>
 <<twopara>>
 <<birdnote>>flies at dusk<</birdnote>>
 <<speech "Captain">>Hello, $unsafe.
@@ -85,6 +87,8 @@ Second widget paragraph.<</widget>>
   ${passage('15','RecursiveB','recursive-b <<include "RecursiveA">>')}
   ${passage('16','UnsafeInclude','nested-script <<script>>window.modNestedRan=true;<</script>>')}
   ${passage('17','DuplexMod:collision.mod:hook','base collision passage')}
+  ${passage('19','bird-call','hoot\ntrill\n// not an option\n\ncaw','grammar')}
+  ${passage('20','call-line','a <<bird-call>> at dusk','grammar')}
   ${passage('18','StorySettings','<strong id="author-settings">Author settings</strong>')}
 </tw-storydata>`;
 
@@ -113,7 +117,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.5.1','format version');
+assert(format.version === '1.6.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -140,6 +144,12 @@ assert(JSON.stringify(dom.window.tags('Start'))===JSON.stringify(['scrolling','o
 assert(document.body.textContent.includes('Widget bird: Nighthawk'),'non-container widget');
 assert(document.body.textContent.includes('flies at dusk'),'container widget');
 assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.includes('Inline before Widget bird: Inline inline after')),'single-paragraph widget output stays inline');
+const grammarLine=[...document.querySelectorAll('.duplex-passage-body p')].map(p=>p.textContent).join('\n').match(/Grammar call: \[(hoot|trill|caw)\] kept \[(hoot|trill|caw)\]\[(hoot|trill|caw)\] generic \[(hoot|trill|caw)\]/);
+assert(grammarLine,'grammar macros print a random option inline, with <<grammar "name">> as the generic form');
+assert(grammarLine[2]===grammarLine[3]&&State.variables.grammarKept['bird-call']===grammarLine[2],'grammar keep repeats one remembered pick stored in $grammarKept');
+assert(JSON.stringify(Duplex.grammar.list('bird-call'))===JSON.stringify(['hoot','trill','caw'])&&Duplex.grammar.names().includes('call-line'),'grammar passages skip blank and // lines');
+assert(/^a (hoot|trill|caw) at dusk$/.test(State.variables.savedCall),'Grammar.save stores finished plain text with nested lists expanded');
+assert(![...document.querySelectorAll('.duplex-passage-body')].some(body=>body.textContent.includes('not an option')),'grammar comment lines are never printed');
 assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent==='First widget paragraph.')&&[...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.startsWith('Second widget paragraph.')),'multi-paragraph widget output keeps its paragraphs');
 assert(document.querySelector('.speech-text [data-passage=Next]')?.textContent === 'Trusted link' && document.querySelector('.speech-text')?.textContent.includes('Widget bird: Nested'),'container widget compiles links, conditions, variables, and nested widgets with arguments available');
 assert(!document.querySelector('#injected') && !dom.window.injectionRan && document.body.textContent.includes("<script id='injected'>"),'ordinary values remain escaped for naked, print, and shorthand output');

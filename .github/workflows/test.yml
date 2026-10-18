@@ -20,6 +20,17 @@ jobs:
           cache-dependency-path: "Duplex 1.5.0/duplex-format/package-lock.json"
       - run: npm ci
       - name: Build and run runtime tests
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test.log
+      # Show the failing check on the PR page, not only in the raw log.
+      - name: Annotate failures
+        if: failure()
+        shell: bash
+        run: |
+          grep -E 'Error' test.log | cut -c1-400 | head -20 | while IFS= read -r line; do
+            echo "::error title=runtime test::$line"
+          done
       - name: Check format.js matches src/template.html
         run: git diff --exit-code -- format.js
