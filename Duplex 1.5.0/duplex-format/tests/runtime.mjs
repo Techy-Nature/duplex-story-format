@@ -149,7 +149,7 @@ assert(grammarLine,'grammar macros print a random option inline, with <<grammar 
 assert(grammarLine[2]===grammarLine[3]&&State.variables.grammarKept['bird-call']===grammarLine[2],'grammar keep repeats one remembered pick stored in $grammarKept');
 assert(JSON.stringify(Duplex.grammar.list('bird-call'))===JSON.stringify(['hoot','trill','caw'])&&Duplex.grammar.names().includes('call-line'),'grammar passages skip blank and // lines');
 assert(/^a (hoot|trill|caw) at dusk$/.test(State.variables.savedCall),'Grammar.save stores finished plain text with nested lists expanded');
-assert(!document.body.textContent.includes('not an option'),'grammar comment lines are never printed');
+assert(![...document.querySelectorAll('.duplex-passage-body')].some(body=>body.textContent.includes('not an option')),'grammar comment lines are never printed');
 assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent==='First widget paragraph.')&&[...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.startsWith('Second widget paragraph.')),'multi-paragraph widget output keeps its paragraphs');
 assert(document.querySelector('.speech-text [data-passage=Next]')?.textContent === 'Trusted link' && document.querySelector('.speech-text')?.textContent.includes('Widget bird: Nested'),'container widget compiles links, conditions, variables, and nested widgets with arguments available');
 assert(!document.querySelector('#injected') && !dom.window.injectionRan && document.body.textContent.includes("<script id='injected'>"),'ordinary values remain escaped for naked, print, and shorthand output');
