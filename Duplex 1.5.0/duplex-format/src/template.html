@@ -85,10 +85,11 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true } };
+    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true } };
     let activeRenderTitle = null;
     const deferred = new Map();
     const widgets = new Map();
+    const grammars = new Map();
     const includeStack = [];
     const compileContexts = [];
     let Shortcuts;
@@ -324,6 +325,72 @@
         while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}
       });
     }
+    /* Grammar: passages tagged [grammar] hold one option per line. <<name>>
+       prints a random option (compiled, so options may hold markup, $variables
+       and other grammar macros); <<name keep>> remembers one pick in
+       $grammarKept so it survives saves. Duplex.grammar is the JavaScript API. */
+    const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
+    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar']);
+    const grammarLast=new Map();
+    let grammarDepth=0;
+    function grammarOptions(text){return String(text).split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('//'));}
+    function defineGrammar(name,options){
+      name=String(name??'').trim();if(!name)throw new Error('A grammar list needs a name.');
+      const list=Array.isArray(options)?options.map(String).filter(option=>option.trim()):grammarOptions(options);
+      grammars.set(name,list);grammarLast.delete(name);
+      if(!/^[A-Za-z][\w-]*$/.test(name))console.warn('Duplex grammar: "'+name+'" cannot be used as <<'+name+'>>; use <<grammar "'+name+'">>.');
+      else if(GRAMMAR_RESERVED.has(name.toLowerCase()))console.warn('Duplex grammar: "'+name+'" is a built-in macro name; use <<grammar "'+name+'">>.');
+      else if(widgets.has(name))console.warn('Duplex grammar: widget <<'+name+'>> takes priority over the grammar list of the same name; use <<grammar "'+name+'">>.');
+      return list.slice();
+    }
+    function defineGrammars(){passages.forEach(passage=>{if(passage.tags.includes('grammar'))defineGrammar(passage.name,passage.text);});}
+    function grammarPick(name){
+      name=String(name??'').trim();const options=grammars.get(name);
+      if(!options){console.warn('Duplex grammar: no [grammar] passage named "'+name+'".');return '';}
+      if(!options.length)return '';
+      const last=grammarLast.get(name);let choice=random(options);
+      if(Config.grammar?.avoidRepeats!==false&&options.length>2&&choice===last)choice=random(options.filter(option=>option!==last))??choice;
+      grammarLast.set(name,choice);return choice;
+    }
+    function grammarStore(){const vars=State.variables;if(!vars[GRAMMAR_KEPT]||typeof vars[GRAMMAR_KEPT]!=='object')vars[GRAMMAR_KEPT]={};return vars[GRAMMAR_KEPT];}
+    function grammarKept(name,reroll){name=String(name??'').trim();const kept=grammarStore();if(reroll||!Object.hasOwn(kept,name))kept[name]=grammarPick(name);return kept[name];}
+    function grammarSource(name,args){const words=args.map(word=>String(word).toLowerCase());return words.includes('reroll')?grammarKept(name,true):words.includes('keep')?grammarKept(name,false):grammarPick(name);}
+    function grammarHtml(source,context){
+      if(grammarDepth>=GRAMMAR_MAX_DEPTH){console.error('Duplex grammar: lists are nested more than '+GRAMMAR_MAX_DEPTH+' deep (does a list always include itself?).');return '';}
+      grammarDepth++;try{return inlineWidgetHtml(compile(source,context));}finally{grammarDepth--;}
+    }
+    // Finished plain text for variables: markup, $variables and nested lists are rendered first.
+    function grammarText(source){const holder=document.createElement('div');holder.innerHTML=grammarHtml(source,{restricted:false,sourcePassage:activeRenderTitle});return holder.textContent.replace(/\s+/g,' ').trim();}
+    function grammarTarget(target){
+      let path=String(target??'').trim();
+      if(/^State\.variables\./.test(path))path='$'+path.slice(16);
+      else if(/^State\.temporary\./.test(path))path='_'+path.slice(16);
+      else if(!/^[\$_]/.test(path))path='$'+path;
+      return path;
+    }
+    // Returns {length,html} for <<name ...>> or <<grammar "name" ...>>, or null when it is not a grammar call.
+    function grammarMacro(rest,context){
+      const call=rest.match(/^<<([A-Za-z][\w-]*)((?:\s[^>]*)?)>>/);if(!call)return null;
+      const macroName=call[1],args=tokens(call[2]||'');let name;
+      if(macroName.toLowerCase()==='grammar'){if(!args.length){console.warn('Duplex grammar: <<grammar>> needs a list name.');return {length:call[0].length,html:''};}const first=args.shift();try{name=String(value(first));}catch(_){name=String(first);}}
+      else if(grammars.has(macroName)&&!GRAMMAR_RESERVED.has(macroName.toLowerCase()))name=macroName;
+      else return null;
+      if(context.restricted)return {length:call[0].length,html:restrictedError(macroName,context)};
+      return {length:call[0].length,html:grammarHtml(grammarSource(name,args),context)};
+    }
+    const Grammar=window.Grammar={
+      pick:name=>grammarText(grammarPick(name)),
+      pickRaw:name=>grammarPick(name),
+      kept:name=>grammarText(grammarKept(name,false)),
+      reroll:name=>grammarText(grammarKept(name,true)),
+      save(name,target){const text=grammarText(grammarPick(name));setReceiver(grammarTarget(target),text);return text;},
+      keep(name,target){const path=grammarTarget(target),current=getReceiver(path);if(current!==undefined&&current!==null&&current!=='')return current;return Grammar.save(name,path);},
+      forget(name){const kept=grammarStore();if(name==null)Object.keys(kept).forEach(key=>delete kept[key]);else delete kept[String(name).trim()];},
+      has:name=>grammars.has(String(name??'').trim()),
+      list:name=>(grammars.get(String(name??'').trim())||[]).slice(),
+      names:()=>[...grammars.keys()],
+      define:defineGrammar
+    };
     // compile() wraps its result in paragraph tags. A widget whose output is a
     // single paragraph is unwrapped so <<name>> prints inline, mid-sentence.
     function inlineWidgetHtml(html) {
@@ -399,6 +466,7 @@
         }
         const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
         if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[^>]*>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
+        const grammarCall=grammarMacro(rest,context);if(grammarCall){out+=grammarCall.html;i+=grammarCall.length;continue;}
         const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
         const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
         if (link) {
@@ -467,7 +535,7 @@
       ],closeFn);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.5.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.6.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
@@ -732,9 +800,9 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
-    function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
+    function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}
   })();
   </script>

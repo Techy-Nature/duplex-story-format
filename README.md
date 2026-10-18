@@ -1,4 +1,4 @@
-# [Duplex 1.5.1](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.6.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -30,7 +30,7 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.5.1** for your story.
+4. Select **Duplex 1.6.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -172,6 +172,45 @@ Container widgets are also supported with the `container` keyword and `_contents
   <aside class="bird-note"><<= _contents>></aside>
 <</widget>>
 ```
+
+## Grammar
+
+Tag a passage `grammar` to make a word list. Each non-blank line is one option; lines starting with `//` are skipped. Repeat a line to make it more likely.
+
+```twine
+:: wolf-like [grammar]
+wolfish
+wolfin
+wolf-like
+lupine
+```
+
+The passage name becomes a macro that prints a random option, inline:
+
+```twine
+Its <<wolf-like>> eyes caught the light.
+```
+
+| Use | Result |
+| --- | --- |
+| `<<wolf-like>>` | A random option, new every time. |
+| `<<wolf-like keep>>` | Picks once, then repeats that pick. Stored in `$grammarKept`, so it is saved. |
+| `<<wolf-like reroll>>` | Picks a new kept option. |
+| `<<grammar "wolf-like">>` | Same as `<<wolf-like>>`; also works for names that clash with a macro. `keep` and `reroll` work here too. |
+
+Options are processed like passage text, so they can hold `$variables`, links, HTML, and other grammar macros, including the list's own name for recursive lists (nesting stops at 20 levels).
+
+To store a pick in a variable that stays the same:
+
+```twine
+<<run Grammar.save("wolf-like", "$wolfWord")>>   /* always picks new */
+<<run Grammar.keep("wolf-like", "$wolfWord")>>   /* only if $wolfWord is empty */
+<<set $wolfWord to Grammar.pick("wolf-like")>>
+```
+
+Saved values are finished plain text: nested lists and variables are already filled in. The JavaScript API is `Grammar` (also `Duplex.grammar`): `pick`, `pickRaw`, `save`, `keep`, `kept`, `reroll`, `forget`, `has`, `list`, `names`, and `define(name, options)`. Set `Config.grammar.avoidRepeats = false` to allow the same option twice in a row.
+
+Use hyphens rather than underscores in list names: Duplex reads `_word` as a temporary variable.
 
 ## Passage tags
 
