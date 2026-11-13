@@ -35,6 +35,17 @@
     .duplex-shortcut-row { display:grid; grid-template-columns:minmax(8rem,1fr) auto; align-items:center; gap:1rem; }
     .duplex-shortcut-row button { min-width:8.5rem; }
     .duplex-shortcut-help { color:var(--duplex-muted); font-size:.9rem; }
+    .duplex-content-notice { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1rem; margin:0 0 1rem; padding:.6rem .9rem; border:1px solid color-mix(in srgb,var(--duplex-accent) 30%,transparent); border-left:.25rem solid var(--duplex-accent); border-radius:.5rem; background:color-mix(in srgb,var(--duplex-accent) 8%,var(--duplex-panel)); font-size:.95rem; }
+    .duplex-content-notice.is-skipped { display:block; }
+    .duplex-content-notice p { margin:.2rem 0; }
+    .duplex-content-label { color:var(--duplex-muted); }
+    .duplex-content-label strong { color:var(--duplex-text); }
+    .duplex-content-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.6rem; }
+    .duplex-skip-summary { color:var(--duplex-muted); font-style:italic; }
+    .duplex-skip-settings { margin:1.25rem 0; padding-top:1rem; border-top:1px solid #ffffff20; }
+    .duplex-skip-settings h3 { margin:0 0 .5rem; font-size:1rem; }
+    .duplex-skip-row { display:flex; align-items:center; gap:.65rem; padding:.25rem 0; cursor:pointer; }
+    .duplex-skip-row input { width:1.1rem; height:1.1rem; accent-color:var(--duplex-accent); }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
     .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
@@ -85,7 +96,20 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true } };
+    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
+      // Passage tags that count as content tags. Readers can skip passages carrying any of them.
+      tags: ['skip','sex','violence','gore','abuse','self-harm','drugs','death'],
+      // Reader-facing names for tags. Tags without a label are shown as written.
+      labels: { skip:'Skippable scene', sex:'Sexual content', violence:'Violence', gore:'Gore', abuse:'Abuse', 'self-harm':'Self-harm', drugs:'Drug use', death:'Death' },
+      // Tags skipped automatically until the reader changes the setting.
+      defaults: [],
+      // Show a content notice with a Skip button on tagged passages that are not skipped automatically.
+      showNotice: true,
+      // Go straight to the skip target when a passage is skipped automatically, instead of showing a placeholder.
+      autoAdvance: false,
+      // List every tag in Config.skip.tags in Settings, not only the tags this story uses.
+      showAllTags: false
+    } };
     let activeRenderTitle = null;
     const deferred = new Map();
     const widgets = new Map();
@@ -187,6 +211,7 @@
     }
     function compiledMarkup(html) { return new CompiledMarkup(html); }
     function escapeHtml(value) { const el=document.createElement('span'); el.textContent=String(value ?? ''); return el.innerHTML; }
+    function attr(value) { return escapeHtml(value).replace(/"/g,'&quot;'); }
     function sanitizeRestrictedHtml(html) {
       const template=document.createElement('template');template.innerHTML=html;
       const allowedElements=new Set(['A','B','BLOCKQUOTE','BR','BUTTON','CODE','DIV','EM','H1','H2','H3','H4','H5','H6','I','IMG','INPUT','LI','OL','OPTION','P','PRE','SELECT','SPAN','STRONG','TEXTAREA','U','UL']), dropContents=new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','TEMPLATE']), allowedAttributes=new Set(['alt','autofocus','checked','class','disabled','href','max','min','name','placeholder','selected','src','step','title','type','value','data-duplex-action','data-passage']);
@@ -439,6 +464,9 @@
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
         if (/^<<script(?:\s|>>)/i.test(rest)) { const found=container(rest,'script');if(context.restricted)out+=restrictedError('script',context);else out+=scriptMacro(rest).html;i+=found.length;continue; }
+        const skipTo=rest.match(/^<<skipto\s+([\s\S]*?)>>/i);
+        if(skipTo){const target=value(tokens(skipTo[1])[0]);if(target!=null&&String(target))out+='<template data-duplex-skip-target="'+attr(target)+'"></template>';i+=skipTo[0].length;continue;}
+        if(/^<<skipsummary(?:\s|>>)/i.test(rest)){const found=container(rest,'skipsummary');out+='<template class="duplex-skip-summary-source">'+compile(found.body,context)+'</template>';i+=found.length;continue;}
         const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
         if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
         const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
@@ -529,13 +557,14 @@
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
-      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>',[
+      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),[
         {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
         {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
       ],closeFn);
+      ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.6.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.7.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
@@ -625,7 +654,7 @@
       Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=mod.id+' · '+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
     }
     function saveKey(){return 'duplex-save-'+storyId();}
-    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode})=>({title,baseHtml,variables:clone(variables),mode})),variables:clone(State.variables)};}
+    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode,revealed})=>({title,baseHtml,variables:clone(variables),mode,...(revealed?{revealed:true}:{})})),variables:clone(State.variables)};}
     function validateSave(value,{allowLegacy=false}={}) {
       if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
       const legacy=!value.format&&allowLegacy&&Array.isArray(value.history)&&value.variables&&typeof value.variables==='object';
@@ -633,7 +662,7 @@
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
-      const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode}));
+      const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
       const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),warnings};
     }
     function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
@@ -718,7 +747,74 @@
       jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:title,action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
       share(options,closeFn){const url=location.href;if(navigator.share)navigator.share({title:document.title,url}).finally(()=>closeFn?.());else dialog(options?.title||'Share','<p><a href="'+escapeHtml(url)+'">'+escapeHtml(url)+'</a></p>',[],closeFn);}
     };
-    function render(title, restoreBaseHtml) {
+    // Content skipping: passages tagged with a content tag (Config.skip.tags) get a notice with a Skip button,
+    // and readers can choose tags to skip automatically from Settings. The passage still runs, so its
+    // variables stay consistent; only its text is hidden. Skip targets come from <<skipto>> or the first link.
+    const articleEntries=new WeakMap();
+    let skipChain=0;
+    const ContentSkip=window.Skip=(()=>{
+      const storageKey=()=>'duplex-skip-'+storyId();
+      const norm=tag=>String(tag??'').trim().toLowerCase();
+      const configured=()=>[...new Set((Array.isArray(Config.skip?.tags)?Config.skip.tags:[]).map(norm).filter(Boolean))];
+      function stored(){try{const saved=JSON.parse(localStorage.getItem(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};}catch(_){return {};}}
+      function writeStored(saved){try{localStorage.setItem(storageKey(),JSON.stringify(saved));}catch(_){}}
+      function label(tag){const key=norm(tag),labels=Config.skip?.labels||{};return String(labels[key]??labels[tag]??tag);}
+      function isSkipped(tag){const key=norm(tag),saved=stored();if(Object.hasOwn(saved,key))return saved[key]===true;return (Config.skip?.defaults||[]).map(norm).includes(key);}
+      function set(tag,skipped){const key=norm(tag);if(!key)throw new Error('A content tag name is required.');const saved=stored();saved[key]=Boolean(skipped);writeStored(saved);refresh();return api;}
+      function reset(){try{localStorage.removeItem(storageKey());}catch(_){}refresh();return api;}
+      function storyTags(){const used=new Set();passages.forEach(passage=>passage.tags.forEach(tag=>used.add(norm(tag))));return used;}
+      function available(){const used=storyTags(),defaults=(Config.skip?.defaults||[]).map(norm);return configured().filter(tag=>Config.skip?.showAllTags||used.has(tag)||defaults.includes(tag));}
+      function contentTags(passageName){const list=configured();return tags(passageName).filter(tag=>list.includes(norm(tag)));}
+      function shouldSkip(passageName){return contentTags(passageName).some(isSkipped);}
+      function targetFor(article){
+        if(!article)return null;
+        const explicit=article.querySelector('.duplex-passage-body template[data-duplex-skip-target]');
+        if(explicit)return explicit.getAttribute('data-duplex-skip-target');
+        const link=[...article.querySelectorAll('.duplex-passage-body [data-passage]')].find(item=>item.dataset.passage!==article.dataset.passage);
+        return link?link.dataset.passage:null;
+      }
+      const currentArticle=()=>output.lastElementChild;
+      function skipArticle(article){const target=targetFor(article);if(!target)return false;go(target);return true;}
+      function button(text,dataName,target){const element=document.createElement('button');element.type='button';element.textContent=text;element.setAttribute(dataName,'');if(dataName==='data-duplex-skip'&&!target){element.disabled=true;element.title='This passage has no link to skip to.';}return element;}
+      function decorate(article){
+        const title=article.dataset.passage,entry=articleEntries.get(article),body=article.querySelector('.duplex-passage-body');
+        article.querySelector(':scope > .duplex-content-notice')?.remove();
+        article.classList.remove('is-content-skipped');if(body)body.hidden=false;
+        const found=contentTags(title);if(!found.length||!body)return false;
+        const names=found.map(label).join(', '),target=targetFor(article),skipped=!entry?.revealed&&found.some(isSkipped);
+        const notice=document.createElement('div');notice.className='duplex-content-notice';notice.setAttribute('role','note');notice.dataset.contentTags=found.map(norm).join(' ');
+        if(skipped){
+          notice.classList.add('is-skipped');article.classList.add('is-content-skipped');body.hidden=true;
+          const message=document.createElement('p');message.className='duplex-content-label';message.append('Skipped a passage tagged ');const strong=document.createElement('strong');strong.textContent=names;message.append(strong,'.');notice.append(message);
+          const source=body.querySelector('template.duplex-skip-summary-source');
+          if(source&&source.innerHTML.trim()){const summary=document.createElement('div');summary.className='duplex-skip-summary';summary.innerHTML=source.innerHTML;notice.append(summary);}
+          const actions=document.createElement('div');actions.className='duplex-content-actions';actions.append(button('Continue','data-duplex-skip',target),button('Show anyway','data-duplex-reveal'));notice.append(actions);
+        } else {
+          if(Config.skip?.showNotice===false)return false;
+          const message=document.createElement('span');message.className='duplex-content-label';message.append('Content: ');const strong=document.createElement('strong');strong.textContent=names;message.append(strong);
+          notice.append(message,button('Skip','data-duplex-skip',target));
+        }
+        const heading=article.querySelector('.duplex-passage-title');if(heading)heading.after(notice);else article.prepend(notice);
+        return skipped;
+      }
+      function refresh(){output.querySelectorAll(':scope > article.duplex-passage').forEach(decorate);return api;}
+      function reveal(article){const entry=articleEntries.get(article);if(entry)entry.revealed=true;decorate(article);article.querySelector('.duplex-content-notice [data-duplex-skip]')?.focus?.();}
+      function settingsHtml(){
+        const list=available();
+        const rows=list.map(tag=>'<label class="duplex-skip-row"><input type="checkbox" data-duplex-skip-tag="'+attr(tag)+'"'+(isSkipped(tag)?' checked':'')+'> <span>'+escapeHtml(label(tag))+'</span></label>').join('');
+        return '<section class="duplex-skip-settings" aria-label="Content"><h3>Content</h3>'+(list.length?'<p class="duplex-shortcut-help">Passages with a checked tag are skipped automatically. You can still choose to show a skipped passage.</p>'+rows:'<p class="duplex-shortcut-help">This story has no content tags.</p>')+'</section>';
+      }
+      function bindSettings(box){box.querySelectorAll('[data-duplex-skip-tag]').forEach(input=>input.addEventListener('change',()=>set(input.dataset.duplexSkipTag,input.checked)));}
+      const api={
+        tags:configured,available,label,isSkipped,set,reset,contentTags,shouldSkip,refresh,settingsHtml,bindSettings,decorate,
+        list(){return available().map(tag=>({tag,label:label(tag),skipped:isSkipped(tag)}));},
+        target(passageName){if(passageName==null)return targetFor(currentArticle());const matches=[...output.querySelectorAll(':scope > article.duplex-passage')].filter(article=>article.dataset.passage===String(passageName));return targetFor(matches.at(-1));},
+        skip(){const article=currentArticle();if(!article||!contentTags(article.dataset.passage).length)return false;return skipArticle(article);},
+        skipArticle,reveal
+      };
+      return api;
+    })();
+    function render(title, restoreBaseHtml, entry) {
       const passage=passages.get(title);
       if (!passage) { output.insertAdjacentHTML('beforeend','<div class="duplex-error">Passage not found: ' + escapeHtml(title) + '</div>'); return; }
       State.temporary=Object.create(null);
@@ -729,24 +825,30 @@
       finally { activeRenderTitle=previousRenderTitle; }
       const article=document.createElement('article'); article.className='duplex-passage'; article.dataset.passage=title;
       article.innerHTML='<h2 class="duplex-passage-title">' + escapeHtml(title) + '</h2><div class="duplex-passage-body">' + html + '</div>';
+      if(entry)articleEntries.set(article,entry);
       output.append(article);
+      if(entry)entry.contentSkipped=ContentSkip.decorate(article);
       return baseHtml;
     }
     function go(title) {
       if (!passages.has(title)) return render(title);
       if(State.history.length)State.history.at(-1).variables=clone(State.variables);
       if (mode() === 'replace') output.replaceChildren();
-      const baseHtml=render(title);
-      State.history.push({title,baseHtml,variables:clone(State.variables),mode:mode()});
+      const entry={title};
+      const baseHtml=render(title,undefined,entry);
+      const skipped=entry.contentSkipped===true;delete entry.contentSkipped;
+      Object.assign(entry,{baseHtml,variables:clone(State.variables),mode:mode()});
+      State.history.push(entry);
       document.querySelector('#duplex-back').disabled=State.history.length < 2;
       UI.update();
       if (mode() === 'append') articleScroll(); else window.scrollTo({top:0,behavior:'instant'});
+      if(skipped&&Config.skip?.autoAdvance&&skipChain<20){const target=ContentSkip.target();if(target&&passages.has(target)&&target!==title){skipChain++;try{go(target);}finally{skipChain--;}}}
     }
     function articleScroll() { output.lastElementChild?.scrollIntoView({behavior:'smooth',block:'start'}); }
     function rebuild() {
       output.replaceChildren();
       const visible = State.history.at(-1)?.mode === 'append' ? State.history : State.history.slice(-1);
-      visible.forEach(entry => render(entry.title,entry.baseHtml));
+      visible.forEach(entry => {render(entry.title,entry.baseHtml,entry);delete entry.contentSkipped;});
       document.querySelector('#duplex-back').disabled=State.history.length < 2;
       UI.update();
     }
@@ -771,7 +873,7 @@
         if(item.target)go(String(item.target));
       }
     }
-    document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const link=event.target.closest('[data-passage]'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
+    document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const skipButton=event.target.closest('[data-duplex-skip]');if(skipButton){event.preventDefault();if(!skipButton.disabled)ContentSkip.skipArticle(skipButton.closest('article.duplex-passage'));return;} const revealButton=event.target.closest('[data-duplex-reveal]');if(revealButton){event.preventDefault();ContentSkip.reveal(revealButton.closest('article.duplex-passage'));return;} const link=event.target.closest('[data-passage]:not(article)'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
     document.addEventListener('change',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
     document.addEventListener('input',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
     function activateStoryChoice(number){const links=[...output.querySelectorAll('.duplex-passage-body [data-passage]')].filter(link=>!link.closest('[hidden]'));const link=number===0?links.at(-1):links[number-1];if(link)link.click();}
@@ -785,6 +887,7 @@
     Shortcuts.add('inventory',{label:'Inventory',defaultShortcut:'Shift+I',action:()=>Inventory.open()});
     Shortcuts.add('story-settings',{label:'Story settings',defaultShortcut:'Shift+Alt',action:()=>UI.settings()});
     Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:restart});
+    Shortcuts.add('skip',{label:'Skip tagged passage',defaultShortcut:'Shift+S',action:()=>ContentSkip.skip()});
     Shortcuts.add('select',{label:'Select',defaultShortcut:'Enter',action:event=>{const target=document.activeElement;if(target&&target!==document.body&&typeof target.click==='function')target.click();}});
     document.addEventListener('keydown',event=>{
       const recorder=event.target.closest?.('[data-shortcut-id][data-recording]');
@@ -800,7 +903,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

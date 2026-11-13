@@ -117,7 +117,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.6.0','format version');
+assert(format.version === '1.7.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -324,5 +324,55 @@ const emptyPersistentHtml=format.source.replace('{{STORY_NAME}}','Persistent Tes
 const firstPersistent=new JSDOM(emptyPersistentHtml,persistentOptions);await firstPersistent.window.Duplex.ready;await firstPersistent.window.Duplex.mods.import({schema:1,id:'persist.mod',name:'Persistent',version:'1.0.0',items:[{id:'token',name:'Token'}]});firstPersistent.window.close();
 const restoredPersistent=new JSDOM(persistentHtml,persistentOptions);await restoredPersistent.window.Duplex.ready;
 assert(restoredPersistent.window.Duplex.mods.has('persist.mod')&&restoredPersistent.window.State.variables.modWasReady==='persist.mod:token','IndexedDB mods restore before StoryInit and the starting passage');restoredPersistent.window.close();
+
+// Content tags: notice + Skip button, reader auto-skip settings, <<skipto>>, <<skipsummary>>, saves, and the shortcut.
+const skipStory=`<tw-storydata name="Skip Test" ifid="SKIP-IFID" startnode="1">
+  ${passage('1','Start','Choose. [[Fight]] [[Quiet->Calm]]')}
+  ${passage('2','Fight','<<set $fought to true>>Blood everywhere. <<skipsummary>>You win the fight. [[Summary link->Calm]]<</skipsummary>>[[Back home->Start]] [[After]]<<skipto "After">>','violence gore')}
+  ${passage('3','Calm','Peaceful. [[Romance]]')}
+  ${passage('4','Romance','A tender moment. [[After]]','Sex')}
+  ${passage('5','After','The end.')}
+  ${passage('6','Dead end','Nothing links out.','skip')}
+</tw-storydata>`;
+const skipDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}});
+const sw=skipDom.window, sd=sw.document, last=()=>sd.querySelector('#duplex-passages > article:last-child');
+sd.querySelector('.duplex-passage-body p').click();
+assert(sw.State.history.length===1,'clicking passage text does not re-navigate to the same passage');
+assert(!sd.querySelector('.duplex-content-notice'),'untagged passages have no content notice');
+sw.Duplex.go('Fight');
+let notice=last().querySelector('.duplex-content-notice');
+assert(notice&&notice.textContent.includes('Violence, Gore')&&!notice.classList.contains('is-skipped')&&!last().querySelector('.duplex-passage-body').hidden,'tagged passage shows a labelled content notice and its text');
+assert(sw.Duplex.skip.target()==='After','<<skipto>> sets the skip target ahead of the first link');
+assert(!last().querySelector('.duplex-passage-body').textContent.includes('You win the fight'),'skip summary is hidden while the passage is shown');
+notice.querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title==='After'&&sw.State.variables.fought===true,'Skip button jumps to the target, and the skipped passage still ran');
+sw.Duplex.go('Romance');
+assert(last().querySelector('.duplex-content-notice').textContent.includes('Sexual content'),'tag matching ignores case and uses labels');
+assert(sw.Duplex.skip.target()==='After','first link is the fallback skip target');
+sw.Duplex.go('Dead end');
+assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false,'Skip is disabled when there is nowhere to go');
+sw.UI.settings();
+const rows=[...sd.querySelectorAll('[data-duplex-skip-tag]')].map(input=>input.dataset.duplexSkipTag);
+assert(rows.join(',')==='skip,sex,violence,gore','settings list only content tags the story uses, in configured order');
+const violenceBox=sd.querySelector('[data-duplex-skip-tag="violence"]');violenceBox.checked=true;violenceBox.dispatchEvent(new sw.Event('change',{bubbles:true}));
+assert(sw.Duplex.skip.isSkipped('violence')&&JSON.parse(sw.localStorage.getItem('duplex-skip-SKIP-IFID')).violence===true,'reader choice is stored per story');
+sd.querySelector('#duplex-dialog-actions button:last-child').click();
+sw.Duplex.go('Fight');
+notice=last().querySelector('.duplex-content-notice');
+assert(notice.classList.contains('is-skipped')&&last().querySelector('.duplex-passage-body').hidden&&notice.querySelector('.duplex-skip-summary').textContent.includes('You win the fight'),'auto-skipped passage is hidden behind a placeholder with its summary');
+assert(notice.querySelector('.duplex-skip-summary [data-passage=Calm]'),'links in the skip summary work');
+notice.querySelector('[data-duplex-reveal]').click();
+assert(!last().querySelector('.duplex-passage-body').hidden&&sw.State.history.at(-1).revealed===true&&!last().querySelector('.duplex-content-notice.is-skipped'),'Show anyway reveals the passage and remembers it');
+sw.Save.save();sw.Duplex.go('Calm');sw.Save.load();
+assert(sw.State.history.at(-1).title==='Fight'&&sw.State.history.at(-1).revealed===true&&!last().querySelector('.duplex-passage-body').hidden,'saves keep revealed passages revealed');
+sw.Duplex.go('Calm');sw.Duplex.back();
+assert(!last().querySelector('.duplex-passage-body').hidden,'revealed passages stay revealed after Back');
+sw.Duplex.skip.set('violence',false);
+assert(!last().querySelector('.duplex-content-notice.is-skipped'),'changing a setting refreshes visible passages');
+sd.dispatchEvent(new sw.KeyboardEvent('keydown',{key:'S',shiftKey:true,bubbles:true,cancelable:true}));
+assert(sw.State.history.at(-1).title==='After','Shift+S skips the current tagged passage');
+sw.Config.skip.autoAdvance=true;sw.Duplex.skip.set('gore',true);sw.Duplex.go('Fight');
+assert(sw.State.history.at(-1).title==='After'&&sw.State.history.at(-2).title==='Fight','autoAdvance passes straight through auto-skipped passages');
+skipDom.window.close();
 
 console.log('Duplex runtime tests passed.');
