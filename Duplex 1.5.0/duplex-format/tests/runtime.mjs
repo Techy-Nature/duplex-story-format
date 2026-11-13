@@ -333,6 +333,7 @@ const skipStory=`<tw-storydata name="Skip Test" ifid="SKIP-IFID" startnode="1">
   ${passage('4','Romance','A tender moment. [[After]]','Sex')}
   ${passage('5','After','The end.')}
   ${passage('6','Dead end','Nothing links out.','skip')}
+  ${passage('7','Broken','<<skipto "Nowhere">>[[After]]','skip')}
 </tw-storydata>`;
 const skipDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}});
 const sw=skipDom.window, sd=sw.document, last=()=>sd.querySelector('#duplex-passages > article:last-child');
@@ -373,6 +374,12 @@ sd.dispatchEvent(new sw.KeyboardEvent('keydown',{key:'S',shiftKey:true,bubbles:t
 assert(sw.State.history.at(-1).title==='After','Shift+S skips the current tagged passage');
 sw.Config.skip.autoAdvance=true;sw.Duplex.skip.set('gore',true);sw.Duplex.go('Fight');
 assert(sw.State.history.at(-1).title==='After'&&sw.State.history.at(-2).title==='Fight','autoAdvance passes straight through auto-skipped passages');
+sw.Config.skip.autoAdvance=false;
+sw.Config.skip.defaults='death';sw.Config.skip.labels=sw.Object.assign(sw.Object.create(null),{});
+assert(sw.Duplex.skip.isSkipped('death')&&sw.Duplex.skip.label('constructor')==='constructor','a single default tag string works and labels ignore inherited keys');
+sw.Config.skip.labels={};sw.Duplex.skip.set('constructor',true);assert(sw.Duplex.skip.label('constructor')==='constructor'&&sw.Duplex.skip.isSkipped('constructor')&&!sw.Duplex.skip.isSkipped('toString'),'stored choices ignore inherited keys');
+sw.Duplex.go('Broken');
+assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
 skipDom.window.close();
 
 console.log('Duplex runtime tests passed.');

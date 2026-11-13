@@ -755,15 +755,17 @@
     const ContentSkip=window.Skip=(()=>{
       const storageKey=()=>'duplex-skip-'+storyId();
       const norm=tag=>String(tag??'').trim().toLowerCase();
-      const configured=()=>[...new Set((Array.isArray(Config.skip?.tags)?Config.skip.tags:[]).map(norm).filter(Boolean))];
-      function stored(){try{const saved=JSON.parse(localStorage.getItem(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};}catch(_){return {};}}
+      const toList=value=>(Array.isArray(value)?value:value==null?[]:[value]).map(norm).filter(Boolean);
+      const configured=()=>[...new Set(toList(Config.skip?.tags))];
+      const defaultTags=()=>toList(Config.skip?.defaults);
+      function stored(){try{const saved=JSON.parse(localStorage.getItem(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?Object.assign(Object.create(null),saved):Object.create(null);}catch(_){return Object.create(null);}}
       function writeStored(saved){try{localStorage.setItem(storageKey(),JSON.stringify(saved));}catch(_){}}
-      function label(tag){const key=norm(tag),labels=Config.skip?.labels||{};return String(labels[key]??labels[tag]??tag);}
-      function isSkipped(tag){const key=norm(tag),saved=stored();if(Object.hasOwn(saved,key))return saved[key]===true;return (Config.skip?.defaults||[]).map(norm).includes(key);}
+      function label(tag){const key=norm(tag),labels=Config.skip?.labels&&typeof Config.skip.labels==='object'?Config.skip.labels:{};return String(Object.hasOwn(labels,key)?labels[key]:Object.hasOwn(labels,tag)?labels[tag]:tag);}
+      function isSkipped(tag){const key=norm(tag),saved=stored();if(Object.hasOwn(saved,key))return saved[key]===true;return defaultTags().includes(key);}
       function set(tag,skipped){const key=norm(tag);if(!key)throw new Error('A content tag name is required.');const saved=stored();saved[key]=Boolean(skipped);writeStored(saved);refresh();return api;}
       function reset(){try{localStorage.removeItem(storageKey());}catch(_){}refresh();return api;}
       function storyTags(){const used=new Set();passages.forEach(passage=>passage.tags.forEach(tag=>used.add(norm(tag))));return used;}
-      function available(){const used=storyTags(),defaults=(Config.skip?.defaults||[]).map(norm);return configured().filter(tag=>Config.skip?.showAllTags||used.has(tag)||defaults.includes(tag));}
+      function available(){const used=storyTags(),defaults=defaultTags();return configured().filter(tag=>Config.skip?.showAllTags||used.has(tag)||defaults.includes(tag));}
       function contentTags(passageName){const list=configured();return tags(passageName).filter(tag=>list.includes(norm(tag)));}
       function shouldSkip(passageName){return contentTags(passageName).some(isSkipped);}
       function targetFor(article){
@@ -774,14 +776,15 @@
         return link?link.dataset.passage:null;
       }
       const currentArticle=()=>output.lastElementChild;
-      function skipArticle(article){const target=targetFor(article);if(!target)return false;go(target);return true;}
-      function button(text,dataName,target){const element=document.createElement('button');element.type='button';element.textContent=text;element.setAttribute(dataName,'');if(dataName==='data-duplex-skip'&&!target){element.disabled=true;element.title='This passage has no link to skip to.';}return element;}
+      function skipArticle(article){const target=targetFor(article);if(!target||!passages.has(target))return false;go(target);return true;}
+      function button(text,dataName,target){const element=document.createElement('button');element.type='button';element.textContent=text;element.setAttribute(dataName,'');if(dataName==='data-duplex-skip'&&(!target||!passages.has(target))){element.disabled=true;element.title=target?'The skip target “'+target+'” does not exist.':'This passage has no link to skip to.';}return element;}
       function decorate(article){
         const title=article.dataset.passage,entry=articleEntries.get(article),body=article.querySelector('.duplex-passage-body');
         article.querySelector(':scope > .duplex-content-notice')?.remove();
         article.classList.remove('is-content-skipped');if(body)body.hidden=false;
         const found=contentTags(title);if(!found.length||!body)return false;
         const names=found.map(label).join(', '),target=targetFor(article),skipped=!entry?.revealed&&found.some(isSkipped);
+        if(target&&!passages.has(target))console.warn('Duplex skip: passage “'+title+'” skips to missing passage “'+target+'”.');
         const notice=document.createElement('div');notice.className='duplex-content-notice';notice.setAttribute('role','note');notice.dataset.contentTags=found.map(norm).join(' ');
         if(skipped){
           notice.classList.add('is-skipped');article.classList.add('is-content-skipped');body.hidden=true;
