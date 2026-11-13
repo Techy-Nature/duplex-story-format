@@ -8,7 +8,10 @@
     :root { color-scheme: dark; --duplex-accent:#83c5be; --duplex-bg:#17191d; --duplex-panel:#22252b; --duplex-text:#f1f3f5; --duplex-muted:#aeb5bd; --duplex-bar-width:17rem; --duplex-bar-stowed:3.25rem; --duplex-left-space:var(--duplex-bar-width); --duplex-right-space:var(--duplex-bar-width); }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--duplex-bg); color:var(--duplex-text); font:18px/1.65 system-ui,sans-serif; }
-    #duplex-shell { width:min(48rem,calc(100% - 2rem)); margin:0 auto; padding:3rem 0 7rem; transform:translateX(calc((var(--duplex-left-space) - var(--duplex-right-space))/2)); transition:transform .2s ease; }
+    /* The story column sits between the two bars: each side reserves the space its bar takes, plus a gutter. */
+    #duplex-shell { --duplex-gutter:1rem; width:100%; margin:0; padding:3rem calc(var(--duplex-right-space) + var(--duplex-gutter)) 7rem calc(var(--duplex-left-space) + var(--duplex-gutter)); transition:padding .2s ease; }
+    #duplex-passages { max-width:48rem; margin:0 auto; overflow-wrap:break-word; }
+    #duplex-passages img, #duplex-passages video { max-width:100%; height:auto; }
     .duplex-ui-bar { position:fixed; z-index:20; inset-block:0; width:var(--duplex-bar-width); padding:1rem; overflow:auto; background:var(--duplex-panel); border-color:#ffffff20; transition:width .2s ease,transform .2s ease; }
     .duplex-ui-bar[data-side="left"] { left:0; border-right:1px solid; }
     .duplex-ui-bar[data-side="right"] { right:0; border-left:1px solid; }
@@ -53,7 +56,9 @@
     tw-storydata { display:none; }
     @keyframes duplex-in { from { opacity:0; transform:translateY(.25rem); } }
     @media (max-width:1100px) { :root { --duplex-left-space:var(--duplex-bar-stowed); --duplex-right-space:var(--duplex-bar-stowed); } .duplex-ui-bar:not(.is-stowed) { box-shadow:0 0 2rem #0008; } }
-    @media (max-width:650px) { #duplex-shell { width:min(100% - 5rem,48rem); } }
+    /* On narrow screens an open bar slides over the story instead of squeezing it, so only the stowed strip is reserved. */
+    @media (max-width:1100px) { #duplex-shell { padding-left:calc(min(var(--duplex-left-space),var(--duplex-bar-stowed)) + var(--duplex-gutter)); padding-right:calc(min(var(--duplex-right-space),var(--duplex-bar-stowed)) + var(--duplex-gutter)); } }
+    @media (max-width:650px) { #duplex-shell { --duplex-gutter:.75rem; padding-top:1.5rem; } }
     @media (prefers-reduced-motion:reduce) { .duplex-passage { animation:none; } }
   </style>
 </head>
