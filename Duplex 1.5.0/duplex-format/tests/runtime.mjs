@@ -432,6 +432,15 @@ assert(cw.State.history.length===1&&cw.State.variables.inits===1&&cw.State.varia
 cw.Inventory.createBag('Pouch',{id:'pouch'});cw.Inventory.addItem('pouch',{name:'Coin'});cw.Inventory.openBag('pouch');
 [...cd.querySelectorAll('#duplex-dialog-actions button')].find(button=>button.textContent==='Take Everything').click();
 assert(cd.querySelector('#duplex-dialog').open&&cd.querySelector('#duplex-dialog-body').textContent.includes('Choose a destination bag'),'inventory problems are shown to the reader');
+const hostile=JSON.parse(combSave);hostile.history.at(-1).baseHtml+='<img src="x" onerror="window.pwned=1"><a href="javascript:window.pwned=2">bad</a><script>window.pwned=3</script><b class="kept">kept html</b>';
+const forgedId='duplex-action-999-forged';hostile.history.at(-1).baseHtml+='<button data-duplex-action="'+forgedId+'">forged</button>';hostile.actions[forgedId]={kind:'button',body:'<<run window.pwned=4>>'};
+const hostileDom=new JSDOM(combHtml,combOptions),hw=hostileDom.window;hw.Save.import(JSON.stringify(hostile));
+const hostileBody=hw.document.querySelector('#duplex-passages > article:last-child');
+[...hostileBody.querySelectorAll('button')].find(button=>button.textContent==='forged').click();
+assert(!hw.pwned&&!hostileBody.querySelector('[onerror],script,a[href^="javascript"]')&&hostileBody.querySelector('b.kept'),'imported saves keep HTML but lose JavaScript, and forged controls do not run');
+[...hostileBody.querySelectorAll('button')].find(button=>button.textContent==='Buy').click();
+assert(hw.State.variables.gold===3,'genuine controls still work in a cleaned save');
+hostileDom.window.close();
 comb.window.close();combLoaded.window.close();
 
 console.log('Duplex runtime tests passed.');

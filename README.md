@@ -112,6 +112,8 @@ The `UI` object provides `alert()`, `restart()`, `saves()`, `settings()`, `updat
 
 Duplex keeps one browser save per story and can export or import portable JSON backups. Open **Saves** in the left UI bar to use **Save**, **Load**, **Export**, **Import**, or **Delete**. Exported files include the story identity and are validated before import, so a save from another story or a damaged file will not replace the current progress.
 
+Loaded saves are cleaned before they are shown: their HTML is kept, but anything that would run JavaScript (script tags, `on…` attributes, `javascript:` links) is removed, and buttons or links in a save only work if their code comes from this story's own passages. A save file someone shares with you cannot run its own code.
+
 The JavaScript `Save` API is also available:
 
 ```javascript

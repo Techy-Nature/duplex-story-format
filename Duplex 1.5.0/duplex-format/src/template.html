@@ -683,7 +683,18 @@
     // Controls such as <<button>> keep their code in the in-memory `deferred` map, keyed by the id in the
     // rendered HTML. Saves carry the entries the saved passages use, so the controls still work after a reload.
     function savedActions(){const ids=new Set();State.history.forEach(entry=>{for(const match of String(entry.baseHtml??'').matchAll(/data-duplex-action="([^"]+)"/g))ids.add(match[1]);});const actions={};ids.forEach(id=>{if(deferred.has(id)){try{actions[id]=clone(deferred.get(id));}catch(_){}}});return actions;}
-    function restoreActions(actions){if(!actions||typeof actions!=='object'||Array.isArray(actions))return;Object.entries(actions).forEach(([id,payload])=>{if(/^duplex-action-/.test(id)&&payload&&typeof payload==='object'&&typeof payload.kind==='string'&&!deferred.has(id))deferred.set(id,payload);});}
+    // Saves can come from anyone, so their stored HTML keeps its markup but loses anything that runs JavaScript.
+    function stripSaveScripts(html){
+      const template=document.createElement('template');template.innerHTML=String(html??'');
+      const scriptUrl=value=>/^\s*(?:javascript|vbscript|data:text\/html)/i.test(String(value).replace(/[\u0000-\u001f\s]+/g,''));
+      template.content.querySelectorAll('script,iframe,frame,frameset,object,embed,applet,base,meta,link').forEach(element=>element.remove());
+      template.content.querySelectorAll('*').forEach(element=>{for(const attribute of [...element.attributes]){const name=attribute.name.toLowerCase();if(name.startsWith('on')||name==='srcdoc'||(['href','src','action','formaction','xlink:href','data','poster','background'].includes(name)&&scriptUrl(attribute.value)))element.removeAttribute(attribute.name);}});
+      template.content.querySelectorAll('template').forEach(inner=>{inner.innerHTML=stripSaveScripts(inner.innerHTML);});
+      return template.innerHTML;
+    }
+    // A saved control is only restored when its code is part of this story's own passages.
+    function storyContains(body){if(typeof body!=='string')return false;if(!body)return true;for(const passage of passages.values())if(passage.text.includes(body))return true;for(const widget of widgets.values())if(widget.body.includes(body))return true;return false;}
+    function restoreActions(actions){if(!actions||typeof actions!=='object'||Array.isArray(actions))return;Object.entries(actions).forEach(([id,payload])=>{if(/^duplex-action-[a-z0-9-]+$/i.test(id)&&payload&&typeof payload==='object'&&typeof payload.kind==='string'&&(payload.body===undefined||storyContains(payload.body))&&!deferred.has(id)){if(payload.context&&typeof payload.context==='object')payload.context={restricted:payload.context.restricted===true,sourcePassage:String(payload.context.sourcePassage??'')};else delete payload.context;deferred.set(id,payload);}});}
     function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode,revealed})=>({title,baseHtml,variables:clone(variables),mode,...(revealed?{revealed:true}:{})})),variables:clone(State.variables),actions:savedActions()};}
     function validateSave(value,{allowLegacy=false}={}) {
       if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
@@ -692,7 +703,7 @@
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
-      const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
+      const history=value.history.map(entry=>({title:entry.title,baseHtml:(entry.baseHtml??entry.html)==null?undefined:stripSaveScripts(entry.baseHtml??entry.html),variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
       const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),actions:value.actions,warnings};
     }
     function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
