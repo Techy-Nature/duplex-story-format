@@ -117,7 +117,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.6.0','format version');
+assert(format.version === '1.7.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -324,5 +324,123 @@ const emptyPersistentHtml=format.source.replace('{{STORY_NAME}}','Persistent Tes
 const firstPersistent=new JSDOM(emptyPersistentHtml,persistentOptions);await firstPersistent.window.Duplex.ready;await firstPersistent.window.Duplex.mods.import({schema:1,id:'persist.mod',name:'Persistent',version:'1.0.0',items:[{id:'token',name:'Token'}]});firstPersistent.window.close();
 const restoredPersistent=new JSDOM(persistentHtml,persistentOptions);await restoredPersistent.window.Duplex.ready;
 assert(restoredPersistent.window.Duplex.mods.has('persist.mod')&&restoredPersistent.window.State.variables.modWasReady==='persist.mod:token','IndexedDB mods restore before StoryInit and the starting passage');restoredPersistent.window.close();
+
+// Content tags: notice + Skip button, reader auto-skip settings, <<skipto>>, <<skipsummary>>, saves, and the shortcut.
+const skipStory=`<tw-storydata name="Skip Test" ifid="SKIP-IFID" startnode="1">
+  ${passage('1','Start','Choose. [[Fight]] [[Quiet->Calm]]')}
+  ${passage('2','Fight','<<set $fought to true>>Blood everywhere. <<skipsummary>>You win the fight. [[Summary link->Calm]]<</skipsummary>>[[Back home->Start]] [[After]]<<skipto "After">>','violence gore')}
+  ${passage('3','Calm','Peaceful. [[Romance]]')}
+  ${passage('4','Romance','A tender moment. [[After]]','Sex')}
+  ${passage('5','After','The end.')}
+  ${passage('6','Dead end','Nothing links out.','skip')}
+  ${passage('7','Broken','<<skipto "Nowhere">>[[After]]','skip')}
+</tw-storydata>`;
+const skipDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}});
+const sw=skipDom.window, sd=sw.document, last=()=>sd.querySelector('#duplex-passages > article:last-child');
+sd.querySelector('.duplex-passage-body p').click();
+assert(sw.State.history.length===1,'clicking passage text does not re-navigate to the same passage');
+assert(!sd.querySelector('.duplex-content-notice'),'untagged passages have no content notice');
+sw.Duplex.go('Fight');
+let notice=last().querySelector('.duplex-content-notice');
+assert(notice&&notice.textContent.includes('Violence, Gore')&&!notice.classList.contains('is-skipped')&&!last().querySelector('.duplex-passage-body').hidden,'tagged passage shows a labelled content notice and its text');
+assert(sw.Duplex.skip.target()==='After','<<skipto>> sets the skip target ahead of the first link');
+assert(!last().querySelector('.duplex-passage-body').textContent.includes('You win the fight'),'skip summary is hidden while the passage is shown');
+notice.querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title==='After'&&sw.State.variables.fought===true,'Skip button jumps to the target, and the skipped passage still ran');
+sw.Duplex.go('Romance');
+assert(last().querySelector('.duplex-content-notice').textContent.includes('Sexual content'),'tag matching ignores case and uses labels');
+assert(sw.Duplex.skip.target()==='After','first link is the fallback skip target');
+sw.Duplex.go('Dead end');
+assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false,'Skip is disabled when there is nowhere to go');
+sw.UI.settings();
+const rows=[...sd.querySelectorAll('[data-duplex-skip-tag]')].map(input=>input.dataset.duplexSkipTag);
+assert(rows.join(',')==='skip,sex,violence,gore','settings list only content tags the story uses, in configured order');
+const violenceBox=sd.querySelector('[data-duplex-skip-tag="violence"]');violenceBox.checked=true;violenceBox.dispatchEvent(new sw.Event('change',{bubbles:true}));
+assert(sw.Duplex.skip.isSkipped('violence')&&JSON.parse(sw.localStorage.getItem('duplex-skip-SKIP-IFID')).violence===true,'reader choice is stored per story');
+sd.querySelector('#duplex-dialog-actions button:last-child').click();
+sw.Duplex.go('Fight');
+notice=last().querySelector('.duplex-content-notice');
+assert(notice.classList.contains('is-skipped')&&last().querySelector('.duplex-passage-body').hidden&&notice.querySelector('.duplex-skip-summary').textContent.includes('You win the fight'),'auto-skipped passage is hidden behind a placeholder with its summary');
+assert(notice.querySelector('.duplex-skip-summary [data-passage=Calm]'),'links in the skip summary work');
+notice.querySelector('[data-duplex-reveal]').click();
+assert(!last().querySelector('.duplex-passage-body').hidden&&sw.State.history.at(-1).revealed===true&&!last().querySelector('.duplex-content-notice.is-skipped'),'Show anyway reveals the passage and remembers it');
+sw.Save.save();sw.Duplex.go('Calm');sw.Save.load();
+assert(sw.State.history.at(-1).title==='Fight'&&sw.State.history.at(-1).revealed===true&&!last().querySelector('.duplex-passage-body').hidden,'saves keep revealed passages revealed');
+sw.Duplex.go('Calm');sw.Duplex.back();
+assert(!last().querySelector('.duplex-passage-body').hidden,'revealed passages stay revealed after Back');
+sw.Duplex.skip.set('violence',false);
+assert(!last().querySelector('.duplex-content-notice.is-skipped'),'changing a setting refreshes visible passages');
+sd.dispatchEvent(new sw.KeyboardEvent('keydown',{key:'S',shiftKey:true,bubbles:true,cancelable:true}));
+assert(sw.State.history.at(-1).title==='After','Shift+S skips the current tagged passage');
+sw.Config.skip.autoAdvance=true;sw.Duplex.skip.set('gore',true);sw.Duplex.go('Fight');
+assert(sw.State.history.at(-1).title==='After'&&sw.State.history.at(-2).title==='Fight','autoAdvance passes straight through auto-skipped passages');
+sw.Config.skip.autoAdvance=false;
+sw.Config.skip.defaults='death';sw.Config.skip.labels=sw.Object.assign(sw.Object.create(null),{});
+assert(sw.Duplex.skip.isSkipped('death')&&sw.Duplex.skip.label('constructor')==='constructor','a single default tag string works and labels ignore inherited keys');
+sw.Config.skip.labels={};sw.Duplex.skip.set('constructor',true);assert(sw.Duplex.skip.label('constructor')==='constructor'&&sw.Duplex.skip.isSkipped('constructor')&&!sw.Duplex.skip.isSkipped('toString'),'stored choices ignore inherited keys');
+sw.Duplex.go('Broken');
+assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
+skipDom.window.close();
+
+// Regression checks from the 1.7.0 bug comb.
+const combPassages=[
+  ['StoryInit','<<set $inits to ($inits or 0) + 1>>'],
+  ['Start',`<<set $msg to "cats and dogs or birds, it is not here">><<set $my_var to 3>><<set $a to 1, $b to 2>><<set _who to "Nest">>
+[$msg] [$my_var] [$a$b] snake_case_word
+<<markdown>>
+Hi _who, see [docs](https://a.test/c_d_e) and _emphasis_
+<</markdown>>
+<<link [[Square link->Shop]]>><</link>> [[Quote "name"]]
+<<nosuchmacro 1>> <<big $a > 0>>
+[[Shop]]`],
+  ['Shop','<<set $gold to 5>><<button "Buy">><<set $gold -= 1>><</button>>'],
+  ['Quote "name"','quoted'],
+  ['Md','# Heading\n- item','markdown'],
+  ['StoryCaption','<<if true>>unclosed'],
+  ['W','<<widget "big">>[big <<print _args.length>>]<</widget>><<widget "bad name">>x<</widget>>','widget']
+];
+const combStory=`<tw-storydata name="Comb" ifid="COMB-IFID" startnode="2">${combPassages.map(([name,text,tags=''],index)=>passage(String(index+1),name,text,tags)).join('')}</tw-storydata>`;
+const combErrors=[];
+const combOptions={runScripts:'dangerously',url:'https://example.test/comb',beforeParse(window){window.console.error=(...args)=>combErrors.push(args.join(' '));window.console.warn=(...args)=>combErrors.push(args.join(' '));window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}};
+const combHtml=format.source.replace('{{STORY_NAME}}','Comb').replace('{{STORY_DATA}}',combStory);
+const comb=new JSDOM(combHtml,combOptions), cw=comb.window, cd=cw.document, cbody=()=>cd.querySelector('#duplex-passages > article:last-child .duplex-passage-body');
+assert(cw.State.history.length===1&&cw.State.history[0].title==='Start','an invalid widget definition does not stop the story from starting');
+assert(combErrors.some(message=>message.includes('bad name')),'invalid widget names are reported');
+assert(cw.State.variables.msg==='cats and dogs or birds, it is not here','keyword operators are not rewritten inside strings');
+assert(cw.State.variables.my_var===3&&cbody().textContent.includes('[3]'),'variable names may contain underscores');
+assert(cw.State.variables.a===1&&cw.State.variables.b===2,'<<set>> accepts several "to" assignments');
+assert(cbody().textContent.includes('snake_case_word'),'underscores inside words are not read as temporary variables');
+assert(cbody().textContent.includes('Hi Nest')&&cbody().querySelector('a[href="https://a.test/c_d_e"]')&&cbody().querySelector('em')?.textContent==='emphasis','markdown keeps _temp variables and URL underscores, and still supports _emphasis_');
+assert([...cbody().querySelectorAll('a')].some(link=>link.textContent==='Square link'),'<<link [[label->target]]>> works');
+assert([...cbody().querySelectorAll('[data-passage]')].some(link=>link.dataset.passage==='Quote "name"'),'passage names containing quotes link correctly');
+assert(cbody().textContent.includes('Unknown macro: <<nosuchmacro 1>>'),'unknown macros are shown as errors instead of vanishing');
+assert(cbody().textContent.includes('[big 3]'),'widget arguments may contain >');
+assert(cd.querySelector('#story-caption .duplex-error')&&cd.querySelector('#duplex-current-passage').textContent==='Start','an error in a UI passage stays inside that region');
+cw.Duplex.go('Md');assert(cbody().querySelector('h1')?.textContent==='Heading'&&cbody().querySelector('li'),'[markdown]-tagged passages render as markdown');
+cw.Duplex.go('Shop');cbody().querySelector('button').click();assert(cw.State.variables.gold===4,'button works in the same session');
+const combSave=cw.Save.serialize();
+const combLoaded=new JSDOM(combHtml,combOptions);combLoaded.window.Save.import(combSave);
+combLoaded.window.document.querySelector('#duplex-passages > article:last-child button').click();
+assert(combLoaded.window.State.variables.gold===3,'controls in a loaded save still work after a page reload');
+cw.UI.settings();cd.dispatchEvent(new cw.KeyboardEvent('keydown',{key:'1',bubbles:true,cancelable:true}));
+assert(cw.State.history.at(-1).title==='Shop','number keys do not follow links behind an open dialog');
+cd.querySelector('#duplex-dialog-actions button:last-child').click();
+cd.querySelector('#duplex-restart').click();
+assert(cd.querySelector('#duplex-dialog').open&&cw.State.history.at(-1).title==='Shop','Restart asks before restarting');
+cd.querySelector('#duplex-dialog-actions button').click();
+assert(cw.State.history.length===1&&cw.State.variables.inits===1&&cw.State.variables.gold===undefined,'Restart runs StoryInit once on fresh variables');
+cw.Inventory.createBag('Pouch',{id:'pouch'});cw.Inventory.addItem('pouch',{name:'Coin'});cw.Inventory.openBag('pouch');
+[...cd.querySelectorAll('#duplex-dialog-actions button')].find(button=>button.textContent==='Take Everything').click();
+assert(cd.querySelector('#duplex-dialog').open&&cd.querySelector('#duplex-dialog-body').textContent.includes('Choose a destination bag'),'inventory problems are shown to the reader');
+const hostile=JSON.parse(combSave);hostile.history.at(-1).baseHtml+='<img src="x" onerror="window.pwned=1"><a href="javascript:window.pwned=2">bad</a><script>window.pwned=3</script><b class="kept">kept html</b>';
+const forgedId='duplex-action-999-forged';hostile.history.at(-1).baseHtml+='<button data-duplex-action="'+forgedId+'">forged</button>';hostile.actions[forgedId]={kind:'button',body:'<<run window.pwned=4>>'};
+const hostileDom=new JSDOM(combHtml,combOptions),hw=hostileDom.window;hw.Save.import(JSON.stringify(hostile));
+const hostileBody=hw.document.querySelector('#duplex-passages > article:last-child');
+[...hostileBody.querySelectorAll('button')].find(button=>button.textContent==='forged').click();
+assert(!hw.pwned&&!hostileBody.querySelector('[onerror],script,a[href^="javascript"]')&&hostileBody.querySelector('b.kept'),'imported saves keep HTML but lose JavaScript, and forged controls do not run');
+[...hostileBody.querySelectorAll('button')].find(button=>button.textContent==='Buy').click();
+assert(hw.State.variables.gold===3,'genuine controls still work in a cleaned save');
+hostileDom.window.close();
+comb.window.close();combLoaded.window.close();
 
 console.log('Duplex runtime tests passed.');

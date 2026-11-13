@@ -8,7 +8,10 @@
     :root { color-scheme: dark; --duplex-accent:#83c5be; --duplex-bg:#17191d; --duplex-panel:#22252b; --duplex-text:#f1f3f5; --duplex-muted:#aeb5bd; --duplex-bar-width:17rem; --duplex-bar-stowed:3.25rem; --duplex-left-space:var(--duplex-bar-width); --duplex-right-space:var(--duplex-bar-width); }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--duplex-bg); color:var(--duplex-text); font:18px/1.65 system-ui,sans-serif; }
-    #duplex-shell { width:min(48rem,calc(100% - 2rem)); margin:0 auto; padding:3rem 0 7rem; transform:translateX(calc((var(--duplex-left-space) - var(--duplex-right-space))/2)); transition:transform .2s ease; }
+    /* The story column sits between the two bars: each side reserves the space its bar takes, plus a gutter. */
+    #duplex-shell { --duplex-gutter:1rem; width:100%; margin:0; padding:3rem calc(var(--duplex-right-space) + var(--duplex-gutter)) 7rem calc(var(--duplex-left-space) + var(--duplex-gutter)); transition:padding .2s ease; }
+    #duplex-passages { max-width:48rem; margin:0 auto; overflow-wrap:break-word; }
+    #duplex-passages img, #duplex-passages video { max-width:100%; height:auto; }
     .duplex-ui-bar { position:fixed; z-index:20; inset-block:0; width:var(--duplex-bar-width); padding:1rem; overflow:auto; background:var(--duplex-panel); border-color:#ffffff20; transition:width .2s ease,transform .2s ease; }
     .duplex-ui-bar[data-side="left"] { left:0; border-right:1px solid; }
     .duplex-ui-bar[data-side="right"] { right:0; border-left:1px solid; }
@@ -35,6 +38,17 @@
     .duplex-shortcut-row { display:grid; grid-template-columns:minmax(8rem,1fr) auto; align-items:center; gap:1rem; }
     .duplex-shortcut-row button { min-width:8.5rem; }
     .duplex-shortcut-help { color:var(--duplex-muted); font-size:.9rem; }
+    .duplex-content-notice { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1rem; margin:0 0 1rem; padding:.6rem .9rem; border:1px solid color-mix(in srgb,var(--duplex-accent) 30%,transparent); border-left:.25rem solid var(--duplex-accent); border-radius:.5rem; background:color-mix(in srgb,var(--duplex-accent) 8%,var(--duplex-panel)); font-size:.95rem; }
+    .duplex-content-notice.is-skipped { display:block; }
+    .duplex-content-notice p { margin:.2rem 0; }
+    .duplex-content-label { color:var(--duplex-muted); }
+    .duplex-content-label strong { color:var(--duplex-text); }
+    .duplex-content-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.6rem; }
+    .duplex-skip-summary { color:var(--duplex-muted); font-style:italic; }
+    .duplex-skip-settings { margin:1.25rem 0; padding-top:1rem; border-top:1px solid #ffffff20; }
+    .duplex-skip-settings h3 { margin:0 0 .5rem; font-size:1rem; }
+    .duplex-skip-row { display:flex; align-items:center; gap:.65rem; padding:.25rem 0; cursor:pointer; }
+    .duplex-skip-row input { width:1.1rem; height:1.1rem; accent-color:var(--duplex-accent); }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
     .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
@@ -42,7 +56,9 @@
     tw-storydata { display:none; }
     @keyframes duplex-in { from { opacity:0; transform:translateY(.25rem); } }
     @media (max-width:1100px) { :root { --duplex-left-space:var(--duplex-bar-stowed); --duplex-right-space:var(--duplex-bar-stowed); } .duplex-ui-bar:not(.is-stowed) { box-shadow:0 0 2rem #0008; } }
-    @media (max-width:650px) { #duplex-shell { width:min(100% - 5rem,48rem); } }
+    /* On narrow screens an open bar slides over the story instead of squeezing it, so only the stowed strip is reserved. */
+    @media (max-width:1100px) { #duplex-shell { padding-left:calc(min(var(--duplex-left-space),var(--duplex-bar-stowed)) + var(--duplex-gutter)); padding-right:calc(min(var(--duplex-right-space),var(--duplex-bar-stowed)) + var(--duplex-gutter)); } }
+    @media (max-width:650px) { #duplex-shell { --duplex-gutter:.75rem; padding-top:1.5rem; } }
     @media (prefers-reduced-motion:reduce) { .duplex-passage { animation:none; } }
   </style>
 </head>
@@ -85,7 +101,20 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true } };
+    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
+      // Passage tags that count as content tags. Readers can skip passages carrying any of them.
+      tags: ['skip','sex','violence','gore','abuse','self-harm','drugs','death'],
+      // Reader-facing names for tags. Tags without a label are shown as written.
+      labels: { skip:'Skippable scene', sex:'Sexual content', violence:'Violence', gore:'Gore', abuse:'Abuse', 'self-harm':'Self-harm', drugs:'Drug use', death:'Death' },
+      // Tags skipped automatically until the reader changes the setting.
+      defaults: [],
+      // Show a content notice with a Skip button on tagged passages that are not skipped automatically.
+      showNotice: true,
+      // Go straight to the skip target when a passage is skipped automatically, instead of showing a placeholder.
+      autoAdvance: false,
+      // List every tag in Config.skip.tags in Settings, not only the tags this story uses.
+      showAllTags: false
+    } };
     let activeRenderTitle = null;
     const deferred = new Map();
     const widgets = new Map();
@@ -133,11 +162,24 @@
       const chosen = Config.displayMode ?? State.variables.passageMode ?? State.variables.displayMode ?? 'replace';
       return chosen === 'append' || chosen === true ? 'append' : 'replace';
     }
+    // Rewrites only the code parts of an expression, leaving the text inside string literals untouched.
+    function mapCode(source,rewrite) {
+      let out='',code='',i=0;
+      const flush=()=>{out+=rewrite(code);code='';};
+      while(i<source.length){
+        const ch=source[i];
+        if(ch==='"'||ch==="'"){flush();let j=i+1;while(j<source.length&&source[j]!==ch){if(source[j]==='\\')j++;j++;}out+=source.slice(i,j+1);i=j+1;continue;}
+        if(ch==='`'){flush();let j=i+1;out+='`';while(j<source.length&&source[j]!=='`'){if(source[j]==='\\'){out+=source.slice(j,j+2);j+=2;continue;}if(source[j]==='$'&&source[j+1]==='{'){let depth=1,k=j+2;while(k<source.length&&depth){if(source[k]==='{')depth++;else if(source[k]==='}')depth--;k++;}out+='${'+mapCode(source.slice(j+2,k-1),rewrite)+'}';j=k;continue;}out+=source[j++];}out+='`';i=j+1;continue;}
+        code+=ch;i++;
+      }
+      flush();return out;
+    }
+    const keywordOperators=code=>code.replace(/(?<![\w$.])is\s+not(?![\w$]|\s*:)/g,'!==').replace(/(?<![\w$.])(?:isnot|neq)(?![\w$]|\s*:)/g,'!==').replace(/(?<![\w$.])(?:is|eq)(?![\w$]|\s*:)/g,'===').replace(/(?<![\w$.])gte(?![\w$]|\s*:)/g,'>=').replace(/(?<![\w$.])lte(?![\w$]|\s*:)/g,'<=').replace(/(?<![\w$.])gt(?![\w$]|\s*:)/g,'>').replace(/(?<![\w$.])lt(?![\w$]|\s*:)/g,'<').replace(/(?<![\w$.])and(?![\w$]|\s*:)/g,'&&').replace(/(?<![\w$.])or(?![\w$]|\s*:)/g,'||').replace(/(?<![\w$.])not(?![\w$]|\s*:)/g,'!');
     function jsExpr(source) {
-      return source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!').replace(/\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/_([A-Za-z_]\w*)/g,'State.temporary.$1');
+      return mapCode(source.trim(),code=>keywordOperators(code).replace(/(?<![\w$.])\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/(?<![\w$.])_([A-Za-z_]\w*)/g,'State.temporary.$1'));
     }
     function restrictedTokens(source) {
-      source=source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!');
+      source=mapCode(source.trim(),keywordOperators);
       const result=[];let i=0;
       while(i<source.length){if(/\s/.test(source[i])){i++;continue;}const rest=source.slice(i),string=rest.match(/^("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/),number=rest.match(/^(?:\d+(?:\.\d+)?|\.\d+)/),variable=rest.match(/^[\$_][A-Za-z_]\w*/),identifier=rest.match(/^[A-Za-z_]\w*/),operator=rest.match(/^(?:===|!==|==|!=|>=|<=|&&|\|\||[()+\-*/%!,.<>])/);
         if(string){let parsed;try{parsed=JSON.parse(string[0][0]==="'"?'"'+string[0].slice(1,-1).replace(/\\'/g,"'").replace(/"/g,'\\"')+'"':string[0]);}catch(_){throw new Error('Invalid string literal.');}result.push({type:'literal',value:parsed});i+=string[0].length;}
@@ -176,7 +218,7 @@
       catch (error) { throw new Error('Could not evaluate “' + source + '”: ' + error.message); }
     }
     function execute(source) {
-      const normalized=source.replace(/^(\s*[$_]\w+(?:\.[A-Za-z_]\w*)*)\s+to\s+/, '$1 = ');
+      const normalized=mapCode(source,code=>code.replace(/(?<![\w$.])to(?![\w$])/g,'='));
       return Function('State','setup','Config','Duplex',jsExpr(normalized))(State,setup,Config,window.Duplex);
     }
     function assign(source) { execute(source); return ''; }
@@ -187,6 +229,7 @@
     }
     function compiledMarkup(html) { return new CompiledMarkup(html); }
     function escapeHtml(value) { const el=document.createElement('span'); el.textContent=String(value ?? ''); return el.innerHTML; }
+    function attr(value) { return escapeHtml(value).replace(/"/g,'&quot;'); }
     function sanitizeRestrictedHtml(html) {
       const template=document.createElement('template');template.innerHTML=html;
       const allowedElements=new Set(['A','B','BLOCKQUOTE','BR','BUTTON','CODE','DIV','EM','H1','H2','H3','H4','H5','H6','I','IMG','INPUT','LI','OL','OPTION','P','PRE','SELECT','SPAN','STRONG','TEXTAREA','U','UL']), dropContents=new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','TEMPLATE']), allowedAttributes=new Set(['alt','autofocus','checked','class','disabled','href','max','min','name','placeholder','selected','src','step','title','type','value','data-duplex-action','data-passage']);
@@ -246,13 +289,17 @@
       return {length:block.length,html:outputBuffer.innerHTML};
     }
     function markdownInline(source) {
-      return source.replace(/`([^`]+)`/g,'<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-        .replace(/__([^_]+)__/g,'<strong>$1</strong>')
+      // Code spans and link/image URLs are set aside first so emphasis never rewrites them.
+      // Underscore emphasis needs a non-word character on both sides, so snake_case and _temp variables survive.
+      const slots=[],keep=html=>'\u0000'+(slots.push(html)-1)+'\u0000';
+      const emphasis=text=>text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+        .replace(/(?<![\w$])__(?=\S)([^_]+?)(?<=\S)__(?!\w)/g,'<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g,'<em>$1</em>')
-        .replace(/_([^_]+)_/g,'<em>$1</em>')
-        .replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,alt,url,title)=>'<img src="'+escapeHtml(url)+'" alt="'+escapeHtml(alt)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>')
-        .replace(/\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,label,url,title)=>'<a href="'+escapeHtml(url)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>'+label+'</a>');
+        .replace(/(?<![\w$])_(?=[^\s_])([^_]+?)(?<=\S)_(?!\w)/g,'<em>$1</em>');
+      let text=source.replace(/`([^`]+)`/g,(_,code)=>keep('<code>'+code+'</code>'))
+        .replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,alt,url,title)=>keep('<img src="'+attr(url)+'" alt="'+attr(alt)+'"'+(title?' title="'+attr(title)+'"':'')+'>'))
+        .replace(/(?<!\[)\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,label,url,title)=>keep('<a href="'+attr(url)+'"'+(title?' title="'+attr(title)+'"':'')+'>'+emphasis(label)+'</a>'));
+      return emphasis(text).replace(/\u0000(\d+)\u0000/g,(_,index)=>slots[Number(index)]);
     }
     function markdownMacro(text) {
       const block=container(text,'markdown'), lines=block.body.replace(/\r\n?/g,'\n').split('\n');
@@ -269,8 +316,18 @@
       closeList();
       return {length:block.length,html:compile(html)};
     }
+    // Splits the inside of [[...]] into its label and target, accepting ->, <- and | forms.
+    function linkParts(body) {
+      let label,target;
+      if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
+      else if (body.includes('<-')) [target,label]=body.split(/<-(.+)/s);
+      else if (body.includes('|')) [label,target]=body.split(/\|(.+)/s);
+      else label=target=body;
+      return {label:label.trim(),target:target.trim()};
+    }
     function interactive(text,name) {
-      const block=container(text,name), argv=tokens(block.args), label=value(argv[0]), target=argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
+      const block=container(text,name), argv=tokens(block.args), squareLink=/^\[\[[\s\S]*\]\]$/.test(argv[0]||'')?linkParts(argv[0].slice(2,-2)):null;
+      const label=squareLink?squareLink.label:value(argv[0]), target=squareLink?squareLink.target:argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
       const id=action({kind:name,body:block.body,target,context:{...(compileContexts.at(-1)||{} )}});
       const tag=name==='button'?'button':'a', href=tag==='a'?' href="#"':'';
       return {length:block.length,html:'<'+tag+href+' class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(label)+'</'+tag+'>'};
@@ -322,7 +379,8 @@
       passages.forEach(passage=>{
         if(!passage.tags.includes('widget'))return;
         let rest=passage.text;
-        while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}
+        try{while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}}
+        catch(error){console.error('Duplex widgets in "'+passage.name+'":',error.message);}
       });
     }
     /* Grammar: passages tagged [grammar] hold one option per line. <<name>>
@@ -330,7 +388,7 @@
        and other grammar macros); <<name keep>> remembers one pick in
        $grammarKept so it survives saves. Duplex.grammar is the JavaScript API. */
     const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
-    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar']);
+    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary']);
     const grammarLast=new Map();
     let grammarDepth=0;
     function grammarOptions(text){return String(text).split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('//'));}
@@ -423,7 +481,7 @@
         return '';
       }
       includeStack.push(title);
-      try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};return compile(passage.text,next);}
+      try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};const source=passage.tags.some(tag=>tag.toLowerCase()==='markdown')?'<<markdown>>\n'+passage.text+'\n<</markdown>>':passage.text;return compile(source,next);}
       finally{includeStack.pop();}
     }
     function includePassage(argSource,context) { return includeNamedPassage(String(evaluate(argSource)),context); }
@@ -439,6 +497,9 @@
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
         if (/^<<script(?:\s|>>)/i.test(rest)) { const found=container(rest,'script');if(context.restricted)out+=restrictedError('script',context);else out+=scriptMacro(rest).html;i+=found.length;continue; }
+        const skipTo=rest.match(/^<<skipto\s+([\s\S]*?)>>/i);
+        if(skipTo){const target=value(tokens(skipTo[1])[0]);if(target!=null&&String(target))out+='<template data-duplex-skip-target="'+attr(target)+'"></template>';i+=skipTo[0].length;continue;}
+        if(/^<<skipsummary(?:\s|>>)/i.test(rest)){const found=container(rest,'skipsummary');out+='<template class="duplex-skip-summary-source">'+compile(found.body,context)+'</template>';i+=found.length;continue;}
         const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
         if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
         const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
@@ -465,21 +526,19 @@
           i += macro[0].length; continue;
         }
         const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
-        if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[^>]*>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
+        if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[\s\S]*?>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
         const grammarCall=grammarMacro(rest,context);if(grammarCall){out+=grammarCall.html;i+=grammarCall.length;continue;}
         const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
+        const unknown=rest.match(/^<<\/?([A-Za-z][\w-]*)\b[\s\S]*?>>/);
+        if(unknown){console.warn('Duplex: unknown macro <<'+unknown[1]+'>> in "'+(context.sourcePassage||activeRenderTitle||'?')+'".');out+='<span class="duplex-error">Unknown macro: '+escapeHtml(unknown[0])+'</span>';i+=unknown[0].length;continue;}
         const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
         if (link) {
-          let label,target,body=link[1];
-          if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
-          else if (body.includes('<-')) [target,label]=body.split(/<-(.+)/s);
-          else if (body.includes('|')) [label,target]=body.split(/\|(.+)/s);
-          else label=target=body;
-          out += '<a href="#" class="duplex-link" data-passage="' + escapeHtml(target.trim()) + '">' + escapeHtml(label.trim()) + '</a>';
+          const {label,target}=linkParts(link[1]);
+          out += '<a href="#" class="duplex-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</a>';
           i += link[0].length; continue;
         }
         const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);
-        if (variable) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
+        if (variable && (i===0 || !/[\w$]/.test(source[i-1]))) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
         out += source[i++];
       }
       out=out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');return context.restricted?sanitizeRestrictedHtml(out):out;
@@ -529,13 +588,14 @@
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
-      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>',[
+      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),[
         {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
         {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
       ],closeFn);
+      ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.6.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.7.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
@@ -625,7 +685,22 @@
       Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=mod.id+' · '+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
     }
     function saveKey(){return 'duplex-save-'+storyId();}
-    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode})=>({title,baseHtml,variables:clone(variables),mode})),variables:clone(State.variables)};}
+    // Controls such as <<button>> keep their code in the in-memory `deferred` map, keyed by the id in the
+    // rendered HTML. Saves carry the entries the saved passages use, so the controls still work after a reload.
+    function savedActions(){const ids=new Set();State.history.forEach(entry=>{for(const match of String(entry.baseHtml??'').matchAll(/data-duplex-action="([^"]+)"/g))ids.add(match[1]);});const actions={};ids.forEach(id=>{if(deferred.has(id)){try{actions[id]=clone(deferred.get(id));}catch(_){}}});return actions;}
+    // Saves can come from anyone, so their stored HTML keeps its markup but loses anything that runs JavaScript.
+    function stripSaveScripts(html){
+      const template=document.createElement('template');template.innerHTML=String(html??'');
+      const scriptUrl=value=>/^\s*(?:javascript|vbscript|data:text\/html)/i.test(String(value).replace(/[\u0000-\u001f\s]+/g,''));
+      template.content.querySelectorAll('script,iframe,frame,frameset,object,embed,applet,base,meta,link').forEach(element=>element.remove());
+      template.content.querySelectorAll('*').forEach(element=>{for(const attribute of [...element.attributes]){const name=attribute.name.toLowerCase();if(name.startsWith('on')||name==='srcdoc'||(['href','src','action','formaction','xlink:href','data','poster','background'].includes(name)&&scriptUrl(attribute.value)))element.removeAttribute(attribute.name);}});
+      template.content.querySelectorAll('template').forEach(inner=>{inner.innerHTML=stripSaveScripts(inner.innerHTML);});
+      return template.innerHTML;
+    }
+    // A saved control is only restored when its code is part of this story's own passages.
+    function storyContains(body){if(typeof body!=='string')return false;if(!body)return true;for(const passage of passages.values())if(passage.text.includes(body))return true;for(const widget of widgets.values())if(widget.body.includes(body))return true;return false;}
+    function restoreActions(actions){if(!actions||typeof actions!=='object'||Array.isArray(actions))return;Object.entries(actions).forEach(([id,payload])=>{if(/^duplex-action-[a-z0-9-]+$/i.test(id)&&payload&&typeof payload==='object'&&typeof payload.kind==='string'&&(payload.body===undefined||storyContains(payload.body))&&!deferred.has(id)){if(payload.context&&typeof payload.context==='object')payload.context={restricted:payload.context.restricted===true,sourcePassage:String(payload.context.sourcePassage??'')};else delete payload.context;deferred.set(id,payload);}});}
+    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode,revealed})=>({title,baseHtml,variables:clone(variables),mode,...(revealed?{revealed:true}:{})})),variables:clone(State.variables),actions:savedActions()};}
     function validateSave(value,{allowLegacy=false}={}) {
       if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
       const legacy=!value.format&&allowLegacy&&Array.isArray(value.history)&&value.variables&&typeof value.variables==='object';
@@ -633,11 +708,11 @@
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
-      const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode}));
-      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),warnings};
+      const history=value.history.map(entry=>({title:entry.title,baseHtml:(entry.baseHtml??entry.html)==null?undefined:stripSaveScripts(entry.baseHtml??entry.html),variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
+      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),actions:value.actions,warnings};
     }
     function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
-    function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}
+    function applySave(saved){restoreActions(saved.actions);State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}
     function restoreSave(value,options){return applySave(validateSave(value,options));}
     function parseSave(text,options){let value;try{value=JSON.parse(text);}catch{throw new Error('The selected file is not valid JSON.');}return validateSave(value,options);}
     function safeFilename(){return (data.getAttribute('name')||document.title||'duplex-story').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'duplex-story';}
@@ -685,15 +760,17 @@
       createBag(definition,options={}){const bag=normalizeBag(definition,options);if(!bagEmpty(bag))bag.quantity=1;const destination=options.parentId?locateBag(options.parentId)?.bag:null,collection=destination?.children??inventoryState().bags;if(destination){if(bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination,destination.items.length,destination.children.length+1))throw new Error('Bag capacity exceeded.');splitForContents(locateBag(destination.id));}const compatible=bagEmpty(bag)&&collection.find(other=>bagEmpty(assertBagShape(other))&&!other.room&&!bag.room&&other.name===bag.name&&JSON.stringify(other.definition)===JSON.stringify(bag.definition)&&JSON.stringify(other.properties)===JSON.stringify(bag.properties)&&other.quantity+bag.quantity<=1000);if(compatible){compatible.quantity+=bag.quantity;return compatible;}collection.push(bag);return bag;},
       getBag(id){return locateBag(id)?.bag??null;},
       addItem(id,item){const location=locateBag(id);if(!location)throw new Error('Bag not found.');if(!capacityOkay(location.bag,location.bag.items.length+1,location.bag.children.length))throw new Error('Bag capacity exceeded.');const bag=splitForContents(location),stack=clone(item);stack.quantity=Math.max(1,Math.min(1000,Number(stack.quantity)||1));bag.items.push(stack);refreshInventory();return bag;},
-      openBag(id){const location=locateBag(id),bag=location?.bag;if(!bag)throw new Error('Bag not found.');Inventory.activeBagId=bag.id;const items=bag.items.map(stack=>'<li>'+escapeHtml(stack.name??stack.definition??'Item')+(stack.quantity>1?' × '+stack.quantity:'')+'</li>').join('');const children=bag.children.map(child=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(child.id)+'" data-parent-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(child.name)+'"><span class="duplex-bag-name">'+escapeHtml(child.name)+'</span><span>× '+child.quantity+'</span></button></li>').join('');return dialog(bag.name,'<ul class="duplex-inventory-list">'+items+children+'</ul>',[{label:'Take Everything',action:()=>Inventory.requestUnpack(bag.id,location.parent?.id)}]);},
+      openBag(id){const location=locateBag(id),bag=location?.bag;if(!bag)throw new Error('Bag not found.');Inventory.activeBagId=bag.id;const items=bag.items.map(stack=>'<li>'+escapeHtml(stack.name??stack.definition??'Item')+(stack.quantity>1?' × '+stack.quantity:'')+'</li>').join('');const children=bag.children.map(child=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(child.id)+'" data-parent-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(child.name)+'"><span class="duplex-bag-name">'+escapeHtml(child.name)+'</span><span>× '+child.quantity+'</span></button></li>').join('');return dialog(bag.name,'<ul class="duplex-inventory-list">'+items+children+'</ul>',[{label:'Take Everything',action:()=>inventoryAction(()=>Inventory.requestUnpack(bag.id,location.parent?.id))}]);},
       moveBag(sourceId,destinationId){const source=locateBag(sourceId),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be moved into itself or one of its descendants.');if(source.bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination.bag,destination.bag.items.length,destination.bag.children.length+1))throw new Error('Bag capacity exceeded.');const target=splitForContents(destination);source.collection.splice(source.collection.indexOf(source.bag),1);target.children.push(source.bag);refreshInventory();return source.bag;},
       unpackBag(id,destinationId){const source=locateBag(id),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be unpacked into itself or one of its descendants.');const target=destination.bag;if(target.room&&source.bag.room)throw new Error('A room cannot be placed inside another bag.');const added=source.bag.items.length+source.bag.children.length;if(!capacityOkay(target,target.items.length+source.bag.items.length,target.children.length+source.bag.children.length))throw new Error('Bag capacity exceeded.');for(const child of source.bag.children)if(child.room||child===target||isDescendant(child,target))throw new Error('Unpacking would create an invalid bag hierarchy.');if(!added)return source.bag;splitForContents(destination);target.items.push(...source.bag.items);target.children.push(...source.bag.children);source.bag.items=[];source.bag.children=[];refreshInventory();return source.bag;},
       requestUnpack(id,destinationId){const bag=locateBag(id)?.bag;if(!bag)throw new Error('Bag not found.');const destination=destinationId??locateBag(id)?.parent?.id;if(!destination)throw new Error('Choose a destination bag before unpacking.');if(bagEmpty(bag)||window.confirm('Take everything from '+bag.name+'?'))return Inventory.unpackBag(id,destination);return false;},
       leaveRoom(id,safe=true){const location=locateBag(id);if(!location||!location.bag.room)throw new Error('Room not found.');if(!safe)location.collection.splice(location.collection.indexOf(location.bag),1);refreshInventory();return safe?location.bag:null;}
     };
+    // Reader-facing inventory actions report problems in a dialog instead of failing silently.
+    function inventoryAction(run){try{return run();}catch(error){UI.alert(error.message,{title:'Inventory'});return false;}}
     let bagClickTimer;
-    document.addEventListener('click',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);bagClickTimer=setTimeout(()=>Inventory.openBag(row.dataset.bagId),220);});
-    document.addEventListener('dblclick',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);Inventory.requestUnpack(row.dataset.bagId,row.dataset.parentBagId);});
+    document.addEventListener('click',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);bagClickTimer=setTimeout(()=>inventoryAction(()=>Inventory.openBag(row.dataset.bagId)),220);});
+    document.addEventListener('dblclick',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);inventoryAction(()=>Inventory.requestUnpack(row.dataset.bagId,row.dataset.parentBagId));});
     const UI=window.UI={
       alert(message,options,closeFn){dialog(options?.title||'Alert','<p>'+escapeHtml(message)+'</p>',[],closeFn);},
       restart(){dialog('Restart','<p>Restart the story from the beginning?</p>',[{label:'Restart',action:()=>{closeDialog();restart();}}]);},
@@ -710,7 +787,7 @@
       settings(options,closeFn){return renderShortcutSettings(options,closeFn);},
       update(){
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
-        regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(region)region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';});
+        regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(!region)return;try{region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';}catch(error){console.error(name+':',error);region.innerHTML='<div class="duplex-error">'+escapeHtml(name+': '+error.message)+'</div>';}});
         const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?.title||'—';if(display)display.textContent=mode();
         const summary=document.querySelector('#duplex-inventory-summary');if(summary){let count=0;walkBags(()=>{count++;});summary.textContent=count+' bag'+(count===1?'':'s');}
         document.dispatchEvent(new CustomEvent(':uiupdate')); return UI;
@@ -718,7 +795,77 @@
       jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:title,action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
       share(options,closeFn){const url=location.href;if(navigator.share)navigator.share({title:document.title,url}).finally(()=>closeFn?.());else dialog(options?.title||'Share','<p><a href="'+escapeHtml(url)+'">'+escapeHtml(url)+'</a></p>',[],closeFn);}
     };
-    function render(title, restoreBaseHtml) {
+    // Content skipping: passages tagged with a content tag (Config.skip.tags) get a notice with a Skip button,
+    // and readers can choose tags to skip automatically from Settings. The passage still runs, so its
+    // variables stay consistent; only its text is hidden. Skip targets come from <<skipto>> or the first link.
+    const articleEntries=new WeakMap();
+    let skipChain=0;
+    const ContentSkip=window.Skip=(()=>{
+      const storageKey=()=>'duplex-skip-'+storyId();
+      const norm=tag=>String(tag??'').trim().toLowerCase();
+      const toList=value=>(Array.isArray(value)?value:value==null?[]:[value]).map(norm).filter(Boolean);
+      const configured=()=>[...new Set(toList(Config.skip?.tags))];
+      const defaultTags=()=>toList(Config.skip?.defaults);
+      function stored(){try{const saved=JSON.parse(localStorage.getItem(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?Object.assign(Object.create(null),saved):Object.create(null);}catch(_){return Object.create(null);}}
+      function writeStored(saved){try{localStorage.setItem(storageKey(),JSON.stringify(saved));}catch(_){}}
+      function label(tag){const key=norm(tag),labels=Config.skip?.labels&&typeof Config.skip.labels==='object'?Config.skip.labels:{};return String(Object.hasOwn(labels,key)?labels[key]:Object.hasOwn(labels,tag)?labels[tag]:tag);}
+      function isSkipped(tag){const key=norm(tag),saved=stored();if(Object.hasOwn(saved,key))return saved[key]===true;return defaultTags().includes(key);}
+      function set(tag,skipped){const key=norm(tag);if(!key)throw new Error('A content tag name is required.');const saved=stored();saved[key]=Boolean(skipped);writeStored(saved);refresh();return api;}
+      function reset(){try{localStorage.removeItem(storageKey());}catch(_){}refresh();return api;}
+      function storyTags(){const used=new Set();passages.forEach(passage=>passage.tags.forEach(tag=>used.add(norm(tag))));return used;}
+      function available(){const used=storyTags(),defaults=defaultTags();return configured().filter(tag=>Config.skip?.showAllTags||used.has(tag)||defaults.includes(tag));}
+      function contentTags(passageName){const list=configured();return tags(passageName).filter(tag=>list.includes(norm(tag)));}
+      function shouldSkip(passageName){return contentTags(passageName).some(isSkipped);}
+      function targetFor(article){
+        if(!article)return null;
+        const explicit=article.querySelector('.duplex-passage-body template[data-duplex-skip-target]');
+        if(explicit)return explicit.getAttribute('data-duplex-skip-target');
+        const link=[...article.querySelectorAll('.duplex-passage-body [data-passage]')].find(item=>item.dataset.passage!==article.dataset.passage);
+        return link?link.dataset.passage:null;
+      }
+      const currentArticle=()=>output.lastElementChild;
+      function skipArticle(article){const target=targetFor(article);if(!target||!passages.has(target))return false;go(target);return true;}
+      function button(text,dataName,target){const element=document.createElement('button');element.type='button';element.textContent=text;element.setAttribute(dataName,'');if(dataName==='data-duplex-skip'&&(!target||!passages.has(target))){element.disabled=true;element.title=target?'The skip target “'+target+'” does not exist.':'This passage has no link to skip to.';}return element;}
+      function decorate(article){
+        const title=article.dataset.passage,entry=articleEntries.get(article),body=article.querySelector('.duplex-passage-body');
+        article.querySelector(':scope > .duplex-content-notice')?.remove();
+        article.classList.remove('is-content-skipped');if(body)body.hidden=false;
+        const found=contentTags(title);if(!found.length||!body)return false;
+        const names=found.map(label).join(', '),target=targetFor(article),skipped=!entry?.revealed&&found.some(isSkipped);
+        if(target&&!passages.has(target))console.warn('Duplex skip: passage “'+title+'” skips to missing passage “'+target+'”.');
+        const notice=document.createElement('div');notice.className='duplex-content-notice';notice.setAttribute('role','note');notice.dataset.contentTags=found.map(norm).join(' ');
+        if(skipped){
+          notice.classList.add('is-skipped');article.classList.add('is-content-skipped');body.hidden=true;
+          const message=document.createElement('p');message.className='duplex-content-label';message.append('Skipped a passage tagged ');const strong=document.createElement('strong');strong.textContent=names;message.append(strong,'.');notice.append(message);
+          const source=body.querySelector('template.duplex-skip-summary-source');
+          if(source&&source.innerHTML.trim()){const summary=document.createElement('div');summary.className='duplex-skip-summary';summary.innerHTML=source.innerHTML;notice.append(summary);}
+          const actions=document.createElement('div');actions.className='duplex-content-actions';actions.append(button('Continue','data-duplex-skip',target),button('Show anyway','data-duplex-reveal'));notice.append(actions);
+        } else {
+          if(Config.skip?.showNotice===false)return false;
+          const message=document.createElement('span');message.className='duplex-content-label';message.append('Content: ');const strong=document.createElement('strong');strong.textContent=names;message.append(strong);
+          notice.append(message,button('Skip','data-duplex-skip',target));
+        }
+        const heading=article.querySelector('.duplex-passage-title');if(heading)heading.after(notice);else article.prepend(notice);
+        return skipped;
+      }
+      function refresh(){output.querySelectorAll(':scope > article.duplex-passage').forEach(decorate);return api;}
+      function reveal(article){const entry=articleEntries.get(article);if(entry)entry.revealed=true;decorate(article);article.querySelector('.duplex-content-notice [data-duplex-skip]')?.focus?.();}
+      function settingsHtml(){
+        const list=available();
+        const rows=list.map(tag=>'<label class="duplex-skip-row"><input type="checkbox" data-duplex-skip-tag="'+attr(tag)+'"'+(isSkipped(tag)?' checked':'')+'> <span>'+escapeHtml(label(tag))+'</span></label>').join('');
+        return '<section class="duplex-skip-settings" aria-label="Content"><h3>Content</h3>'+(list.length?'<p class="duplex-shortcut-help">Passages with a checked tag are skipped automatically. You can still choose to show a skipped passage.</p>'+rows:'<p class="duplex-shortcut-help">This story has no content tags.</p>')+'</section>';
+      }
+      function bindSettings(box){box.querySelectorAll('[data-duplex-skip-tag]').forEach(input=>input.addEventListener('change',()=>set(input.dataset.duplexSkipTag,input.checked)));}
+      const api={
+        tags:configured,available,label,isSkipped,set,reset,contentTags,shouldSkip,refresh,settingsHtml,bindSettings,decorate,
+        list(){return available().map(tag=>({tag,label:label(tag),skipped:isSkipped(tag)}));},
+        target(passageName){if(passageName==null)return targetFor(currentArticle());const matches=[...output.querySelectorAll(':scope > article.duplex-passage')].filter(article=>article.dataset.passage===String(passageName));return targetFor(matches.at(-1));},
+        skip(){const article=currentArticle();if(!article||!contentTags(article.dataset.passage).length)return false;return skipArticle(article);},
+        skipArticle,reveal
+      };
+      return api;
+    })();
+    function render(title, restoreBaseHtml, entry) {
       const passage=passages.get(title);
       if (!passage) { output.insertAdjacentHTML('beforeend','<div class="duplex-error">Passage not found: ' + escapeHtml(title) + '</div>'); return; }
       State.temporary=Object.create(null);
@@ -729,30 +876,37 @@
       finally { activeRenderTitle=previousRenderTitle; }
       const article=document.createElement('article'); article.className='duplex-passage'; article.dataset.passage=title;
       article.innerHTML='<h2 class="duplex-passage-title">' + escapeHtml(title) + '</h2><div class="duplex-passage-body">' + html + '</div>';
+      if(entry)articleEntries.set(article,entry);
       output.append(article);
+      if(entry)entry.contentSkipped=ContentSkip.decorate(article);
       return baseHtml;
     }
     function go(title) {
       if (!passages.has(title)) return render(title);
       if(State.history.length)State.history.at(-1).variables=clone(State.variables);
       if (mode() === 'replace') output.replaceChildren();
-      const baseHtml=render(title);
-      State.history.push({title,baseHtml,variables:clone(State.variables),mode:mode()});
+      const entry={title};
+      const baseHtml=render(title,undefined,entry);
+      const skipped=entry.contentSkipped===true;delete entry.contentSkipped;
+      Object.assign(entry,{baseHtml,variables:clone(State.variables),mode:mode()});
+      State.history.push(entry);
       document.querySelector('#duplex-back').disabled=State.history.length < 2;
       UI.update();
       if (mode() === 'append') articleScroll(); else window.scrollTo({top:0,behavior:'instant'});
+      if(skipped&&Config.skip?.autoAdvance&&skipChain<20){const target=ContentSkip.target();if(target&&passages.has(target)&&target!==title){skipChain++;try{go(target);}finally{skipChain--;}}}
     }
     function articleScroll() { output.lastElementChild?.scrollIntoView({behavior:'smooth',block:'start'}); }
     function rebuild() {
       output.replaceChildren();
       const visible = State.history.at(-1)?.mode === 'append' ? State.history : State.history.slice(-1);
-      visible.forEach(entry => render(entry.title,entry.baseHtml));
+      visible.forEach(entry => {render(entry.title,entry.baseHtml,entry);delete entry.contentSkipped;});
       document.querySelector('#duplex-back').disabled=State.history.length < 2;
       UI.update();
     }
     function restart() {
-      State.variables=clone(initial); State.history=[]; output.replaceChildren();
-      runInit(); Object.assign(initial,clone(State.variables)); go(startTitle());
+      // Start from empty variables and run StoryInit once, exactly as on first load.
+      State.variables=Object.create(null); State.history=[]; output.replaceChildren();
+      runInit(); go(startTitle());
     }
     function runInit() { const init=passages.get('StoryInit'); if (init) { try { compile(init.text); } catch(error) { console.error('StoryInit:',error); } } }
     function startTitle() { return data.getAttribute('startnode') && [...passages.values()].find(p => p.pid === data.getAttribute('startnode'))?.name || 'Start'; }
@@ -771,7 +925,7 @@
         if(item.target)go(String(item.target));
       }
     }
-    document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const link=event.target.closest('[data-passage]'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
+    document.addEventListener('click',event => { const control=event.target.closest('[data-duplex-action]');if(control){runDeferred(control,event);return;} const skipButton=event.target.closest('[data-duplex-skip]');if(skipButton){event.preventDefault();if(!skipButton.disabled)ContentSkip.skipArticle(skipButton.closest('article.duplex-passage'));return;} const revealButton=event.target.closest('[data-duplex-reveal]');if(revealButton){event.preventDefault();ContentSkip.reveal(revealButton.closest('article.duplex-passage'));return;} const link=event.target.closest('[data-passage]:not(article)'); if (link) { event.preventDefault(); go(link.dataset.passage); } });
     document.addEventListener('change',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
     document.addEventListener('input',event=>{const control=event.target.closest('[data-duplex-action]');if(control)runDeferred(control,event);});
     function activateStoryChoice(number){const links=[...output.querySelectorAll('.duplex-passage-body [data-passage]')].filter(link=>!link.closest('[hidden]'));const link=number===0?links.at(-1):links[number-1];if(link)link.click();}
@@ -784,23 +938,25 @@
     };
     Shortcuts.add('inventory',{label:'Inventory',defaultShortcut:'Shift+I',action:()=>Inventory.open()});
     Shortcuts.add('story-settings',{label:'Story settings',defaultShortcut:'Shift+Alt',action:()=>UI.settings()});
-    Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:restart});
+    Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:()=>UI.restart()});
+    Shortcuts.add('skip',{label:'Skip tagged passage',defaultShortcut:'Shift+S',action:()=>ContentSkip.skip()});
     Shortcuts.add('select',{label:'Select',defaultShortcut:'Enter',action:event=>{const target=document.activeElement;if(target&&target!==document.body&&typeof target.click==='function')target.click();}});
     document.addEventListener('keydown',event=>{
       const recorder=event.target.closest?.('[data-shortcut-id][data-recording]');
       if(recorder){event.preventDefault();event.stopPropagation();if(event.key==='Escape'){delete recorder.dataset.recording;recorder.textContent=shortcutValue(shortcutDefinitions.get(recorder.dataset.shortcutId));return;}const value=shortcutEvent(event);if(!value)return;if(shortcutParts(value).length===1&&['Shift','Ctrl','Alt','Meta'].includes(value)){recorder.textContent=value+'+…';return;}recorder.textContent=setShortcut(recorder.dataset.shortcutId,value);delete recorder.dataset.recording;return;}
       const control=event.target.closest?.('[data-duplex-action]');if(control){runDeferred(control,event);if(event.defaultPrevented)return;}
       if(event.repeat||event.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+      if(document.querySelector('#duplex-dialog')?.open)return;
       const pressed=shortcutEvent(event),definition=[...shortcutDefinitions.values()].find(item=>shortcutValue(item)===pressed);if(definition){runShortcut(definition,event);return;}
       if(!event.ctrlKey&&!event.altKey&&!event.shiftKey&&!event.metaKey&&/^\d$/.test(event.key)){event.preventDefault();activateStoryChoice(Number(event.key));}
     });
     document.addEventListener('visibilitychange',()=>{if(AudioEngine.muteOnHide)[...AudioEngine.tracks.values()].forEach(t=>t.muted=document.hidden||AudioEngine.muted);});
     document.querySelector('#duplex-back').addEventListener('click',() => { if(State.history.length>1){ State.history.pop(); State.variables=clone(State.history.at(-1).variables); rebuild(); } });
-    document.querySelector('#duplex-restart').addEventListener('click',restart);
+    document.querySelector('#duplex-restart').addEventListener('click',()=>UI.restart());
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

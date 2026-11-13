@@ -1,4 +1,4 @@
-# [Duplex 1.6.0](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.7.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -30,7 +30,7 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.6.0** for your story.
+4. Select **Duplex 1.7.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -111,6 +111,8 @@ The `UI` object provides `alert()`, `restart()`, `saves()`, `settings()`, `updat
 ## Saves and portable backups
 
 Duplex keeps one browser save per story and can export or import portable JSON backups. Open **Saves** in the left UI bar to use **Save**, **Load**, **Export**, **Import**, or **Delete**. Exported files include the story identity and are validated before import, so a save from another story or a damaged file will not replace the current progress.
+
+Loaded saves are cleaned before they are shown: their HTML is kept, but anything that would run JavaScript (script tags, `on…` attributes, `javascript:` links) is removed, and buttons or links in a save only work if their code comes from this story's own passages. A save file someone shares with you cannot run its own code.
 
 The JavaScript `Save` API is also available:
 
@@ -233,6 +235,21 @@ Within an ordinary passage while it is rendering, the title may be omitted:
 ```
 
 Unknown passage names return an empty tag array. The helpers are also available as `Duplex.tags()` and `Duplex.hasTag()`.
+
+## Content tags and skipping
+
+Tag a passage with a content tag such as `skip`, `sex`, `violence`, `gore`, `abuse`, `self-harm`, `drugs`, or `death`. Readers then see a notice with a **Skip** button (or press **Shift+S**), and can tick tags in **Settings → Content** to skip them automatically. Skipped passages still run, so variables stay consistent.
+
+```twine
+:: The Ambush [violence]
+<<skipto "Clearing">>
+<<skipsummary>>You drive off the shades, but you are wounded.<</skipsummary>>
+The shades tear at you. Steel flashes.
+
+[[Run onward->Clearing]]
+```
+
+Without `<<skipto>>`, Skip follows the passage's first link. Authors can add tags, set default skips, and more through `Config.skip`. See the step-by-step [content skip guide](Duplex%201.5.0/duplex-format/CONTENT-SKIP.md).
 
 ## Important compatibility note
 
