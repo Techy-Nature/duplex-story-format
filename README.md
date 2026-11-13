@@ -1,4 +1,4 @@
-# [Duplex 1.7.0](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.8.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -30,7 +30,7 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.7.0** for your story.
+4. Select **Duplex 1.8.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -200,6 +200,31 @@ Its <<wolf-like>> eyes caught the light.
 | `<<wolf-like reroll>>` | Picks a new kept option. |
 | `<<grammar "wolf-like">>` | Same as `<<wolf-like>>`; also works for names that clash with a macro. `keep` and `reroll` work here too. |
 
+### Capital letters
+
+Add a case style after the list name to change how the pick is printed. The option itself is not changed, only what is shown.
+
+```twine
+:: animal [grammar]
+dog
+cat
+bird
+```
+
+| Use | Example result |
+| --- | --- |
+| `<<animal>>` | `bird`, exactly as written in the list. |
+| `<<animal.upperFirst>>` | `Bird`: the first letter is capitalized and the rest is left as written. |
+| `<<animal.upper>>` | `BIRD`: the whole option in capitals. |
+| `<<animal.lower>>` | `bird`: the whole option in lowercase, which also fixes stray capitals in the list. |
+
+- Case styles combine with `keep` and `reroll`: `<<animal.upperFirst keep>>` prints the kept pick capitalized, while `<<animal keep>>` prints the same pick as written.
+- They work anywhere a grammar macro does, including inside widgets: `<<widget "sighting">>A <<animal.upperFirst>> crosses the path.<</widget>>`
+- With the generic form, write `<<grammar "animal.upper">>` or `<<grammar "animal" upper>>`.
+- Only visible text changes. Link targets, HTML attributes, and variable values inside an option are never altered.
+- The JavaScript API takes the same suffixes: `Grammar.pick("animal.upperFirst")`, `Grammar.save("animal.upper", "$shout")`.
+- An unknown style such as `<<animal.shout>>` prints nothing extra and logs a warning in the browser console.
+
 Options are processed like passage text, so they can hold `$variables`, links, HTML, and other grammar macros, including the list's own name for recursive lists (nesting stops at 20 levels).
 
 To store a pick in a variable that stays the same:
@@ -212,7 +237,7 @@ To store a pick in a variable that stays the same:
 
 Saved values are finished plain text: nested lists and variables are already filled in. The JavaScript API is `Grammar` (also `Duplex.grammar`): `pick`, `pickRaw`, `save`, `keep`, `kept`, `reroll`, `forget`, `has`, `list`, `names`, and `define(name, options)`. Set `Config.grammar.avoidRepeats = false` to allow the same option twice in a row.
 
-Use hyphens rather than underscores in list names: Duplex reads `_word` as a temporary variable.
+Use hyphens rather than underscores in list names: Duplex reads `_word` as a temporary variable. Avoid dots in list names, since `.` starts a case style. A list name that starts with a built-in macro name, such as `runes` or `link-word`, works normally; a name that *is* a built-in macro, such as `link` or `print`, needs the `<<grammar "link">>` form.
 
 ## Passage tags
 

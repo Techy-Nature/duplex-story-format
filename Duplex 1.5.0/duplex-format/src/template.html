@@ -386,9 +386,12 @@
     /* Grammar: passages tagged [grammar] hold one option per line. <<name>>
        prints a random option (compiled, so options may hold markup, $variables
        and other grammar macros); <<name keep>> remembers one pick in
-       $grammarKept so it survives saves. Duplex.grammar is the JavaScript API. */
+       $grammarKept so it survives saves. <<name.upperFirst>>, <<name.upper>> and
+       <<name.lower>> change the letter case of the printed text only (never
+       link targets or other markup). Duplex.grammar is the JavaScript API. */
     const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
     const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary']);
+    const GRAMMAR_CASES={upperfirst:'upperFirst',upper:'upper',lower:'lower'};
     const grammarLast=new Map();
     let grammarDepth=0;
     function grammarOptions(text){return String(text).split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('//'));}
@@ -410,6 +413,31 @@
       if(Config.grammar?.avoidRepeats!==false&&options.length>2&&choice===last)choice=random(options.filter(option=>option!==last))??choice;
       grammarLast.set(name,choice);return choice;
     }
+    // "animal.upper" -> {name:'animal',style:'upper'}. An exact list name always wins.
+    function grammarRef(ref){
+      const name=String(ref??'').trim();if(grammars.has(name))return {name,style:null};
+      const dot=name.lastIndexOf('.'),style=dot>0?GRAMMAR_CASES[name.slice(dot+1).toLowerCase()]:null;
+      return style?{name:name.slice(0,dot),style}:{name,style:null};
+    }
+    function grammarCaseText(text,style){
+      text=String(text);
+      if(style==='upper')return text.toUpperCase();
+      if(style==='lower')return text.toLowerCase();
+      if(style==='upperFirst')return text.replace(/\p{L}/u,letter=>letter.toUpperCase());
+      return text;
+    }
+    // Applies a case style to the visible text of rendered HTML, leaving tags,
+    // attributes, link targets, scripts and styles alone.
+    function grammarCaseHtml(html,style){
+      if(!style||!html)return html;
+      const holder=document.createElement('template');holder.innerHTML=html;
+      const walker=document.createTreeWalker(holder.content,NodeFilter.SHOW_TEXT,{acceptNode:node=>node.parentElement?.closest('script,style')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
+      let node;while((node=walker.nextNode())){
+        if(style==='upperFirst'){if(/\p{L}/u.test(node.data)){node.data=grammarCaseText(node.data,style);break;}}
+        else node.data=grammarCaseText(node.data,style);
+      }
+      return holder.innerHTML;
+    }
     function grammarStore(){const vars=State.variables;if(!vars[GRAMMAR_KEPT]||typeof vars[GRAMMAR_KEPT]!=='object')vars[GRAMMAR_KEPT]={};return vars[GRAMMAR_KEPT];}
     function grammarKept(name,reroll){name=String(name??'').trim();const kept=grammarStore();if(reroll||!Object.hasOwn(kept,name))kept[name]=grammarPick(name);return kept[name];}
     function grammarSource(name,args){const words=args.map(word=>String(word).toLowerCase());return words.includes('reroll')?grammarKept(name,true):words.includes('keep')?grammarKept(name,false):grammarPick(name);}
@@ -426,26 +454,35 @@
       else if(!/^[\$_]/.test(path))path='$'+path;
       return path;
     }
-    // Returns {length,html} for <<name ...>> or <<grammar "name" ...>>, or null when it is not a grammar call.
+    // Returns {length,html} for <<name ...>>, <<name.upper ...>> or <<grammar "name" ...>>, or null when it is not a grammar call.
     function grammarMacro(rest,context){
-      const call=rest.match(/^<<([A-Za-z][\w-]*)((?:\s[^>]*)?)>>/);if(!call)return null;
-      const macroName=call[1],args=tokens(call[2]||'');let name;
-      if(macroName.toLowerCase()==='grammar'){if(!args.length){console.warn('Duplex grammar: <<grammar>> needs a list name.');return {length:call[0].length,html:''};}const first=args.shift();try{name=String(value(first));}catch(_){name=String(first);}}
+      const call=rest.match(/^<<([A-Za-z][\w-]*)(?:\.([A-Za-z]+))?((?:\s[^>]*)?)>>/);if(!call)return null;
+      const macroName=call[1],args=tokens(call[3]||'');let name,style=null;
+      if(macroName.toLowerCase()==='grammar'&&!call[2]){
+        if(!args.length){console.warn('Duplex grammar: <<grammar>> needs a list name.');return {length:call[0].length,html:''};}
+        const first=args.shift();let ref;try{ref=String(value(first));}catch(_){ref=String(first);}
+        ({name,style}=grammarRef(ref));
+      }
       else if(grammars.has(macroName)&&!GRAMMAR_RESERVED.has(macroName.toLowerCase()))name=macroName;
       else return null;
+      if(call[2]){style=GRAMMAR_CASES[call[2].toLowerCase()];if(!style){console.warn('Duplex grammar: <<'+macroName+'.'+call[2]+'>> is not a case style; use .upperFirst, .upper or .lower.');return null;}}
+      // Case words also work as arguments, e.g. <<grammar "name" upperFirst>>.
+      for(const word of args){const found=GRAMMAR_CASES[String(word).toLowerCase()];if(found)style=found;}
       if(context.restricted)return {length:call[0].length,html:restrictedError(macroName,context)};
-      return {length:call[0].length,html:grammarHtml(grammarSource(name,args),context)};
+      return {length:call[0].length,html:grammarCaseHtml(grammarHtml(grammarSource(name,args),context),style)};
     }
+    // Every name below may carry a case suffix: Grammar.pick("animal.upperFirst").
+    function grammarApiText(ref,picker){const {name,style}=grammarRef(ref);return grammarCaseText(grammarText(picker(name)),style);}
     const Grammar=window.Grammar={
-      pick:name=>grammarText(grammarPick(name)),
-      pickRaw:name=>grammarPick(name),
-      kept:name=>grammarText(grammarKept(name,false)),
-      reroll:name=>grammarText(grammarKept(name,true)),
-      save(name,target){const text=grammarText(grammarPick(name));setReceiver(grammarTarget(target),text);return text;},
+      pick:name=>grammarApiText(name,grammarPick),
+      pickRaw:name=>grammarPick(grammarRef(name).name),
+      kept:name=>grammarApiText(name,base=>grammarKept(base,false)),
+      reroll:name=>grammarApiText(name,base=>grammarKept(base,true)),
+      save(name,target){const text=Grammar.pick(name);setReceiver(grammarTarget(target),text);return text;},
       keep(name,target){const path=grammarTarget(target),current=getReceiver(path);if(current!==undefined&&current!==null&&current!=='')return current;return Grammar.save(name,path);},
-      forget(name){const kept=grammarStore();if(name==null)Object.keys(kept).forEach(key=>delete kept[key]);else delete kept[String(name).trim()];},
-      has:name=>grammars.has(String(name??'').trim()),
-      list:name=>(grammars.get(String(name??'').trim())||[]).slice(),
+      forget(name){const kept=grammarStore();if(name==null)Object.keys(kept).forEach(key=>delete kept[key]);else delete kept[grammarRef(name).name];},
+      has:name=>grammars.has(grammarRef(name).name),
+      list:name=>(grammars.get(grammarRef(name).name)||[]).slice(),
       names:()=>[...grammars.keys()],
       define:defineGrammar
     };
@@ -502,13 +539,13 @@
         if(/^<<skipsummary(?:\s|>>)/i.test(rest)){const found=container(rest,'skipsummary');out+='<template class="duplex-skip-summary-source">'+compile(found.body,context)+'</template>';i+=found.length;continue;}
         const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
         if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
-        const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)\b/i)?.[1]?.toLowerCase();
+        const interactiveName=rest.match(/^<<(button|linkappend|linkprepend|linkreplace|link)(?![A-Za-z0-9.-])/i)?.[1]?.toLowerCase();
         if(interactiveName){const found=interactive(rest,interactiveName);out+=found.html;i+=found.length;continue;}
-        const optionName=rest.match(/^<<(cycle|dropdown|listbox)\b/i)?.[1]?.toLowerCase();
+        const optionName=rest.match(/^<<(cycle|dropdown|listbox)(?![A-Za-z0-9.-])/i)?.[1]?.toLowerCase();
         if(optionName){const found=optionControls(rest,optionName);out+=found.html;i+=found.length;continue;}
-        const audioBlock=rest.match(/^<<(createaudiogroup|createplaylist)\b/i)?.[1]?.toLowerCase();
+        const audioBlock=rest.match(/^<<(createaudiogroup|createplaylist)(?![A-Za-z0-9.-])/i)?.[1]?.toLowerCase();
         if(audioBlock){const found=container(rest,audioBlock);if(context.restricted)out+=restrictedError(audioBlock,context);else out+=audioContainer(rest,audioBlock).html;i+=found.length;continue;}
-        const macro=rest.match(/^<<(set|run|unset|print|=|checkbox|radiobutton|numberbox|textbox|textarea|cacheaudio|audio|masteraudio|playlist|removeaudiogroup|removeplaylist|waitforaudio)\s*([\s\S]*?)>>/i);
+        const macro=rest.match(/^<<(=|(?:set|run|unset|print|checkbox|radiobutton|numberbox|textbox|textarea|cacheaudio|audio|masteraudio|playlist|removeaudiogroup|removeplaylist|waitforaudio)(?![A-Za-z0-9.-]))\s*([\s\S]*?)>>/i);
         if (macro) {
           const name=macro[1].toLowerCase(),args=macro[2];
           if(context.restricted&&['run','unset','cacheaudio','audio','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio'].includes(name)){out+=restrictedError(name,context);}
@@ -525,7 +562,7 @@
           else if(name==='waitforaudio')Promise.all([...AudioEngine.tracks.values()].map(t=>t.readyState>=3?Promise.resolve():new Promise(resolve=>{t.addEventListener('canplaythrough',resolve,{once:true});t.addEventListener('error',resolve,{once:true});mediaCall(t,'load');})));
           i += macro[0].length; continue;
         }
-        const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
+        const widgetName=rest.match(/^<<([A-Za-z][\w-]*)(?![\w.-])/i)?.[1];
         if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[\s\S]*?>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
         const grammarCall=grammarMacro(rest,context);if(grammarCall){out+=grammarCall.html;i+=grammarCall.length;continue;}
         const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
@@ -595,7 +632,7 @@
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.7.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.8.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
