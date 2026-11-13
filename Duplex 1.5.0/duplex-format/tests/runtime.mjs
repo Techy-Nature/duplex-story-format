@@ -46,6 +46,11 @@ Recursive: <<include "RecursiveA">>
 Inline before <<bird "Inline">> inline after
 Grammar call: [<<bird-call>>] kept [<<bird-call keep>>][<<bird-call keep>>] generic [<<grammar "bird-call">>]
 <<run Grammar.save("call-line", "$savedCall")>>
+Grammar case: [<<beast>>][<<beast.upperFirst>>][<<beast.upper>>][<<beast.lower>>][<<beast.UPPERFIRST>>][<<grammar "beast" upper>>][<<grammar "beast.lower">>][<<beast.upper keep>>]
+Grammar link case: <<beast-link.upper>>
+Grammar widget: <<creature>>
+Grammar names: [<<runes>>][<<runes.upperFirst>>][<<link-word.upper>>][<<audio-cue>>]
+Grammar bad case: [<<beast.shout>>]
 <<twopara>>
 <<birdnote>>flies at dusk<</birdnote>>
 <<speech "Captain">>Hello, $unsafe.
@@ -89,6 +94,12 @@ Second widget paragraph.<</widget>>
   ${passage('17','DuplexMod:collision.mod:hook','base collision passage')}
   ${passage('19','bird-call','hoot\ntrill\n// not an option\n\ncaw','grammar')}
   ${passage('20','call-line','a <<bird-call>> at dusk','grammar')}
+  ${passage('21','beast','wOlf pack','grammar')}
+  ${passage('22','beast-link','[[sly fox->Next]]','grammar')}
+  ${passage('23','runes','ash rune','grammar')}
+  ${passage('24','link-word','glyph','grammar')}
+  ${passage('25','audio-cue','chime','grammar')}
+  ${passage('26','Grammar Widgets','<<widget "creature">>A <<beast.lower>> and a <<beast.upperFirst>> appear.<</widget>>','widget')}
   ${passage('18','StorySettings','<strong id="author-settings">Author settings</strong>')}
 </tw-storydata>`;
 
@@ -117,7 +128,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.7.0','format version');
+assert(format.version === '1.8.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -150,6 +161,15 @@ assert(grammarLine[2]===grammarLine[3]&&State.variables.grammarKept['bird-call']
 assert(JSON.stringify(Duplex.grammar.list('bird-call'))===JSON.stringify(['hoot','trill','caw'])&&Duplex.grammar.names().includes('call-line'),'grammar passages skip blank and // lines');
 assert(/^a (hoot|trill|caw) at dusk$/.test(State.variables.savedCall),'Grammar.save stores finished plain text with nested lists expanded');
 assert(![...document.querySelectorAll('.duplex-passage-body')].some(body=>body.textContent.includes('not an option')),'grammar comment lines are never printed');
+const grammarParagraphs=[...document.querySelectorAll('.duplex-passage-body p')].map(p=>p.textContent).join('\n');
+assert(grammarParagraphs.includes('Grammar case: [wOlf pack][WOlf pack][WOLF PACK][wolf pack][WOlf pack][WOLF PACK][wolf pack][WOLF PACK]'),'grammar .upperFirst, .upper and .lower change case, in both macro and generic forms');
+assert(State.variables.grammarKept.beast==='wOlf pack','kept grammar picks store the original text, not the cased text');
+const casedLink=[...document.querySelectorAll('.duplex-passage-body a[data-passage]')].find(a=>a.textContent==='SLY FOX');
+assert(casedLink&&casedLink.getAttribute('data-passage')==='Next','grammar case styles change link text but never link targets');
+assert(grammarParagraphs.includes('Grammar widget: A wolf pack and a WOlf pack appear.'),'grammar case macros work inside widgets');
+assert(grammarParagraphs.includes('Grammar names: [ash rune][Ash rune][GLYPH][chime]'),'grammar names that start with a built-in macro name (run, link, audio) are not read as that macro');
+assert(grammarParagraphs.includes('Grammar bad case: [')&&consoleWarnings.some(message=>message.includes('beast.shout')),'an unknown case style warns instead of printing');
+assert(Duplex.grammar.pick('beast.upper')==='WOLF PACK'&&Duplex.grammar.pick('beast.upperFirst')==='WOlf pack'&&Duplex.grammar.has('beast.lower')&&Duplex.grammar.list('beast.upper')[0]==='wOlf pack','Grammar API accepts case suffixes');
 assert([...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent==='First widget paragraph.')&&[...document.querySelectorAll('.duplex-passage-body p')].some(p=>p.textContent.startsWith('Second widget paragraph.')),'multi-paragraph widget output keeps its paragraphs');
 assert(document.querySelector('.speech-text [data-passage=Next]')?.textContent === 'Trusted link' && document.querySelector('.speech-text')?.textContent.includes('Widget bird: Nested'),'container widget compiles links, conditions, variables, and nested widgets with arguments available');
 assert(!document.querySelector('#injected') && !dom.window.injectionRan && document.body.textContent.includes("<script id='injected'>"),'ordinary values remain escaped for naked, print, and shorthand output');
