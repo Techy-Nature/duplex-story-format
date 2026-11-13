@@ -382,4 +382,56 @@ sw.Duplex.go('Broken');
 assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
 skipDom.window.close();
 
+// Regression checks from the 1.7.0 bug comb.
+const combPassages=[
+  ['StoryInit','<<set $inits to ($inits or 0) + 1>>'],
+  ['Start',`<<set $msg to "cats and dogs or birds, it is not here">><<set $my_var to 3>><<set $a to 1, $b to 2>><<set _who to "Nest">>
+[$msg] [$my_var] [$a$b] snake_case_word
+<<markdown>>
+Hi _who, see [docs](https://a.test/c_d_e) and _emphasis_
+<</markdown>>
+<<link [[Square link->Shop]]>><</link>> [[Quote "name"]]
+<<nosuchmacro 1>> <<big $a > 0>>
+[[Shop]]`],
+  ['Shop','<<set $gold to 5>><<button "Buy">><<set $gold -= 1>><</button>>'],
+  ['Quote "name"','quoted'],
+  ['Md','# Heading\n- item','markdown'],
+  ['StoryCaption','<<if true>>unclosed'],
+  ['W','<<widget "big">>[big <<print _args.length>>]<</widget>><<widget "bad name">>x<</widget>>','widget']
+];
+const combStory=`<tw-storydata name="Comb" ifid="COMB-IFID" startnode="2">${combPassages.map(([name,text,tags=''],index)=>passage(String(index+1),name,text,tags)).join('')}</tw-storydata>`;
+const combErrors=[];
+const combOptions={runScripts:'dangerously',url:'https://example.test/comb',beforeParse(window){window.console.error=(...args)=>combErrors.push(args.join(' '));window.console.warn=(...args)=>combErrors.push(args.join(' '));window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};}};
+const combHtml=format.source.replace('{{STORY_NAME}}','Comb').replace('{{STORY_DATA}}',combStory);
+const comb=new JSDOM(combHtml,combOptions), cw=comb.window, cd=cw.document, cbody=()=>cd.querySelector('#duplex-passages > article:last-child .duplex-passage-body');
+assert(cw.State.history.length===1&&cw.State.history[0].title==='Start','an invalid widget definition does not stop the story from starting');
+assert(combErrors.some(message=>message.includes('bad name')),'invalid widget names are reported');
+assert(cw.State.variables.msg==='cats and dogs or birds, it is not here','keyword operators are not rewritten inside strings');
+assert(cw.State.variables.my_var===3&&cbody().textContent.includes('[3]'),'variable names may contain underscores');
+assert(cw.State.variables.a===1&&cw.State.variables.b===2,'<<set>> accepts several "to" assignments');
+assert(cbody().textContent.includes('snake_case_word'),'underscores inside words are not read as temporary variables');
+assert(cbody().textContent.includes('Hi Nest')&&cbody().querySelector('a[href="https://a.test/c_d_e"]')&&cbody().querySelector('em')?.textContent==='emphasis','markdown keeps _temp variables and URL underscores, and still supports _emphasis_');
+assert([...cbody().querySelectorAll('a')].some(link=>link.textContent==='Square link'),'<<link [[label->target]]>> works');
+assert([...cbody().querySelectorAll('[data-passage]')].some(link=>link.dataset.passage==='Quote "name"'),'passage names containing quotes link correctly');
+assert(cbody().textContent.includes('Unknown macro: <<nosuchmacro 1>>'),'unknown macros are shown as errors instead of vanishing');
+assert(cbody().textContent.includes('[big 3]'),'widget arguments may contain >');
+assert(cd.querySelector('#story-caption .duplex-error')&&cd.querySelector('#duplex-current-passage').textContent==='Start','an error in a UI passage stays inside that region');
+cw.Duplex.go('Md');assert(cbody().querySelector('h1')?.textContent==='Heading'&&cbody().querySelector('li'),'[markdown]-tagged passages render as markdown');
+cw.Duplex.go('Shop');cbody().querySelector('button').click();assert(cw.State.variables.gold===4,'button works in the same session');
+const combSave=cw.Save.serialize();
+const combLoaded=new JSDOM(combHtml,combOptions);combLoaded.window.Save.import(combSave);
+combLoaded.window.document.querySelector('#duplex-passages > article:last-child button').click();
+assert(combLoaded.window.State.variables.gold===3,'controls in a loaded save still work after a page reload');
+cw.UI.settings();cd.dispatchEvent(new cw.KeyboardEvent('keydown',{key:'1',bubbles:true,cancelable:true}));
+assert(cw.State.history.at(-1).title==='Shop','number keys do not follow links behind an open dialog');
+cd.querySelector('#duplex-dialog-actions button:last-child').click();
+cd.querySelector('#duplex-restart').click();
+assert(cd.querySelector('#duplex-dialog').open&&cw.State.history.at(-1).title==='Shop','Restart asks before restarting');
+cd.querySelector('#duplex-dialog-actions button').click();
+assert(cw.State.history.length===1&&cw.State.variables.inits===1&&cw.State.variables.gold===undefined,'Restart runs StoryInit once on fresh variables');
+cw.Inventory.createBag('Pouch',{id:'pouch'});cw.Inventory.addItem('pouch',{name:'Coin'});cw.Inventory.openBag('pouch');
+[...cd.querySelectorAll('#duplex-dialog-actions button')].find(button=>button.textContent==='Take Everything').click();
+assert(cd.querySelector('#duplex-dialog').open&&cd.querySelector('#duplex-dialog-body').textContent.includes('Choose a destination bag'),'inventory problems are shown to the reader');
+comb.window.close();combLoaded.window.close();
+
 console.log('Duplex runtime tests passed.');

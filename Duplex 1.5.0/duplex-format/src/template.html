@@ -157,11 +157,24 @@
       const chosen = Config.displayMode ?? State.variables.passageMode ?? State.variables.displayMode ?? 'replace';
       return chosen === 'append' || chosen === true ? 'append' : 'replace';
     }
+    // Rewrites only the code parts of an expression, leaving the text inside string literals untouched.
+    function mapCode(source,rewrite) {
+      let out='',code='',i=0;
+      const flush=()=>{out+=rewrite(code);code='';};
+      while(i<source.length){
+        const ch=source[i];
+        if(ch==='"'||ch==="'"){flush();let j=i+1;while(j<source.length&&source[j]!==ch){if(source[j]==='\\')j++;j++;}out+=source.slice(i,j+1);i=j+1;continue;}
+        if(ch==='`'){flush();let j=i+1;out+='`';while(j<source.length&&source[j]!=='`'){if(source[j]==='\\'){out+=source.slice(j,j+2);j+=2;continue;}if(source[j]==='$'&&source[j+1]==='{'){let depth=1,k=j+2;while(k<source.length&&depth){if(source[k]==='{')depth++;else if(source[k]==='}')depth--;k++;}out+='${'+mapCode(source.slice(j+2,k-1),rewrite)+'}';j=k;continue;}out+=source[j++];}out+='`';i=j+1;continue;}
+        code+=ch;i++;
+      }
+      flush();return out;
+    }
+    const keywordOperators=code=>code.replace(/(?<![\w$.])is\s+not(?![\w$]|\s*:)/g,'!==').replace(/(?<![\w$.])(?:isnot|neq)(?![\w$]|\s*:)/g,'!==').replace(/(?<![\w$.])(?:is|eq)(?![\w$]|\s*:)/g,'===').replace(/(?<![\w$.])gte(?![\w$]|\s*:)/g,'>=').replace(/(?<![\w$.])lte(?![\w$]|\s*:)/g,'<=').replace(/(?<![\w$.])gt(?![\w$]|\s*:)/g,'>').replace(/(?<![\w$.])lt(?![\w$]|\s*:)/g,'<').replace(/(?<![\w$.])and(?![\w$]|\s*:)/g,'&&').replace(/(?<![\w$.])or(?![\w$]|\s*:)/g,'||').replace(/(?<![\w$.])not(?![\w$]|\s*:)/g,'!');
     function jsExpr(source) {
-      return source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!').replace(/\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/_([A-Za-z_]\w*)/g,'State.temporary.$1');
+      return mapCode(source.trim(),code=>keywordOperators(code).replace(/(?<![\w$.])\$([A-Za-z_]\w*)/g,'State.variables.$1').replace(/(?<![\w$.])_([A-Za-z_]\w*)/g,'State.temporary.$1'));
     }
     function restrictedTokens(source) {
-      source=source.trim().replace(/\bis\s+not\b/g,'!==').replace(/\bisnot\b|\bneq\b/g,'!==').replace(/\bis\b|\beq\b/g,'===').replace(/\bgte\b/g,'>=').replace(/\blte\b/g,'<=').replace(/\bgt\b/g,'>').replace(/\blt\b/g,'<').replace(/\band\b/g,'&&').replace(/\bor\b/g,'||').replace(/\bnot\b/g,'!');
+      source=mapCode(source.trim(),keywordOperators);
       const result=[];let i=0;
       while(i<source.length){if(/\s/.test(source[i])){i++;continue;}const rest=source.slice(i),string=rest.match(/^("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/),number=rest.match(/^(?:\d+(?:\.\d+)?|\.\d+)/),variable=rest.match(/^[\$_][A-Za-z_]\w*/),identifier=rest.match(/^[A-Za-z_]\w*/),operator=rest.match(/^(?:===|!==|==|!=|>=|<=|&&|\|\||[()+\-*/%!,.<>])/);
         if(string){let parsed;try{parsed=JSON.parse(string[0][0]==="'"?'"'+string[0].slice(1,-1).replace(/\\'/g,"'").replace(/"/g,'\\"')+'"':string[0]);}catch(_){throw new Error('Invalid string literal.');}result.push({type:'literal',value:parsed});i+=string[0].length;}
@@ -200,7 +213,7 @@
       catch (error) { throw new Error('Could not evaluate “' + source + '”: ' + error.message); }
     }
     function execute(source) {
-      const normalized=source.replace(/^(\s*[$_]\w+(?:\.[A-Za-z_]\w*)*)\s+to\s+/, '$1 = ');
+      const normalized=mapCode(source,code=>code.replace(/(?<![\w$.])to(?![\w$])/g,'='));
       return Function('State','setup','Config','Duplex',jsExpr(normalized))(State,setup,Config,window.Duplex);
     }
     function assign(source) { execute(source); return ''; }
@@ -271,13 +284,17 @@
       return {length:block.length,html:outputBuffer.innerHTML};
     }
     function markdownInline(source) {
-      return source.replace(/`([^`]+)`/g,'<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
-        .replace(/__([^_]+)__/g,'<strong>$1</strong>')
+      // Code spans and link/image URLs are set aside first so emphasis never rewrites them.
+      // Underscore emphasis needs a non-word character on both sides, so snake_case and _temp variables survive.
+      const slots=[],keep=html=>'\u0000'+(slots.push(html)-1)+'\u0000';
+      const emphasis=text=>text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+        .replace(/(?<![\w$])__(?=\S)([^_]+?)(?<=\S)__(?!\w)/g,'<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g,'<em>$1</em>')
-        .replace(/_([^_]+)_/g,'<em>$1</em>')
-        .replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,alt,url,title)=>'<img src="'+escapeHtml(url)+'" alt="'+escapeHtml(alt)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>')
-        .replace(/\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,label,url,title)=>'<a href="'+escapeHtml(url)+'"'+(title?' title="'+escapeHtml(title)+'"':'')+'>'+label+'</a>');
+        .replace(/(?<![\w$])_(?=[^\s_])([^_]+?)(?<=\S)_(?!\w)/g,'<em>$1</em>');
+      let text=source.replace(/`([^`]+)`/g,(_,code)=>keep('<code>'+code+'</code>'))
+        .replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,alt,url,title)=>keep('<img src="'+attr(url)+'" alt="'+attr(alt)+'"'+(title?' title="'+attr(title)+'"':'')+'>'))
+        .replace(/(?<!\[)\[([^\]]+)\]\(([^\s)]+)(?:\s+["']([^"']*)["'])?\)/g,(_,label,url,title)=>keep('<a href="'+attr(url)+'"'+(title?' title="'+attr(title)+'"':'')+'>'+emphasis(label)+'</a>'));
+      return emphasis(text).replace(/\u0000(\d+)\u0000/g,(_,index)=>slots[Number(index)]);
     }
     function markdownMacro(text) {
       const block=container(text,'markdown'), lines=block.body.replace(/\r\n?/g,'\n').split('\n');
@@ -294,8 +311,18 @@
       closeList();
       return {length:block.length,html:compile(html)};
     }
+    // Splits the inside of [[...]] into its label and target, accepting ->, <- and | forms.
+    function linkParts(body) {
+      let label,target;
+      if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
+      else if (body.includes('<-')) [target,label]=body.split(/<-(.+)/s);
+      else if (body.includes('|')) [label,target]=body.split(/\|(.+)/s);
+      else label=target=body;
+      return {label:label.trim(),target:target.trim()};
+    }
     function interactive(text,name) {
-      const block=container(text,name), argv=tokens(block.args), label=value(argv[0]), target=argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
+      const block=container(text,name), argv=tokens(block.args), squareLink=/^\[\[[\s\S]*\]\]$/.test(argv[0]||'')?linkParts(argv[0].slice(2,-2)):null;
+      const label=squareLink?squareLink.label:value(argv[0]), target=squareLink?squareLink.target:argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
       const id=action({kind:name,body:block.body,target,context:{...(compileContexts.at(-1)||{} )}});
       const tag=name==='button'?'button':'a', href=tag==='a'?' href="#"':'';
       return {length:block.length,html:'<'+tag+href+' class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(label)+'</'+tag+'>'};
@@ -347,7 +374,8 @@
       passages.forEach(passage=>{
         if(!passage.tags.includes('widget'))return;
         let rest=passage.text;
-        while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}
+        try{while(rest.length){const start=rest.search(/<<widget\b/i);if(start<0)break;rest=rest.slice(start);const block=container(rest,'widget'),a=tokens(block.args);let name;try{name=String(value(a[0]));}catch(_){name=String(a[0]||'');}if(!/^[A-Za-z][\w-]*$/.test(name))throw new Error('Invalid widget name: '+name);widgets.set(name,{name,body:block.body,container:a.slice(1).some(x=>x.toLowerCase()==='container')});rest=rest.slice(block.length);}}
+        catch(error){console.error('Duplex widgets in "'+passage.name+'":',error.message);}
       });
     }
     /* Grammar: passages tagged [grammar] hold one option per line. <<name>>
@@ -355,7 +383,7 @@
        and other grammar macros); <<name keep>> remembers one pick in
        $grammarKept so it survives saves. Duplex.grammar is the JavaScript API. */
     const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
-    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar']);
+    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary']);
     const grammarLast=new Map();
     let grammarDepth=0;
     function grammarOptions(text){return String(text).split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('//'));}
@@ -448,7 +476,7 @@
         return '';
       }
       includeStack.push(title);
-      try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};return compile(passage.text,next);}
+      try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};const source=passage.tags.some(tag=>tag.toLowerCase()==='markdown')?'<<markdown>>\n'+passage.text+'\n<</markdown>>':passage.text;return compile(source,next);}
       finally{includeStack.pop();}
     }
     function includePassage(argSource,context) { return includeNamedPassage(String(evaluate(argSource)),context); }
@@ -493,21 +521,19 @@
           i += macro[0].length; continue;
         }
         const widgetName=rest.match(/^<<([A-Za-z][\w-]*)\b/i)?.[1];
-        if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[^>]*>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
+        if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[\s\S]*?>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
         const grammarCall=grammarMacro(rest,context);if(grammarCall){out+=grammarCall.html;i+=grammarCall.length;continue;}
         const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
+        const unknown=rest.match(/^<<\/?([A-Za-z][\w-]*)\b[\s\S]*?>>/);
+        if(unknown){console.warn('Duplex: unknown macro <<'+unknown[1]+'>> in "'+(context.sourcePassage||activeRenderTitle||'?')+'".');out+='<span class="duplex-error">Unknown macro: '+escapeHtml(unknown[0])+'</span>';i+=unknown[0].length;continue;}
         const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
         if (link) {
-          let label,target,body=link[1];
-          if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
-          else if (body.includes('<-')) [target,label]=body.split(/<-(.+)/s);
-          else if (body.includes('|')) [label,target]=body.split(/\|(.+)/s);
-          else label=target=body;
-          out += '<a href="#" class="duplex-link" data-passage="' + escapeHtml(target.trim()) + '">' + escapeHtml(label.trim()) + '</a>';
+          const {label,target}=linkParts(link[1]);
+          out += '<a href="#" class="duplex-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</a>';
           i += link[0].length; continue;
         }
         const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);
-        if (variable) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
+        if (variable && (i===0 || !/[\w$]/.test(source[i-1]))) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
         out += source[i++];
       }
       out=out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');return context.restricted?sanitizeRestrictedHtml(out):out;
@@ -654,7 +680,11 @@
       Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=mod.id+' · '+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
     }
     function saveKey(){return 'duplex-save-'+storyId();}
-    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode,revealed})=>({title,baseHtml,variables:clone(variables),mode,...(revealed?{revealed:true}:{})})),variables:clone(State.variables)};}
+    // Controls such as <<button>> keep their code in the in-memory `deferred` map, keyed by the id in the
+    // rendered HTML. Saves carry the entries the saved passages use, so the controls still work after a reload.
+    function savedActions(){const ids=new Set();State.history.forEach(entry=>{for(const match of String(entry.baseHtml??'').matchAll(/data-duplex-action="([^"]+)"/g))ids.add(match[1]);});const actions={};ids.forEach(id=>{if(deferred.has(id)){try{actions[id]=clone(deferred.get(id));}catch(_){}}});return actions;}
+    function restoreActions(actions){if(!actions||typeof actions!=='object'||Array.isArray(actions))return;Object.entries(actions).forEach(([id,payload])=>{if(/^duplex-action-/.test(id)&&payload&&typeof payload==='object'&&typeof payload.kind==='string'&&!deferred.has(id))deferred.set(id,payload);});}
+    function savePayload(){return {format:'DuplexSave',schema:1,story:storyId(),storyName:data.getAttribute('name')||document.title,formatVersion:DUPLEX_VERSION,savedAt:new Date().toISOString(),mods:Mods.list().filter(mod=>mod.enabled).map(mod=>({id:mod.id,version:mod.version})),history:State.history.map(({title,baseHtml,variables,mode,revealed})=>({title,baseHtml,variables:clone(variables),mode,...(revealed?{revealed:true}:{})})),variables:clone(State.variables),actions:savedActions()};}
     function validateSave(value,{allowLegacy=false}={}) {
       if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The selected file is not a Duplex save.');
       const legacy=!value.format&&allowLegacy&&Array.isArray(value.history)&&value.variables&&typeof value.variables==='object';
@@ -663,10 +693,10 @@
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
       value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
       const history=value.history.map(entry=>({title:entry.title,baseHtml:entry.baseHtml??entry.html,variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
-      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),warnings};
+      const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),actions:value.actions,warnings};
     }
     function showSaveWarnings(warnings){if(!warnings?.length)return;dialog('Save loaded with mod warnings','<p>This save expects the following mod setup:</p><ul id="duplex-save-mod-warnings"></ul><p>The save was loaded, but some content may be unavailable.</p>');const list=document.querySelector('#duplex-save-mod-warnings');warnings.forEach(message=>{const item=document.createElement('li');item.textContent=message;list.append(item);});}
-    function applySave(saved){State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}
+    function applySave(saved){restoreActions(saved.actions);State.history=saved.history;State.variables=saved.variables;rebuild();UI.update();showSaveWarnings(saved.warnings);return true;}
     function restoreSave(value,options){return applySave(validateSave(value,options));}
     function parseSave(text,options){let value;try{value=JSON.parse(text);}catch{throw new Error('The selected file is not valid JSON.');}return validateSave(value,options);}
     function safeFilename(){return (data.getAttribute('name')||document.title||'duplex-story').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'duplex-story';}
@@ -714,15 +744,17 @@
       createBag(definition,options={}){const bag=normalizeBag(definition,options);if(!bagEmpty(bag))bag.quantity=1;const destination=options.parentId?locateBag(options.parentId)?.bag:null,collection=destination?.children??inventoryState().bags;if(destination){if(bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination,destination.items.length,destination.children.length+1))throw new Error('Bag capacity exceeded.');splitForContents(locateBag(destination.id));}const compatible=bagEmpty(bag)&&collection.find(other=>bagEmpty(assertBagShape(other))&&!other.room&&!bag.room&&other.name===bag.name&&JSON.stringify(other.definition)===JSON.stringify(bag.definition)&&JSON.stringify(other.properties)===JSON.stringify(bag.properties)&&other.quantity+bag.quantity<=1000);if(compatible){compatible.quantity+=bag.quantity;return compatible;}collection.push(bag);return bag;},
       getBag(id){return locateBag(id)?.bag??null;},
       addItem(id,item){const location=locateBag(id);if(!location)throw new Error('Bag not found.');if(!capacityOkay(location.bag,location.bag.items.length+1,location.bag.children.length))throw new Error('Bag capacity exceeded.');const bag=splitForContents(location),stack=clone(item);stack.quantity=Math.max(1,Math.min(1000,Number(stack.quantity)||1));bag.items.push(stack);refreshInventory();return bag;},
-      openBag(id){const location=locateBag(id),bag=location?.bag;if(!bag)throw new Error('Bag not found.');Inventory.activeBagId=bag.id;const items=bag.items.map(stack=>'<li>'+escapeHtml(stack.name??stack.definition??'Item')+(stack.quantity>1?' × '+stack.quantity:'')+'</li>').join('');const children=bag.children.map(child=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(child.id)+'" data-parent-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(child.name)+'"><span class="duplex-bag-name">'+escapeHtml(child.name)+'</span><span>× '+child.quantity+'</span></button></li>').join('');return dialog(bag.name,'<ul class="duplex-inventory-list">'+items+children+'</ul>',[{label:'Take Everything',action:()=>Inventory.requestUnpack(bag.id,location.parent?.id)}]);},
+      openBag(id){const location=locateBag(id),bag=location?.bag;if(!bag)throw new Error('Bag not found.');Inventory.activeBagId=bag.id;const items=bag.items.map(stack=>'<li>'+escapeHtml(stack.name??stack.definition??'Item')+(stack.quantity>1?' × '+stack.quantity:'')+'</li>').join('');const children=bag.children.map(child=>'<li><button type="button" class="duplex-bag-row" data-bag-id="'+escapeHtml(child.id)+'" data-parent-bag-id="'+escapeHtml(bag.id)+'" aria-label="Open '+escapeHtml(child.name)+'"><span class="duplex-bag-name">'+escapeHtml(child.name)+'</span><span>× '+child.quantity+'</span></button></li>').join('');return dialog(bag.name,'<ul class="duplex-inventory-list">'+items+children+'</ul>',[{label:'Take Everything',action:()=>inventoryAction(()=>Inventory.requestUnpack(bag.id,location.parent?.id))}]);},
       moveBag(sourceId,destinationId){const source=locateBag(sourceId),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be moved into itself or one of its descendants.');if(source.bag.room)throw new Error('A room must remain a top-level location.');if(!capacityOkay(destination.bag,destination.bag.items.length,destination.bag.children.length+1))throw new Error('Bag capacity exceeded.');const target=splitForContents(destination);source.collection.splice(source.collection.indexOf(source.bag),1);target.children.push(source.bag);refreshInventory();return source.bag;},
       unpackBag(id,destinationId){const source=locateBag(id),destination=locateBag(destinationId);if(!source||!destination)throw new Error('Bag not found.');if(source.bag===destination.bag||isDescendant(source.bag,destination.bag))throw new Error('A bag cannot be unpacked into itself or one of its descendants.');const target=destination.bag;if(target.room&&source.bag.room)throw new Error('A room cannot be placed inside another bag.');const added=source.bag.items.length+source.bag.children.length;if(!capacityOkay(target,target.items.length+source.bag.items.length,target.children.length+source.bag.children.length))throw new Error('Bag capacity exceeded.');for(const child of source.bag.children)if(child.room||child===target||isDescendant(child,target))throw new Error('Unpacking would create an invalid bag hierarchy.');if(!added)return source.bag;splitForContents(destination);target.items.push(...source.bag.items);target.children.push(...source.bag.children);source.bag.items=[];source.bag.children=[];refreshInventory();return source.bag;},
       requestUnpack(id,destinationId){const bag=locateBag(id)?.bag;if(!bag)throw new Error('Bag not found.');const destination=destinationId??locateBag(id)?.parent?.id;if(!destination)throw new Error('Choose a destination bag before unpacking.');if(bagEmpty(bag)||window.confirm('Take everything from '+bag.name+'?'))return Inventory.unpackBag(id,destination);return false;},
       leaveRoom(id,safe=true){const location=locateBag(id);if(!location||!location.bag.room)throw new Error('Room not found.');if(!safe)location.collection.splice(location.collection.indexOf(location.bag),1);refreshInventory();return safe?location.bag:null;}
     };
+    // Reader-facing inventory actions report problems in a dialog instead of failing silently.
+    function inventoryAction(run){try{return run();}catch(error){UI.alert(error.message,{title:'Inventory'});return false;}}
     let bagClickTimer;
-    document.addEventListener('click',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);bagClickTimer=setTimeout(()=>Inventory.openBag(row.dataset.bagId),220);});
-    document.addEventListener('dblclick',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);Inventory.requestUnpack(row.dataset.bagId,row.dataset.parentBagId);});
+    document.addEventListener('click',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);bagClickTimer=setTimeout(()=>inventoryAction(()=>Inventory.openBag(row.dataset.bagId)),220);});
+    document.addEventListener('dblclick',event=>{const row=event.target.closest('.duplex-bag-row');if(!row)return;clearTimeout(bagClickTimer);inventoryAction(()=>Inventory.requestUnpack(row.dataset.bagId,row.dataset.parentBagId));});
     const UI=window.UI={
       alert(message,options,closeFn){dialog(options?.title||'Alert','<p>'+escapeHtml(message)+'</p>',[],closeFn);},
       restart(){dialog('Restart','<p>Restart the story from the beginning?</p>',[{label:'Restart',action:()=>{closeDialog();restart();}}]);},
@@ -739,7 +771,7 @@
       settings(options,closeFn){return renderShortcutSettings(options,closeFn);},
       update(){
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
-        regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(region)region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';});
+        regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(!region)return;try{region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';}catch(error){console.error(name+':',error);region.innerHTML='<div class="duplex-error">'+escapeHtml(name+': '+error.message)+'</div>';}});
         const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?.title||'—';if(display)display.textContent=mode();
         const summary=document.querySelector('#duplex-inventory-summary');if(summary){let count=0;walkBags(()=>{count++;});summary.textContent=count+' bag'+(count===1?'':'s');}
         document.dispatchEvent(new CustomEvent(':uiupdate')); return UI;
@@ -856,8 +888,9 @@
       UI.update();
     }
     function restart() {
-      State.variables=clone(initial); State.history=[]; output.replaceChildren();
-      runInit(); Object.assign(initial,clone(State.variables)); go(startTitle());
+      // Start from empty variables and run StoryInit once, exactly as on first load.
+      State.variables=Object.create(null); State.history=[]; output.replaceChildren();
+      runInit(); go(startTitle());
     }
     function runInit() { const init=passages.get('StoryInit'); if (init) { try { compile(init.text); } catch(error) { console.error('StoryInit:',error); } } }
     function startTitle() { return data.getAttribute('startnode') && [...passages.values()].find(p => p.pid === data.getAttribute('startnode'))?.name || 'Start'; }
@@ -889,7 +922,7 @@
     };
     Shortcuts.add('inventory',{label:'Inventory',defaultShortcut:'Shift+I',action:()=>Inventory.open()});
     Shortcuts.add('story-settings',{label:'Story settings',defaultShortcut:'Shift+Alt',action:()=>UI.settings()});
-    Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:restart});
+    Shortcuts.add('reset',{label:'Reset story',defaultShortcut:'Shift+Backspace',action:()=>UI.restart()});
     Shortcuts.add('skip',{label:'Skip tagged passage',defaultShortcut:'Shift+S',action:()=>ContentSkip.skip()});
     Shortcuts.add('select',{label:'Select',defaultShortcut:'Enter',action:event=>{const target=document.activeElement;if(target&&target!==document.body&&typeof target.click==='function')target.click();}});
     document.addEventListener('keydown',event=>{
@@ -897,12 +930,13 @@
       if(recorder){event.preventDefault();event.stopPropagation();if(event.key==='Escape'){delete recorder.dataset.recording;recorder.textContent=shortcutValue(shortcutDefinitions.get(recorder.dataset.shortcutId));return;}const value=shortcutEvent(event);if(!value)return;if(shortcutParts(value).length===1&&['Shift','Ctrl','Alt','Meta'].includes(value)){recorder.textContent=value+'+…';return;}recorder.textContent=setShortcut(recorder.dataset.shortcutId,value);delete recorder.dataset.recording;return;}
       const control=event.target.closest?.('[data-duplex-action]');if(control){runDeferred(control,event);if(event.defaultPrevented)return;}
       if(event.repeat||event.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+      if(document.querySelector('#duplex-dialog')?.open)return;
       const pressed=shortcutEvent(event),definition=[...shortcutDefinitions.values()].find(item=>shortcutValue(item)===pressed);if(definition){runShortcut(definition,event);return;}
       if(!event.ctrlKey&&!event.altKey&&!event.shiftKey&&!event.metaKey&&/^\d$/.test(event.key)){event.preventDefault();activateStoryChoice(Number(event.key));}
     });
     document.addEventListener('visibilitychange',()=>{if(AudioEngine.muteOnHide)[...AudioEngine.tracks.values()].forEach(t=>t.muted=document.hidden||AudioEngine.muted);});
     document.querySelector('#duplex-back').addEventListener('click',() => { if(State.history.length>1){ State.history.pop(); State.variables=clone(State.history.at(-1).variables); rebuild(); } });
-    document.querySelector('#duplex-restart').addEventListener('click',restart);
+    document.querySelector('#duplex-restart').addEventListener('click',()=>UI.restart());
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
