@@ -34,6 +34,10 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
+## Build with Tweego on Android
+
+You can write Duplex stories as plain-text Twee and build them on your phone with Tweego in Termux. See the step-by-step [Tweego on Termux guide](Duplex%201.5.0/duplex-format/TWEEGO-TERMUX.md).
+
 ## Included syntax
 
 - Links: `[[Passage]]`, `[[Label->Passage]]`, `[[Label|Passage]]`
