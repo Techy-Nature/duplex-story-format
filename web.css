@@ -285,6 +285,7 @@ p code, li code, td code, .note code, .warning code {
   border-radius: 5px;
   background: var(--soft);
   color: var(--code-ink);
+  overflow-wrap: anywhere;
 }
 kbd {
   padding: .1em .45em;

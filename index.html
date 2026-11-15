@@ -94,7 +94,7 @@
     </article>
     <article>
       <b class="ver">Guide</b>
-      <div><h3>Build stories on Android</h3><p>A step-by-step guide to building Tweego in Termux and compiling Duplex stories on your phone. See <a href="#install-android">Install on Android</a>.</p></div>
+      <div><h3>Build stories on Android</h3><p>A step-by-step guide to installing Tweego in Termux and compiling Duplex stories on your phone. See <a href="#install-android">Install on Android</a>.</p></div>
     </article>
   </div>
   <p class="note">Also fixed in 1.7.0: keyword operators such as <code>is</code> no longer change text inside quoted strings, the story column stays clear of the side bars on every screen size, and loaded saves have any JavaScript stripped and forged controls rejected.</p>
@@ -131,16 +131,13 @@ tweego -f duplex-1 -o story.html src/</pre></div>
   </div>
 
   <h3 id="install-android">Install on Android (Termux)</h3>
-  <p>Tweego has no official Android download, but you can build it inside <a href="https://termux.dev/">Termux</a> in a few minutes. Get Termux from F-Droid or GitHub, not the Play Store.</p>
+  <p>Tweego has no official Android download, but <a href="https://termux.dev/">Termux</a> packages it, so it installs in one command. Get Termux from F-Droid or GitHub, not the Play Store.</p>
   <ol class="steps">
-    <li><b>Install Go and Git</b>
+    <li><b>Install Tweego and Git</b> You should see <code>tweego, v2.1.1</code>.
       <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>pkg update
-pkg install golang git</pre></div></li>
-    <li><b>Build Tweego</b> Use <code>@master</code>, not <code>@latest</code>, so its dependencies stay pinned.
-      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>go install github.com/tmedwards/tweego@master
-echo 'export PATH="$PATH:$HOME/go/bin"' &gt;&gt; ~/.bashrc
-source ~/.bashrc
-tweego --version</pre></div></li>
+pkg install tweego git
+tweego --version</pre></div>
+      <p class="note">If <code>pkg install tweego</code> isn't available, build it with Go instead: <code>pkg install golang</code>, then <code>go install github.com/tmedwards/tweego@master</code>, then check <code>ls ~/go/bin</code> lists <code>tweego</code>. Add Go's folder to your PATH with exactly <code>echo 'export PATH="$PATH:$HOME/go/bin"' &gt;&gt; ~/.bashrc</code>, with no backslashes before the <code>$</code> signs, then run <code>source ~/.bashrc</code>.</p></li>
     <li><b>Add Duplex as a story format</b>
       <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>cd ~
 git clone https://github.com/Techy-Nature/duplex-story-format.git
@@ -156,7 +153,7 @@ tweego -f duplex-1 -o story.html src/</pre></div></li>
       <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>pkg install python
 python -m http.server 8080</pre></div></li>
   </ol>
-  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/TWEEGO-TERMUX.md">full Termux guide</a> covers updating Duplex, building into Downloads, converting an existing Twine story to Twee, and troubleshooting.</p>
+  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/TWEEGO-TERMUX.md">full Termux guide</a> covers the Go fallback, fixing a broken PATH, updating Duplex, building into Downloads, converting an existing Twine story to Twee, and troubleshooting.</p>
 
   <h3>StoryData</h3>
   <div class="code"><div class="codebar"><span>Twee</span><button type="button">Copy</button></div><pre>:: StoryData
