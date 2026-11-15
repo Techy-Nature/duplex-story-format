@@ -4,43 +4,218 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Complete documentation for Duplex 1.8.0, a dual-mode Twine 2 story format.">
+  <meta name="color-scheme" content="light dark">
   <title>Duplex 1.8.0 Documentation</title>
   <link rel="icon" href="duplex-logo.png">
-  <style>
-    :root{--ink:#181429;--muted:#655f76;--paper:#fffdf9;--line:#ded9e8;--sun:#ff6b4a;--gold:#ffbd55;--violet:#6c3aa7;--night:#14285f;scroll-behavior:smooth}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65}a{color:inherit}code,pre{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}.top{position:sticky;top:0;z-index:30;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#fffdf9e8;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}.top a{display:flex;align-items:center;gap:10px;text-decoration:none}.top img{width:34px;height:34px;border-radius:50%}.top>span{font:600 12px monospace;padding:6px 10px;border:1px solid #d6cde2;border-radius:99px;color:var(--violet);background:#f5f0fb}.shell{display:grid;grid-template-columns:250px minmax(0,860px);gap:72px;max-width:1240px;margin:auto;padding:50px 28px 100px}aside{position:sticky;top:92px;align-self:start;max-height:calc(100vh - 112px);overflow:auto}aside label,aside nav>b{display:block;margin-bottom:8px;color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase}aside input{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:white;outline:none}aside input:focus{border-color:var(--violet);box-shadow:0 0 0 3px #6c3aa718}aside nav{display:flex;flex-direction:column;margin-top:28px}aside nav a{padding:5px 8px;border-left:2px solid transparent;color:#4f4960;font-size:14px;text-decoration:none}aside nav a:hover{border-color:var(--sun);color:var(--ink);background:#fff4ed}aside>p{margin-top:28px;padding:14px;border-radius:12px;background:linear-gradient(145deg,#fff0e8,#f1effc);font-size:12px;color:var(--muted)}main{min-width:0}.hero{display:grid;grid-template-columns:1.4fr .6fr;align-items:center;gap:40px;min-height:460px;padding:56px;border-radius:30px;background:radial-gradient(circle at 82% 24%,#ffbd5545,transparent 28%),linear-gradient(145deg,#24143f,#132a60);color:white;overflow:hidden}.hero>div>span,.section>header span,.modes article>span{font-size:12px;font-weight:760;letter-spacing:.13em;text-transform:uppercase}.hero h1{margin:18px 0;font-size:clamp(48px,7vw,74px);line-height:.96;letter-spacing:-.065em}.hero h1 em{color:var(--gold);font-style:normal}.hero p{color:#e8e3f1;font-size:18px}.hero a{display:inline-block;margin-top:18px;padding:11px 18px;border-radius:9px;background:var(--sun);font-weight:700;text-decoration:none}.hero>img{width:100%;max-width:270px;border-radius:50%;box-shadow:0 25px 70px #03051f80}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0 100px}.cards article{padding:22px;border:1px solid var(--line);border-radius:18px;background:white}.cards p{margin:5px 0 0;color:var(--muted);font-size:14px}.section{scroll-margin-top:90px;margin-bottom:108px}.section.filtered{display:none}.section>header{margin-bottom:26px}.section>header span{color:var(--sun)}.section h2{margin:4px 0;font-size:clamp(34px,5vw,48px);line-height:1.05;letter-spacing:-.04em}h3{margin-top:28px;letter-spacing:-.025em}.section>p{color:var(--muted)}.columns,.modes{display:grid;grid-template-columns:1fr 1fr;gap:24px}.columns>div{min-width:0}.modes article{padding:26px;border-radius:20px}.modes article:first-child{background:#fff0e5;border:1px solid #ffd1b7}.modes article:last-child{background:#eef3ff;border:1px solid #cbd8f3}.modes article:first-child>span{color:#c93e24}.modes article:last-child>span{color:#37559a}.modes h3{margin:8px 0}.modes p{min-height:72px;color:var(--muted)}ol,ul{padding-left:22px;color:var(--muted)}li{margin:.45em 0}p code,li code{padding:.1em .35em;border-radius:5px;background:#eeebf3;color:#4d2e7c}.code{overflow:hidden;margin:18px 0;border:1px solid #3e3653;border-radius:13px;background:#171422;color:#f8f4ff}.codebar{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #3d354d;color:#a9a0ba;font:600 11px monospace;text-transform:uppercase}.codebar button{border:0;background:transparent;color:var(--gold);cursor:pointer;font:600 11px monospace}pre{margin:0;padding:18px;overflow:auto;font-size:13px;line-height:1.7;white-space:pre-wrap}.note,.warning{padding:16px 18px;border-left:4px solid var(--gold);border-radius:8px;background:#fff7dc!important;color:#5b4b21!important}.table{display:grid;border-top:1px solid var(--line)}.table>div{display:grid;grid-template-columns:minmax(155px,.7fr) 1.5fr;gap:22px;padding:14px 4px;border-bottom:1px solid var(--line)}.table code{color:#61349a;font-size:13px;font-weight:650}.table span{color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.chips code{padding:7px 10px;border:1px solid #cfc8db;border-radius:8px;background:white;color:#503073;font-size:12px}.warning{margin-top:30px;border-color:var(--sun);background:#fff0e8!important}.warning p{margin:.3em 0 0}.license{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:14px;margin-top:28px;padding:18px;border:1px solid var(--line);border-radius:14px}.license span{color:var(--muted);font-size:12px;text-transform:uppercase}.license b{font-size:22px}.license p{margin:0;text-align:right;color:var(--muted)}footer{display:flex;align-items:center;gap:12px;max-width:1160px;margin:auto;padding:28px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}footer img{width:30px;height:30px;border-radius:50%}footer a{margin-left:auto;color:var(--violet);font-weight:700;text-decoration:none}
-    @media(max-width:960px){.shell{grid-template-columns:1fr;padding-top:28px}aside{position:relative;top:auto;max-height:none}aside nav,aside>p{display:none}.hero{padding:40px}.cards{margin-bottom:75px}}@media(max-width:680px){.top{padding:0 16px}.shell{padding:18px 16px 70px}.hero{grid-template-columns:1fr;padding:30px 24px;min-height:auto}.hero>img{grid-row:1;width:110px}.hero h1{font-size:48px}.cards,.columns,.modes{grid-template-columns:1fr}.cards{gap:10px}.modes p{min-height:auto}.section{margin-bottom:74px}.table>div{grid-template-columns:1fr;gap:4px}.license{grid-template-columns:auto auto}.license p{grid-column:1/-1;text-align:left}footer{padding:22px 16px}}@media(prefers-reduced-motion:reduce){:root{scroll-behavior:auto}}
-  </style>
+  <script>
+    // Apply the saved theme before the page paints, so there is no flash.
+    // No saved choice means the page follows the system setting.
+    (function () {
+      try {
+        var saved = localStorage.getItem('duplex-docs-theme');
+        if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
+      } catch (error) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="web.css">
 </head>
 <body>
-<header class="top"><a href="#overview"><img src="duplex-logo.png" alt="Duplex logo"><b>Duplex Docs</b></a><span>v1.8.0</span></header>
-<div class="shell"><aside><label>Search this page<input id="search" type="search" placeholder="widget, audio, tags…"></label><nav><b>On this page</b><a href="#overview">Overview</a><a href="#install">Install</a><a href="#modes">Display modes</a><a href="#core">Core syntax</a><a href="#comments-markdown">Comments &amp; Markdown</a><a href="#logic">Logic &amp; scripting</a><a href="#interactive">Interactive</a><a href="#audio">Audio</a><a href="#ui">UI &amp; sidebars</a><a href="#inventory">Inventory</a><a href="#mods">Mods</a><a href="#saves">Saves &amp; backups</a><a href="#widgets">Widgets</a><a href="#grammar">Grammar</a><a href="#content-skip">Content skipping</a><a href="#tags">Passage tags</a><a href="#api">JavaScript API</a><a href="#reference">Reference</a></nav><p><b>Duplex is its own format.</b><br>SugarCube-like syntax with two display modes.</p></aside><main>
-<section id="overview" class="hero"><div><span>Twine 2 story format · 1.8.0</span><h1>Two ways to tell<br><em>one story.</em></h1><p>Switch between a scrolling transcript and page-by-page passages without changing your authoring syntax.</p><a href="#install">Get started</a></div><img src="duplex-logo.png" alt="Setting sun joined to a moon"></section>
-<div class="cards"><article><b>One syntax</b><p>Variables, macros, widgets, links, audio, and controls.</p></article><article><b>Two modes</b><p>Append passages or replace the current page.</p></article><article><b>Two sidebars</b><p>Independent left and right UI bars.</p></article></div>
+<header class="top">
+  <a href="#overview"><img src="duplex-logo.png" alt="Duplex logo"><b>Duplex Docs</b></a>
+  <span class="version">v1.8.0</span>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" title="Switch between light and dark">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <span class="label">Dark</span>
+  </button>
+</header>
 
-<section id="install" class="section"><header><span>Getting started</span><h2>Install Duplex</h2></header><div class="columns"><div><h3>Twine 2 Desktop</h3><ol><li>Extract the package somewhere permanent.</li><li>Open <b>Story Formats → Add a New Format</b>.</li><li>Enter the full file URL to <code>format.js</code>.</li><li>Select <b>Duplex 1.5.0</b>.</li></ol><div class="code"><div class="codebar"><span>Linux example</span><button type="button">Copy</button></div><pre>file:///home/you/Twine/duplex-format/format.js</pre></div><p class="note">Browser Twine may block local file URLs. Use Twine Desktop or host the format online.</p></div><div><h3>Tweego</h3><div class="code"><div class="codebar"><span>Project layout</span><button type="button">Copy</button></div><pre>project/
-├── storyformats/
-│   └── duplex-format/
-│       └── format.js
-└── story.twee</pre></div><div class="code"><div class="codebar"><span>Shell</span><button type="button">Copy</button></div><pre>tweego --list-formats
-tweego -f duplex-1.5.0 -o story.html story.twee</pre></div></div></div><h3>StoryData</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryData
+<div class="shell">
+<aside>
+  <label>Search this page<input id="search" type="search" placeholder="skip, grammar, audio…"></label>
+  <nav>
+    <b>On this page</b>
+    <a href="#overview">Overview</a>
+    <a href="#whats-new">What's new</a>
+    <a href="#install">Install</a>
+    <a href="#modes">Display modes</a>
+    <a href="#core">Core syntax</a>
+    <a href="#comments-markdown">Comments &amp; Markdown</a>
+    <a href="#logic">Logic &amp; scripting</a>
+    <a href="#interactive">Interactive</a>
+    <a href="#audio">Audio</a>
+    <a href="#ui">UI &amp; sidebars</a>
+    <a href="#shortcuts">Shortcuts &amp; Settings</a>
+    <a href="#inventory">Inventory</a>
+    <a href="#mods">Mods</a>
+    <a href="#saves">Saves &amp; backups</a>
+    <a href="#widgets">Widgets</a>
+    <a href="#grammar">Grammar</a>
+    <a href="#content-skip">Content skipping</a>
+    <a href="#tags">Passage tags</a>
+    <a href="#api">JavaScript API</a>
+    <a href="#reference">Reference</a>
+  </nav>
+  <p><b>Duplex is its own format.</b><br>SugarCube-like syntax with two display modes.</p>
+</aside>
+
+<main>
+<section id="overview" class="hero">
+  <div>
+    <span>Twine 2 story format · 1.8.0</span>
+    <h1>Two ways to tell<br><em>one story.</em></h1>
+    <p>Switch between a scrolling transcript and page-by-page passages without changing your authoring syntax.</p>
+    <a class="button" href="#install">Get started</a><a class="button ghost" href="#whats-new">What's new</a>
+  </div>
+  <img src="duplex-logo.png" alt="Setting sun joined to a moon">
+</section>
+
+<div class="cards">
+  <article><b>One syntax</b><p>Variables, macros, widgets, links, audio, grammar lists, and controls.</p></article>
+  <article><b>Two modes</b><p>Append passages or replace the current page.</p></article>
+  <article><b>Reader comfort</b><p>Content notices, a Skip button, and per-reader auto-skip.</p></article>
+</div>
+
+<!-- What's new -->
+<section id="whats-new" class="section">
+  <header><span>Changelog</span><h2>What's new</h2></header>
+  <div class="timeline">
+    <article>
+      <b class="ver">1.8.0</b>
+      <div><h3>Capital letters for grammar lists</h3><p>Add <code>.upperFirst</code>, <code>.upper</code>, or <code>.lower</code> to a grammar macro, such as <code>&lt;&lt;animal.upperFirst&gt;&gt;</code>, to start a sentence with a random word. See <a href="#grammar">Grammar</a>.</p></div>
+    </article>
+    <article>
+      <b class="ver">1.7.0</b>
+      <div><h3>Content tags and a Skip button</h3><p>Tag sensitive passages, and readers get a notice, a <b>Skip</b> button, <kbd>Shift</kbd>+<kbd>S</kbd>, and a <b>Settings → Content</b> panel to skip whole categories automatically. See <a href="#content-skip">Content skipping</a>.</p></div>
+    </article>
+    <article>
+      <b class="ver">1.6.0</b>
+      <div><h3>Grammar lists for random words</h3><p>Tag a passage <code>grammar</code> and its name becomes a macro that prints a random line from it, with keep, reroll, and JavaScript helpers. See <a href="#grammar">Grammar</a>.</p></div>
+    </article>
+    <article>
+      <b class="ver">Guide</b>
+      <div><h3>Build stories on Android</h3><p>A step-by-step guide to building Tweego in Termux and compiling Duplex stories on your phone. See <a href="#install-android">Install on Android</a>.</p></div>
+    </article>
+  </div>
+  <p class="note">Also fixed in 1.7.0: keyword operators such as <code>is</code> no longer change text inside quoted strings, the story column stays clear of the side bars on every screen size, and loaded saves have any JavaScript stripped and forged controls rejected.</p>
+</section>
+
+<!-- Install -->
+<section id="install" class="section">
+  <header><span>Getting started</span><h2>Install Duplex</h2></header>
+  <div class="columns">
+    <div>
+      <h3>Twine 2 Desktop</h3>
+      <ol>
+        <li>Download or clone the repository and keep it somewhere permanent.</li>
+        <li>Open <b>Twine → Story Formats → Add</b>.</li>
+        <li>Paste the full file URL to <code>format.js</code> (inside the <code>Duplex 1.5.0/duplex-format</code> folder; the folder name is historical and holds the current release).</li>
+        <li>Select <b>Duplex 1.8.0</b> for your story.</li>
+      </ol>
+      <div class="code"><div class="codebar"><span>Linux example</span><button type="button">Copy</button></div><pre>file:///home/you/duplex-story-format/Duplex%201.5.0/duplex-format/format.js</pre></div>
+      <p class="note">Browser Twine may block local file URLs. Use Twine Desktop or host the format online.</p>
+    </div>
+    <div>
+      <h3>Tweego</h3>
+      <p>Each format lives in its own folder under a story-formats folder. The folder's name is the ID you pass to <code>-f</code>.</p>
+      <div class="code"><div class="codebar"><span>Project layout</span><button type="button">Copy</button></div><pre>storyformats/
+└── duplex-1/
+    └── format.js
+my-story/
+└── src/
+    └── story.twee</pre></div>
+      <div class="code"><div class="codebar"><span>Shell</span><button type="button">Copy</button></div><pre>export TWEEGO_PATH="$HOME/storyformats"
+tweego --list-formats
+tweego -f duplex-1 -o story.html src/</pre></div>
+    </div>
+  </div>
+
+  <h3 id="install-android">Install on Android (Termux)</h3>
+  <p>Tweego has no official Android download, but you can build it inside <a href="https://termux.dev/">Termux</a> in a few minutes. Get Termux from F-Droid or GitHub, not the Play Store.</p>
+  <ol class="steps">
+    <li><b>Install Go and Git</b>
+      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>pkg update
+pkg install golang git</pre></div></li>
+    <li><b>Build Tweego</b> Use <code>@master</code>, not <code>@latest</code>, so its dependencies stay pinned.
+      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>go install github.com/tmedwards/tweego@master
+echo 'export PATH="$PATH:$HOME/go/bin"' &gt;&gt; ~/.bashrc
+source ~/.bashrc
+tweego --version</pre></div></li>
+    <li><b>Add Duplex as a story format</b>
+      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>cd ~
+git clone https://github.com/Techy-Nature/duplex-story-format.git
+mkdir -p ~/storyformats/duplex-1
+cp "duplex-story-format/Duplex 1.5.0/duplex-format/format.js" ~/storyformats/duplex-1/
+echo 'export TWEEGO_PATH="$HOME/storyformats"' &gt;&gt; ~/.bashrc
+source ~/.bashrc
+tweego --list-formats</pre></div></li>
+    <li><b>Build your story</b> Add <code>-w</code> to rebuild every time you save.
+      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>cd ~/stories/my-story
+tweego -f duplex-1 -o story.html src/</pre></div></li>
+    <li><b>Play it</b> Serve the folder and open <code>http://localhost:8080/story.html</code> in your phone's browser.
+      <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>pkg install python
+python -m http.server 8080</pre></div></li>
+  </ol>
+  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/TWEEGO-TERMUX.md">full Termux guide</a> covers updating Duplex, building into Downloads, converting an existing Twine story to Twee, and troubleshooting.</p>
+
+  <h3>StoryData</h3>
+  <div class="code"><div class="codebar"><span>Twee</span><button type="button">Copy</button></div><pre>:: StoryData
 {
   "ifid": "YOUR-STORY-IFID",
   "format": "Duplex",
   "format-version": "1.8.0",
   "start": "Start"
-}</pre></div></section>
+}</pre></div>
+  <p>With <code>format</code> and <code>format-version</code> set, Tweego picks Duplex without <code>-f</code>.</p>
+</section>
 
-<section id="modes" class="section"><header><span>The defining feature</span><h2>Choose the display mode</h2></header><div class="modes"><article><span>Scrolling</span><h3>Append mode</h3><p>New passages appear beneath earlier passages as a transcript.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
-&lt;&lt;set $passageMode = "append"&gt;&gt;</pre></div></article><article><span>Page-by-page</span><h3>Replace mode</h3><p>Navigation clears the previous passage before showing the next.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
-&lt;&lt;set $passageMode = "replace"&gt;&gt;</pre></div></article></div><p>Story JavaScript may set <code>Config.displayMode</code>. This takes priority over story variables.</p><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Config.displayMode = "append"; // or "replace"</pre></div></section>
+<!-- Modes -->
+<section id="modes" class="section">
+  <header><span>The defining feature</span><h2>Choose the display mode</h2></header>
+  <div class="modes">
+    <article><span>Scrolling</span><h3>Append mode</h3><p>New passages appear beneath earlier passages as a transcript.</p>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
+&lt;&lt;set $passageMode = "append"&gt;&gt;</pre></div></article>
+    <article><span>Page-by-page</span><h3>Replace mode</h3><p>Navigation clears the previous passage before showing the next.</p>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
+&lt;&lt;set $passageMode = "replace"&gt;&gt;</pre></div></article>
+  </div>
+  <p>The value may be conditional, such as <code>&lt;&lt;set $passageMode = $useScrolling ? "append" : "replace"&gt;&gt;</code>. Story JavaScript may set <code>Config.displayMode</code>, which takes priority over story variables.</p>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Config.displayMode = "append"; // or "replace"</pre></div>
+</section>
 
-<section id="core" class="section"><header><span>Authoring</span><h2>Core syntax</h2></header><div class="table"><div><code>[[Passage]]</code><span>Basic passage link.</span></div><div><code>[[Label-&gt;Passage]]</code><span>Labeled passage link.</span></div><div><code>[[Label|Passage]]</code><span>Alternate labeled-link form.</span></div><div><code>$name</code><span>Story variable; may print naked.</span></div><div><code>_name</code><span>Temporary passage variable.</span></div><div><code>&lt;&lt;set&gt;&gt;</code><span>Assign or modify a variable.</span></div><div><code>&lt;&lt;print&gt;&gt; / &lt;&lt;=&gt;&gt;</code><span>Evaluate and print.</span></div><div><code>&lt;&lt;unset&gt;&gt;</code><span>Delete variables or properties.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;set $name = "Nest"&gt;&gt;
+<!-- Core -->
+<section id="core" class="section">
+  <header><span>Authoring</span><h2>Core syntax</h2></header>
+  <div class="table">
+    <div><code>[[Passage]]</code><span>Basic passage link.</span></div>
+    <div><code>[[Label-&gt;Passage]]</code><span>Labeled passage link.</span></div>
+    <div><code>[[Label|Passage]]</code><span>Alternate labeled-link form.</span></div>
+    <div><code>$name</code><span>Story variable; may print naked.</span></div>
+    <div><code>_name</code><span>Temporary passage variable.</span></div>
+    <div><code>&lt;&lt;set&gt;&gt;</code><span>Assign or modify a variable (<code>=</code> or <code>to</code>).</span></div>
+    <div><code>&lt;&lt;print&gt;&gt; / &lt;&lt;=&gt;&gt;</code><span>Evaluate and print.</span></div>
+    <div><code>&lt;&lt;unset&gt;&gt;</code><span>Delete variables or properties.</span></div>
+    <div><code>&lt;&lt;include "Passage"&gt;&gt;</code><span>Render another passage in place. Recursive includes are blocked and nesting stops at 50 levels.</span></div>
+  </div>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;set $name = "Nest"&gt;&gt;
 &lt;&lt;set $visits to 0&gt;&gt;
 &lt;&lt;set $visits += 1&gt;&gt;
 Hello, $name. Visit &lt;&lt;= $visits&gt;&gt;.
-&lt;&lt;unset $temporaryChoice&gt;&gt;</pre></div><h3>Operators</h3><p><code>is</code>, <code>is not</code>, <code>isnot</code>, <code>eq</code>, <code>neq</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>and</code>, <code>or</code>, and <code>not</code>, plus ordinary JavaScript operators.</p></section>
+&lt;&lt;include "Weather report"&gt;&gt;
+&lt;&lt;unset $temporaryChoice&gt;&gt;</pre></div>
+  <h3>Operators</h3>
+  <p><code>is</code>, <code>is not</code>, <code>isnot</code>, <code>eq</code>, <code>neq</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>and</code>, <code>or</code>, and <code>not</code>, plus ordinary JavaScript operators. Keyword operators are only replaced outside quoted strings, so <code>"this is fine"</code> stays as written.</p>
+</section>
 
-<section id="comments-markdown" class="section"><header><span>Authoring helpers</span><h2>Comments and Markdown</h2></header><div class="columns"><div><h3>Passage comments</h3><p>Use <code>//</code> for a single-line comment, <code>/* ... */</code> for a block comment, or the <code>&lt;&lt;comment&gt;&gt;</code> container. Comments are not displayed, and macros inside them are not evaluated.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>// A whole-line note
+<!-- Comments & Markdown -->
+<section id="comments-markdown" class="section">
+  <header><span>Authoring helpers</span><h2>Comments and Markdown</h2></header>
+  <div class="columns">
+    <div>
+      <h3>Passage comments</h3>
+      <p>Use <code>//</code> for a single-line comment, <code>/* ... */</code> for a block comment, or the <code>&lt;&lt;comment&gt;&gt;</code> container. Comments are not displayed, and macros inside them are not evaluated.</p>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>// A whole-line note
 The nest is empty. // A trailing note
 
 /* This note may
@@ -49,7 +224,13 @@ span several lines. */
 &lt;&lt;comment&gt;&gt;
   &lt;&lt;set $hidden = true&gt;&gt;
   None of this is displayed or run.
-&lt;&lt;/comment&gt;&gt;</pre></div><p class="note">A <code>//</code> comment starts at the beginning of a line or after whitespace, so URLs such as <code>https://example.com</code> remain intact.</p></div><div><h3>Markdown container</h3><p>Wrap Markdown in <code>&lt;&lt;markdown&gt;&gt;...&lt;&lt;/markdown&gt;&gt;</code>. It supports headings, bold and italic emphasis, inline code, links, images, block quotes, and ordered or unordered lists. Duplex variables and macros are processed inside the result.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;markdown&gt;&gt;
+&lt;&lt;/comment&gt;&gt;</pre></div>
+      <p class="note">A <code>//</code> comment starts at the beginning of a line or after whitespace, so URLs such as <code>https://example.com</code> remain intact.</p>
+    </div>
+    <div>
+      <h3>Markdown</h3>
+      <p>Wrap Markdown in <code>&lt;&lt;markdown&gt;&gt;...&lt;&lt;/markdown&gt;&gt;</code>, or tag a whole passage <code>markdown</code>. It supports headings, bold and italic emphasis, inline code, links, images, block quotes, and ordered or unordered lists. Duplex variables and macros are processed inside the result.</p>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;markdown&gt;&gt;
 # Field notes
 
 **Species:** $birdName
@@ -58,28 +239,78 @@ span several lines. */
 - [Read more](https://example.com/birds)
 
 &gt; &lt;&lt;= $observation&gt;&gt;
-&lt;&lt;/markdown&gt;&gt;</pre></div></div></div><div class="table"><div><code>// comment</code><span>Ignore text through the end of the line.</span></div><div><code>/* comment */</code><span>Ignore a comment spanning part of a line or multiple lines.</span></div><div><code>&lt;&lt;comment&gt;&gt;…&lt;&lt;/comment&gt;&gt;</code><span>Ignore a container and do not evaluate its macros.</span></div><div><code>&lt;&lt;markdown&gt;&gt;…&lt;&lt;/markdown&gt;&gt;</code><span>Render supported Markdown while processing Duplex variables and macros.</span></div></div></section>
+&lt;&lt;/markdown&gt;&gt;</pre></div>
+    </div>
+  </div>
+  <div class="table">
+    <div><code>// comment</code><span>Ignore text through the end of the line.</span></div>
+    <div><code>/* comment */</code><span>Ignore a comment spanning part of a line or multiple lines.</span></div>
+    <div><code>&lt;&lt;comment&gt;&gt;…&lt;&lt;/comment&gt;&gt;</code><span>Ignore a container and do not evaluate its macros.</span></div>
+    <div><code>&lt;&lt;markdown&gt;&gt;…&lt;&lt;/markdown&gt;&gt;</code><span>Render supported Markdown while processing Duplex variables and macros.</span></div>
+    <div><code>[markdown] tag</code><span>Render the whole passage as Markdown.</span></div>
+  </div>
+</section>
 
-<section id="logic" class="section"><header><span>Branching and code</span><h2>Logic and scripting</h2></header><div class="columns"><div><h3>If / elseif / else</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if $keys &gt; 1&gt;&gt;
+<!-- Logic -->
+<section id="logic" class="section">
+  <header><span>Branching and code</span><h2>Logic and scripting</h2></header>
+  <div class="columns">
+    <div>
+      <h3>If / elseif / else</h3>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if $keys &gt; 1&gt;&gt;
   Several keys.
 &lt;&lt;elseif $keys is 1&gt;&gt;
   One key.
 &lt;&lt;else&gt;&gt;
   No keys.
-&lt;&lt;/if&gt;&gt;</pre></div></div><div><h3>Switch / case / default</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;switch $weather&gt;&gt;
+&lt;&lt;/if&gt;&gt;</pre></div>
+    </div>
+    <div>
+      <h3>Switch / case / default</h3>
+      <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;switch $weather&gt;&gt;
 &lt;&lt;case "sunny"&gt;&gt;
   The path glows.
 &lt;&lt;case "rain" "storm"&gt;&gt;
   Water darkens the trail.
 &lt;&lt;default&gt;&gt;
   Uncertain skies.
-&lt;&lt;/switch&gt;&gt;</pre></div></div></div><div class="table"><div><code>&lt;&lt;run expression&gt;&gt;</code><span>Execute code without output.</span></div><div><code>&lt;&lt;script&gt;&gt;…&lt;&lt;/script&gt;&gt;</code><span>Execute JavaScript.</span></div><div><code>&lt;&lt;script TwineScript&gt;&gt;</code><span>Execute translated Twine-style code.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;run $score += 10&gt;&gt;
+&lt;&lt;/switch&gt;&gt;</pre></div>
+    </div>
+  </div>
+  <div class="table">
+    <div><code>&lt;&lt;run expression&gt;&gt;</code><span>Execute code without output.</span></div>
+    <div><code>&lt;&lt;script&gt;&gt;…&lt;&lt;/script&gt;&gt;</code><span>Execute JavaScript.</span></div>
+    <div><code>&lt;&lt;script TwineScript&gt;&gt;</code><span>Execute translated Twine-style code.</span></div>
+    <div><code>Duplex.random(array)</code><span>Return a random item from an array. <code>array.random()</code> also works.</span></div>
+  </div>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;run $score += 10&gt;&gt;
+&lt;&lt;set $omen = ["crow", "owl", "moth"].random()&gt;&gt;
 &lt;&lt;script&gt;&gt;
   State.variables.seenBird = true;
   output.append("Recorded.");
-&lt;&lt;/script&gt;&gt;</pre></div></section>
+&lt;&lt;/script&gt;&gt;</pre></div>
+</section>
 
-<section id="interactive" class="section"><header><span>Player input</span><h2>Interactive macros</h2></header><div class="table"><div><code>&lt;&lt;button&gt;&gt;</code><span>Button that executes its body and may navigate.</span></div><div><code>&lt;&lt;link&gt;&gt;</code><span>Text link that executes its body and may navigate.</span></div><div><code>&lt;&lt;linkappend&gt;&gt;</code><span>Single-use link that appends its body.</span></div><div><code>&lt;&lt;linkprepend&gt;&gt;</code><span>Single-use link that prepends its body.</span></div><div><code>&lt;&lt;linkreplace&gt;&gt;</code><span>Single-use link replaced by its body.</span></div><div><code>&lt;&lt;checkbox&gt;&gt;</code><span>Checkbox bound to a story variable.</span></div><div><code>&lt;&lt;radiobutton&gt;&gt;</code><span>Radio control bound to a story variable.</span></div><div><code>&lt;&lt;cycle&gt;&gt;</code><span>Link that cycles through &lt;&lt;option&gt;&gt; values.</span></div><div><code>&lt;&lt;listbox&gt;&gt;</code><span>Select menu using &lt;&lt;option&gt;&gt; or &lt;&lt;optionsfrom&gt;&gt;.</span></div><div><code>&lt;&lt;numberbox&gt;&gt;</code><span>Numeric input; optional Enter-key passage.</span></div><div><code>&lt;&lt;textbox&gt;&gt;</code><span>Single-line input; optional Enter-key passage.</span></div><div><code>&lt;&lt;textarea&gt;&gt;</code><span>Multi-line text input.</span></div></div><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;button "Take feather"&gt;&gt;
+<!-- Interactive -->
+<section id="interactive" class="section">
+  <header><span>Player input</span><h2>Interactive macros</h2></header>
+  <div class="table">
+    <div><code>&lt;&lt;button&gt;&gt;</code><span>Button that executes its body and may navigate.</span></div>
+    <div><code>&lt;&lt;link&gt;&gt;</code><span>Text link that executes its body and may navigate.</span></div>
+    <div><code>&lt;&lt;linkappend&gt;&gt;</code><span>Single-use link that appends its body.</span></div>
+    <div><code>&lt;&lt;linkprepend&gt;&gt;</code><span>Single-use link that prepends its body.</span></div>
+    <div><code>&lt;&lt;linkreplace&gt;&gt;</code><span>Single-use link replaced by its body.</span></div>
+    <div><code>&lt;&lt;checkbox&gt;&gt;</code><span>Checkbox bound to a story variable.</span></div>
+    <div><code>&lt;&lt;radiobutton&gt;&gt;</code><span>Radio control bound to a story variable.</span></div>
+    <div><code>&lt;&lt;cycle&gt;&gt;</code><span>Link that cycles through <code>&lt;&lt;option&gt;&gt;</code> values.</span></div>
+    <div><code>&lt;&lt;dropdown&gt;&gt;</code><span>Select menu that writes to a variable or object property. Fill it with <code>&lt;&lt;option&gt;&gt;</code> and <code>&lt;&lt;options $list[]&gt;&gt;</code>.</span></div>
+    <div><code>&lt;&lt;listbox&gt;&gt;</code><span>Select menu using <code>&lt;&lt;option&gt;&gt;</code> or <code>&lt;&lt;optionsfrom&gt;&gt;</code>.</span></div>
+    <div><code>&lt;&lt;numberbox&gt;&gt;</code><span>Numeric input; optional Enter-key passage.</span></div>
+    <div><code>&lt;&lt;textbox&gt;&gt;</code><span>Single-line input; optional Enter-key passage.</span></div>
+    <div><code>&lt;&lt;textarea&gt;&gt;</code><span>Multi-line text input.</span></div>
+  </div>
+  <div class="columns">
+    <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;button "Take feather"&gt;&gt;
   &lt;&lt;set $hasFeather = true&gt;&gt;
 &lt;&lt;/button&gt;&gt;
 
@@ -88,28 +319,120 @@ span several lines. */
   &lt;&lt;option "Rain" "rain"&gt;&gt;
 &lt;&lt;/cycle&gt;&gt;
 
-&lt;&lt;textbox "$name" "Nest"&gt;&gt;</pre></div><p class="note">Cycles and listboxes support <code>&lt;&lt;option&gt;&gt;</code> and <code>&lt;&lt;optionsfrom&gt;&gt;</code>.</p></section>
+&lt;&lt;textbox "$name" "Nest"&gt;&gt;</pre></div>
+    <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;dropdown $target.variable&gt;&gt;
+  &lt;&lt;option "deer"&gt;&gt;
+  &lt;&lt;option "dog"&gt;&gt;
+  &lt;&lt;options $targetlist[]&gt;&gt;
+  &lt;&lt;option "hunted"&gt;&gt;
+&lt;&lt;/dropdown&gt;&gt;</pre></div>
+  </div>
+  <p class="note"><code>&lt;&lt;options&gt;&gt;</code> adds every item from an array or object. The optional <code>[]</code> suffix makes the collection intent explicit.</p>
+</section>
 
-<section id="audio" class="section"><header><span>Media</span><h2>Audio macros</h2></header><div class="table"><div><code>&lt;&lt;cacheaudio&gt;&gt;</code><span>Register a track and its sources.</span></div><div><code>&lt;&lt;audio&gt;&gt;</code><span>Control tracks or groups.</span></div><div><code>&lt;&lt;createaudiogroup&gt;&gt;</code><span>Collect tracks under a :group ID.</span></div><div><code>&lt;&lt;createplaylist&gt;&gt;</code><span>Build a playlist.</span></div><div><code>&lt;&lt;masteraudio&gt;&gt;</code><span>Control master audio.</span></div><div><code>&lt;&lt;playlist&gt;&gt;</code><span>Control a playlist.</span></div><div><code>&lt;&lt;removeaudiogroup&gt;&gt;</code><span>Remove a custom group.</span></div><div><code>&lt;&lt;removeplaylist&gt;&gt;</code><span>Remove a playlist.</span></div><div><code>&lt;&lt;waitforaudio&gt;&gt;</code><span>Begin loading registered audio.</span></div></div><h3>Setup</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;cacheaudio "forest" "audio/forest.mp3" "audio/forest.ogg"&gt;&gt;
+<!-- Audio -->
+<section id="audio" class="section">
+  <header><span>Media</span><h2>Audio macros</h2></header>
+  <div class="table">
+    <div><code>&lt;&lt;cacheaudio&gt;&gt;</code><span>Register a track and its sources.</span></div>
+    <div><code>&lt;&lt;audio&gt;&gt;</code><span>Control tracks or groups.</span></div>
+    <div><code>&lt;&lt;createaudiogroup&gt;&gt;</code><span>Collect tracks under a :group ID.</span></div>
+    <div><code>&lt;&lt;createplaylist&gt;&gt;</code><span>Build a playlist.</span></div>
+    <div><code>&lt;&lt;masteraudio&gt;&gt;</code><span>Control master audio.</span></div>
+    <div><code>&lt;&lt;playlist&gt;&gt;</code><span>Control a playlist.</span></div>
+    <div><code>&lt;&lt;removeaudiogroup&gt;&gt;</code><span>Remove a custom group.</span></div>
+    <div><code>&lt;&lt;removeplaylist&gt;&gt;</code><span>Remove a playlist.</span></div>
+    <div><code>&lt;&lt;waitforaudio&gt;&gt;</code><span>Begin loading registered audio.</span></div>
+  </div>
+  <h3>Setup</h3>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;cacheaudio "forest" "audio/forest.mp3" "audio/forest.ogg"&gt;&gt;
 &lt;&lt;cacheaudio "owl" "audio/owl.mp3"&gt;&gt;
 
 &lt;&lt;createaudiogroup ":ambience"&gt;&gt;
   &lt;&lt;track "forest"&gt;&gt;
   &lt;&lt;track "owl"&gt;&gt;
-&lt;&lt;/createaudiogroup&gt;&gt;</pre></div><h3>Actions</h3><div class="chips"><code>play</code><code>pause</code><code>stop</code><code>load</code><code>unload</code><code>mute</code><code>unmute</code><code>loop</code><code>unloop</code><code>volume level</code><code>time seconds</code><code>fadein</code><code>fadeout</code><code>fadeto level</code><code>fadeoverto seconds level</code><code>goto passage</code></div><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;audio "forest" volume 0.5 loop play&gt;&gt;
+&lt;&lt;/createaudiogroup&gt;&gt;</pre></div>
+  <h3>Actions</h3>
+  <div class="chips"><code>play</code><code>pause</code><code>stop</code><code>load</code><code>unload</code><code>mute</code><code>unmute</code><code>loop</code><code>unloop</code><code>volume level</code><code>time seconds</code><code>fadein</code><code>fadeout</code><code>fadeto level</code><code>fadeoverto seconds level</code><code>goto passage</code></div>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;audio "forest" volume 0.5 loop play&gt;&gt;
 &lt;&lt;audio ":ambience" fadeout&gt;&gt;
 &lt;&lt;playlist "night" shuffle play&gt;&gt;
-&lt;&lt;masteraudio volume 0.8&gt;&gt;</pre></div><p class="note">Native browser autoplay restrictions apply. Audio playback state is not stored in saves.</p></section>
+&lt;&lt;masteraudio volume 0.8&gt;&gt;</pre></div>
+  <p class="note">Native browser autoplay restrictions apply. Audio playback state is not stored in saves.</p>
+</section>
 
-<section id="ui" class="section"><header><span>Interface</span><h2>UI and sidebars</h2></header><div class="columns"><div><h3>Left bar</h3><ul><li><code>StoryCaption</code></li><li><code>StoryMenu</code></li><li><code>StoryLeftBar</code></li></ul></div><div><h3>Right bar</h3><ul><li><code>StoryRightBar</code></li><li>Current passage</li><li>Current display mode</li><li>Built-in <b>Inventory</b> control</li><li><b>Settings</b> entry</li></ul></div></div><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>UIBarL.stow();
+<!-- UI -->
+<section id="ui" class="section">
+  <header><span>Interface</span><h2>UI and sidebars</h2></header>
+  <p>Duplex shows a bar on each side. They stow to narrow tabs on smaller screens, and the story column always stays clear of them.</p>
+  <div class="columns">
+    <div><h3>Left bar</h3><ul><li><code>StoryCaption</code></li><li><code>StoryMenu</code></li><li><code>StoryLeftBar</code></li><li><b>Saves</b> and <b>Mods</b> entries</li></ul></div>
+    <div><h3>Right bar</h3><ul><li><code>StoryRightBar</code></li><li>Current passage</li><li>Current display mode</li><li>Built-in <b>Inventory</b> control</li><li><b>Settings</b> entry</li></ul></div>
+  </div>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>UIBarL.stow();
 UIBarL.unstow();
 UIBarL.hide();
 UIBarL.show();
 
 UIBarR.stow();
-UIBarR.unstow();</pre></div><p>Both bars implement <code>destroy()</code>, <code>hide()</code>, <code>show()</code>, <code>isHidden()</code>, <code>isStowed()</code>, <code>stow()</code>, <code>unstow()</code>, and <code>update()</code>.</p><p class="note">Aliases: <code>UIBar</code>, <code>UIBarRight</code>, <code>UIBars.left</code>, and <code>UIBars.right</code>.</p><h3>UI API</h3><div class="chips"><code>UI.alert(message)</code><code>UI.restart()</code><code>UI.saves()</code><code>UI.settings()</code><code>UI.update()</code><code>UI.jumpto()</code><code>UI.share()</code><code>UI.inventory()</code></div><p><code>UI.inventory()</code> opens the Inventory browser; <code>UI.saves()</code> opens the browser-save and portable-backup controls.</p></section>
+UIBarR.unstow();</pre></div>
+  <p>Both bars implement <code>destroy()</code>, <code>hide()</code>, <code>show()</code>, <code>isHidden()</code>, <code>isStowed()</code>, <code>stow()</code>, <code>unstow()</code>, and <code>update()</code>.</p>
+  <p class="note">Aliases: <code>UIBar</code>, <code>UIBarRight</code>, <code>UIBars.left</code>, and <code>UIBars.right</code>.</p>
+  <h3>UI API</h3>
+  <div class="chips"><code>UI.alert(message)</code><code>UI.restart()</code><code>UI.saves()</code><code>UI.settings()</code><code>UI.update()</code><code>UI.jumpto()</code><code>UI.share()</code><code>UI.inventory()</code></div>
+  <p><code>UI.inventory()</code> opens the Inventory browser; <code>UI.saves()</code> opens the browser-save and portable-backup controls; <code>UI.settings()</code> opens Settings.</p>
+</section>
 
-<section id="inventory" class="section"><header><span>Items, bags, and rooms</span><h2>Inventory</h2></header><p>Inventory is a JSON-serializable hierarchy of named items and stable, named bag instances. Item stacks hold up to 1000 units. Compatible ordinary bags also stack up to 1000 while empty; adding an item or child bag automatically splits one bag from the stack so every populated bag has its own identity.</p><div class="columns"><div><h3>Nested bags</h3><ul><li>Populated bags may contain item stacks and other populated bags to any valid depth.</li><li>Moving a bag moves its complete nested branch without flattening or redistributing it.</li><li>A single click opens a bag and shows its immediate contents.</li><li>A double-click unpacks its immediate contents into the parent.</li><li>The visible <b>Take Everything</b> action is the accessible alternative to double-clicking.</li></ul></div><div><h3>Rooms are locations</h3><ul><li>A <b>safe room</b> preserves its complete nested hierarchy when the player leaves.</li><li>A <b>danger room</b> recursively clears all of its contents on exit.</li><li>Room bags are fixed, top-level locations. Unlike movable ordinary bags, they cannot be put inside, moved into, or unpacked into another bag.</li></ul></div></div><div class="note"><b>Stacks and splitting.</b> Define each item by name, then add quantities from 1 through 1000. Empty bags stack only when their definition, name, and properties are compatible. A populated bag is always a single instance.</div><h3>Define and build an inventory</h3><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Inventory.defineItem("vial", { name: "Healing vial" });
+<!-- Shortcuts -->
+<section id="shortcuts" class="section">
+  <header><span>Keyboard and preferences</span><h2>Shortcuts and Settings</h2></header>
+  <p>Readers can change every shortcut in <b>Settings</b>: select the shortcut button, then press one or two keys. The new value is saved straight away for that story. Shortcuts never fire while the reader is typing in an input.</p>
+  <div class="table">
+    <div><code>Shift+I</code><span>Open Inventory.</span></div>
+    <div><code>Shift+Alt</code><span>Open Settings.</span></div>
+    <div><code>Shift+Backspace</code><span>Reset the story.</span></div>
+    <div><code>Shift+S</code><span>Skip the current content-tagged passage.</span></div>
+    <div><code>Enter</code><span>Select the focused control.</span></div>
+    <div><code>1</code> … <code>9</code>, <code>0</code><span>Choose the first through ninth visible link; <kbd>0</kbd> chooses the last link.</span></div>
+  </div>
+  <h3>The Settings dialog</h3>
+  <p>If a <code>StorySettings</code> passage exists, its contents appear at the top of Settings. Below it come the shortcut rows and, when the story uses content tags, the <b>Content</b> panel from <a href="#content-skip">content skipping</a>.</p>
+  <h3>Add your own shortcuts</h3>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Duplex.shortcuts.add('journal', {
+  label: 'Open journal',
+  defaultShortcut: 'Shift+J',
+  selector: '#open-journal'
+});
+
+Duplex.shortcuts.add('map', {
+  label: 'Open map',
+  defaultShortcut: 'M',
+  action: () =&gt; setup.openMap()
+});</pre></div>
+  <p>IDs must be unique. Each shortcut needs a label, a default of no more than two keys, and either an <code>action</code> function or a CSS <code>selector</code> for the button to press. <code>Duplex.shortcuts.get(id)</code> and <code>Duplex.shortcuts.list()</code> report the reader's current bindings, and <code>set(id, shortcut)</code> is available for author tooling.</p>
+</section>
+
+<!-- Inventory -->
+<section id="inventory" class="section">
+  <header><span>Items, bags, and rooms</span><h2>Inventory</h2></header>
+  <p>Inventory is a JSON-serializable hierarchy of named items and stable, named bag instances. Item stacks hold up to 1000 units. Compatible ordinary bags also stack up to 1000 while empty; adding an item or child bag automatically splits one bag from the stack so every populated bag has its own identity.</p>
+  <div class="columns">
+    <div><h3>Nested bags</h3><ul>
+      <li>Populated bags may contain item stacks and other populated bags to any valid depth.</li>
+      <li>Moving a bag moves its complete nested branch without flattening or redistributing it.</li>
+      <li>A single click opens a bag and shows its immediate contents.</li>
+      <li>A double-click unpacks its immediate contents into the parent.</li>
+      <li>The visible <b>Take Everything</b> action is the accessible alternative to double-clicking.</li>
+    </ul></div>
+    <div><h3>Rooms are locations</h3><ul>
+      <li>A <b>safe room</b> preserves its complete nested hierarchy when the player leaves.</li>
+      <li>A <b>danger room</b> recursively clears all of its contents on exit.</li>
+      <li>Room bags are fixed, top-level locations. Unlike movable ordinary bags, they cannot be put inside, moved into, or unpacked into another bag.</li>
+    </ul></div>
+  </div>
+  <div class="note"><b>Stacks and splitting.</b> Define each item by name, then add quantities from 1 through 1000. Empty bags stack only when their definition, name, and properties are compatible. A populated bag is always a single instance.</div>
+  <h3>Define and build an inventory</h3>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Inventory.defineItem("vial", { name: "Healing vial" });
 
 const pack = Inventory.createBag("travel-pack", {
   name: "Travel pack",
@@ -126,74 +449,59 @@ const camp = Inventory.createRoom("camp", {
 });
 
 Inventory.addItem(pouch.id, "vial", 6);
-Inventory.moveBag(pouch.id, pack.id);</pre></div><h3>Open, unpack, and enter rooms</h3><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Inventory.openBag(pack.id);              // Show this bag directly.
+Inventory.moveBag(pouch.id, pack.id);</pre></div>
+  <h3>Open, unpack, and enter rooms</h3>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Inventory.openBag(pack.id);              // Show this bag directly.
 Inventory.unpackBag(pouch.id, pack.id);  // Transfer immediate contents.
 
 Inventory.enterRoom(camp.id);
 Inventory.leaveRoom(camp.id);            // Safe room hierarchy remains.
 
-Inventory.open();                        // Open the main Inventory browser.</pre></div><div class="table"><div><code>Inventory.defineItem(id, definition)</code><span>Register a named item definition.</span></div><div><code>Inventory.createBag(definition, options?)</code><span>Create or stack compatible empty ordinary bags.</span></div><div><code>Inventory.createRoom(definition, options?)</code><span>Create a fixed top-level safe or danger room bag.</span></div><div><code>Inventory.addItem(bagId, item, quantity?)</code><span>Add up to 1000 units, splitting a bag stack when needed.</span></div><div><code>Inventory.moveBag(sourceId, destinationId)</code><span>Move an ordinary bag and its complete nested branch.</span></div><div><code>Inventory.openBag(id)</code><span>Show one bag and its immediate rows.</span></div><div><code>Inventory.unpackBag(id, destinationId)</code><span>Move only the immediate items and child bags.</span></div><div><code>Inventory.enterRoom(id)</code><span>Enter a top-level room location.</span></div><div><code>Inventory.leaveRoom(id)</code><span>Leave it, preserving safe rooms or clearing danger rooms recursively.</span></div><div><code>Inventory.open()</code><span>Open the built-in Inventory browser.</span></div></div><div class="warning"><b>Hierarchy changes are guarded and atomic.</b><p>A bag cannot become its own ancestor or be moved or unpacked into one of its descendants. Duplex validates ancestry, room, compatibility, and capacity restrictions before changing anything. If unpacking would fail any check, the entire operation fails and the source and destination remain unchanged.</p></div></section>
+Inventory.open();                        // Open the main Inventory browser.</pre></div>
+  <div class="table">
+    <div><code>Inventory.defineItem(id, definition)</code><span>Register a named item definition.</span></div>
+    <div><code>Inventory.createBag(definition, options?)</code><span>Create or stack compatible empty ordinary bags.</span></div>
+    <div><code>Inventory.createRoom(definition, options?)</code><span>Create a fixed top-level safe or danger room bag.</span></div>
+    <div><code>Inventory.addItem(bagId, item, quantity?)</code><span>Add up to 1000 units, splitting a bag stack when needed.</span></div>
+    <div><code>Inventory.moveBag(sourceId, destinationId)</code><span>Move an ordinary bag and its complete nested branch.</span></div>
+    <div><code>Inventory.openBag(id)</code><span>Show one bag and its immediate rows.</span></div>
+    <div><code>Inventory.unpackBag(id, destinationId)</code><span>Move only the immediate items and child bags.</span></div>
+    <div><code>Inventory.enterRoom(id)</code><span>Enter a top-level room location.</span></div>
+    <div><code>Inventory.leaveRoom(id)</code><span>Leave it, preserving safe rooms or clearing danger rooms recursively.</span></div>
+    <div><code>Inventory.open()</code><span>Open the built-in Inventory browser.</span></div>
+  </div>
+  <div class="warning"><b>Hierarchy changes are guarded and atomic.</b><p>A bag cannot become its own ancestor or be moved or unpacked into one of its descendants. Duplex validates ancestry, room, compatibility, and capacity restrictions before changing anything. If unpacking would fail any check, the entire operation fails and the source and destination remain unchanged.</p></div>
+</section>
 
-<section id="mods" class="section"><header><span>Data-only extensions</span><h2>JSON item mods</h2></header><p>Duplex 1.5.0 can install validated JSON manifests containing item definitions. Choose <b>Mods</b> in the left story bar or call <code>Duplex.mods.open()</code> to import, enable, disable, or remove a mod. Installed mods are kept per story in IndexedDB; importing one never awards an item or creates <code>$inventory</code>.</p><div class="columns"><div><h3>Create and add an item</h3><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>const item = Duplex.mods.createItem(
+<!-- Mods -->
+<section id="mods" class="section">
+  <header><span>Data-only extensions</span><h2>JSON mods</h2></header>
+  <p>Duplex can install validated JSON manifests containing item definitions and restricted passage extensions. Choose <b>Mods</b> in the left story bar or call <code>Duplex.mods.open()</code> to import, enable, disable, or remove a mod. Installed mods are kept per story in IndexedDB; importing one never awards an item or creates <code>$inventory</code>.</p>
+  <div class="columns">
+    <div>
+      <h3>Create and add an item</h3>
+      <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>const item = Duplex.mods.createItem(
   "neston.more-birds",
   "nighthawk-feather",
   { quantity: 1 }
 );
 
-Duplex.inventory.addItem(playerBagId, item);</pre></div></div><div><h3>Safe, namespaced data</h3><ul><li>Manifest schema 1 requires mod ID, name, version, and an items array.</li><li>Item identities use <code>mod-id:item-id</code>.</li><li>Disabled or removed mods do not serve definitions, but existing inventory items remain intact.</li><li>Saves record enabled mod IDs and versions and warn about missing, disabled, or different versions.</li></ul></div></div><p class="warning"><b>Data only.</b> JavaScript mods, CSS, passages, assets, archives, and network downloads are not supported. Mod text is never executed.</p></section>
+Duplex.inventory.addItem(playerBagId, item);</pre></div>
+    </div>
+    <div>
+      <h3>Safe, namespaced data</h3>
+      <ul>
+        <li>Manifest schema 1 requires mod ID, name, version, and an items array.</li>
+        <li>Item identities use <code>mod-id:item-id</code>.</li>
+        <li>Disabled or removed mods do not serve definitions, but existing inventory items remain intact.</li>
+        <li>Saves record enabled mod IDs and versions and warn about missing, disabled, or different versions.</li>
+      </ul>
+    </div>
+  </div>
 
-<section id="saves" class="section"><header><span>Player safety</span><h2>Saves and portable backups</h2></header><p>Duplex keeps one browser save per story. Players can export that progress as a JSON file and import it in another browser or device. Imported files are checked for a Duplex marker, supported schema, matching story identity, valid history, and known passages before progress is replaced. The complete JSON-serializable inventory hierarchy participates in <b>Save</b>, import/export, <b>Back</b>, <b>Restart</b>, and history restoration, including every nested item, ordinary bag, and room tree.</p><div class="columns"><div><h3>Save dialog</h3><ul><li><b>Save</b> stores progress in this browser.</li><li><b>Load</b> restores the browser save.</li><li><b>Export</b> downloads a portable JSON backup.</li><li><b>Import</b> validates and restores a backup.</li><li><b>Delete</b> removes the browser save.</li></ul></div><div><h3>JavaScript API</h3><div class="table"><div><code>Save.save()</code><span>Store the browser save.</span></div><div><code>Save.load()</code><span>Restore it.</span></div><div><code>Save.delete()</code><span>Remove it.</span></div><div><code>Save.export(filename?)</code><span>Download JSON.</span></div><div><code>Save.import(source)</code><span>Import JSON, an object, or a File.</span></div><div><code>Save.serialize()</code><span>Return JSON text.</span></div><div><code>Save.parse(text)</code><span>Validate JSON text.</span></div></div></div></div><div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Save.save();
-Save.export();
-
-// File imports return a promise.
-Save.import(file).then(() =&gt; {
-  UI.alert("Save imported.");
-});</pre></div><p class="note"><code>Save.import(file)</code> is asynchronous when given a browser <code>File</code>. The API is available as both <code>Save</code> and <code>Duplex.Save</code>. Duplex still has one browser slot rather than SugarCube’s full multi-slot system.</p></section>
-
-<section id="widgets" class="section"><header><span>Reusable macros</span><h2>Widgets</h2></header><p>Define custom macros in passages with the <code>widget</code> tag. They load before <code>StoryInit</code>. A widget whose output is a single paragraph prints inline, so it can sit mid-sentence; output with blank-line paragraph breaks keeps its paragraphs.</p><div class="columns"><div><h3>Ordinary widget</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: Bird Widgets [widget]
-
-&lt;&lt;widget "birdname"&gt;&gt;
-  The bird is &lt;&lt;= _args[0]&gt;&gt;.
-&lt;&lt;/widget&gt;&gt;
-
-&lt;&lt;birdname "Common nighthawk"&gt;&gt;</pre></div></div><div><h3>Container widget</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: Bird Widgets [widget]
-
-&lt;&lt;widget "birdnote" container&gt;&gt;
-  &lt;aside&gt;&lt;&lt;= _contents&gt;&gt;&lt;/aside&gt;
-&lt;&lt;/widget&gt;&gt;
-
-&lt;&lt;birdnote&gt;&gt;Active at dusk.&lt;&lt;/birdnote&gt;&gt;</pre></div></div></div><div class="table"><div><code>_args[0]</code><span>First parsed argument.</span></div><div><code>_args.raw</code><span>Raw argument string.</span></div><div><code>_args.full</code><span>Full argument compatibility value.</span></div><div><code>_args.name</code><span>Invoked widget name.</span></div><div><code>_contents</code><span>Container widget contents.</span></div><div><code>$args</code><span>Deprecated compatibility alias.</span></div></div></section>
-
-<section id="grammar" class="section"><header><span>Random text</span><h2>Grammar</h2></header><p>Tag a passage <code>grammar</code> to make a word list: one option per line, with blank lines and <code>//</code> lines skipped. Repeat a line to make it more likely. The passage name becomes a macro that prints a random option inline.</p><div class="columns"><div><h3>Word list</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: wolf-like [grammar]
-wolfish
-wolfin
-wolf-like
-lupine</pre></div></div><div><h3>Use it</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>Its &lt;&lt;wolf-like&gt;&gt; eyes caught the light.
-
-&lt;&lt;run Grammar.keep("wolf-like", "$wolfWord")&gt;&gt;
-The $wolfWord one returns.</pre></div></div></div><div class="table"><div><code>&lt;&lt;name&gt;&gt;</code><span>A random option, new every time.</span></div><div><code>&lt;&lt;name keep&gt;&gt;</code><span>Picks once, then repeats it. Stored in <code>$grammarKept</code>, so saves keep it.</span></div><div><code>&lt;&lt;name reroll&gt;&gt;</code><span>Picks a new kept option.</span></div><div><code>&lt;&lt;name.upperFirst&gt;&gt;</code><span>Capitalizes the first letter (<code>bird</code> → <code>Bird</code>); the rest stays as written.</span></div><div><code>&lt;&lt;name.upper&gt;&gt;</code><span>Whole option in capitals (<code>BIRD</code>).</span></div><div><code>&lt;&lt;name.lower&gt;&gt;</code><span>Whole option in lowercase (<code>bird</code>). Case styles combine with <code>keep</code>/<code>reroll</code> and work inside widgets.</span></div><div><code>&lt;&lt;grammar "name"&gt;&gt;</code><span>Generic form for any list, including names that clash with a macro. Add a case style as <code>"name.upper"</code> or <code>"name" upper</code>.</span></div><div><code>Grammar.save(name, "$var")</code><span>Store a new pick as plain text.</span></div><div><code>Grammar.keep(name, "$var")</code><span>Store a pick only if the variable is empty.</span></div><div><code>Grammar.pick(name)</code><span>Return a pick as plain text, with nested lists and variables filled in. Names take case suffixes too: <code>Grammar.pick("animal.upperFirst")</code>.</span></div><div><code>Config.grammar.avoidRepeats</code><span>Default <code>true</code>: lists of three or more never repeat the previous pick.</span></div></div><p>Options are processed like passage text, so they can hold variables, links, HTML, and other grammar macros, including their own name for recursive lists (nesting stops at 20 levels). Use hyphens, not underscores, in list names. <code>Grammar</code> is also available as <code>Duplex.grammar</code>.</p></section>
-
-<section id="content-skip" class="section"><header><span>Reader comfort</span><h2>Skip tagged content</h2></header><p>Tag a passage with <code>skip</code>, <code>sex</code>, <code>violence</code>, <code>gore</code>, <code>abuse</code>, <code>self-harm</code>, <code>drugs</code>, or <code>death</code>. Readers see a content notice with a <strong>Skip</strong> button (or press <strong>Shift+S</strong>), and can choose tags to skip automatically under <strong>Settings → Content</strong>. A skipped passage still runs, so its variables are kept.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: The Ambush [violence]
-&lt;&lt;skipto "Clearing"&gt;&gt;
-&lt;&lt;skipsummary&gt;&gt;You drive off the shades, but you are wounded.&lt;&lt;/skipsummary&gt;&gt;
-The shades tear at you. Steel flashes.
-
-[[Run onward-&gt;Clearing]]</pre></div><div class="table"><div><code>&lt;&lt;skipto "Passage"&gt;&gt;</code><span>Where Skip and Continue go. Without it, the passage's first link is used.</span></div><div><code>&lt;&lt;skipsummary&gt;&gt;</code><span>Short recap shown in place of an automatically skipped passage.</span></div><div><code>Config.skip</code><span><code>tags</code>, <code>labels</code>, <code>defaults</code>, <code>showNotice</code>, <code>autoAdvance</code>, and <code>showAllTags</code>.</span></div><div><code>Duplex.skip</code><span><code>skip()</code>, <code>target()</code>, <code>contentTags()</code>, <code>isSkipped()</code>, <code>set()</code>, <code>list()</code>, and <code>reset()</code>.</span></div></div></section>
-<section id="tags" class="section"><header><span>Passage metadata</span><h2>Check passage tags</h2></header><p>In <code>StoryInit</code>, explicitly name the passage because no ordinary passage is rendering yet.</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if tags("Start").includes("scrolling")&gt;&gt;
-  &lt;&lt;set $passageMode = "append"&gt;&gt;
-&lt;&lt;elseif hasTag("Start", "pages")&gt;&gt;
-  &lt;&lt;set $passageMode = "replace"&gt;&gt;
-&lt;&lt;else&gt;&gt;
-  &lt;&lt;set $passageMode = "replace"&gt;&gt;
-&lt;&lt;/if&gt;&gt;</pre></div><p>Inside an ordinary rendering passage, omit the title:</p><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if hasTag("forest")&gt;&gt;
-  You are beneath the trees.
-&lt;&lt;/if&gt;&gt;
-Current tags: &lt;&lt;= tags().join(", ")&gt;&gt;</pre></div><p>Unknown passages return an empty tag array. JavaScript may use <code>Duplex.tags()</code> and <code>Duplex.hasTag()</code>.</p></section>
-
-<section id="api" class="section"><header><span>Extension</span><h2>JavaScript API</h2></header><div class="table"><div><code>Duplex.go(title)</code><span>Navigate to a passage.</span></div><div><code>Duplex.back()</code><span>Restore the previous history moment.</span></div><div><code>Duplex.restart()</code><span>Reset and return to the start.</span></div><div><code>Duplex.mode()</code><span>Return append or replace.</span></div><div><code>Duplex.tags(title?)</code><span>Return a passage’s tags.</span></div><div><code>Duplex.hasTag(title?, tag)</code><span>Test one passage tag.</span></div><div><code>Duplex.audio</code><span>Native audio registry.</span></div><div><code>Duplex.UI</code><span>Dialog and UI API.</span></div><div><code>Inventory</code><span>Global inventory and room API.</span></div><div><code>Duplex.Inventory</code><span>Namespaced inventory and room API.</span></div><div><code>Duplex.Save</code><span>Save and backup API.</span></div><div><code>Duplex.UIBarL / UIBarR</code><span>Sidebar controllers.</span></div><div><code>Duplex.widgets</code><span>Registered widgets.</span></div><div><code>Duplex.grammar</code><span>Grammar lists: pick, save, keep, kept, reroll, forget, has, list, names, define. Also global <code>Grammar</code>.</span></div></div><p>Globals include <code>State</code>, <code>setup</code>, <code>Config</code>, <code>SimpleAudio</code>, <code>UI</code>, <code>Save</code>, <code>Inventory</code>, <code>UIBarL</code>, and <code>UIBarR</code>.</p></section>
-
-<section id="reference" class="section"><header><span>At a glance</span><h2>Reference and limits</h2></header><div class="columns"><div><h3>Special passages</h3><div class="table"><div><code>StoryInit</code><span>Startup initialization.</span></div><div><code>StoryCaption</code><span>Left-bar caption.</span></div><div><code>StoryMenu</code><span>Left-bar menu.</span></div><div><code>StoryLeftBar</code><span>Custom left content.</span></div><div><code>StoryRightBar</code><span>Custom right content.</span></div></div></div><div><h3>Included facilities</h3><ul><li>Story JavaScript and Stylesheet</li><li><code>widget</code>-tagged passages</li><li>Back and Restart</li><li>Browser save plus JSON export/import</li><li>Responsive dual sidebars</li><li>Twine 2 and Tweego packaging</li></ul></div></div><div class="warning"><b>Compatibility boundary</b><p>Duplex is not SugarCube or Harlowe. It implements a selected SugarCube-like authoring surface, not every macro, API, save feature, edge case, or third-party extension.</p></div><div class="license"><span>License</span><b>MIT</b><p>Copyright © 2026 Neston Linden Rainer</p></div></section>
-<section id="mod-passage-extensions" class="section"><h2>Restricted mod passage extensions</h2><p>Schema 1 JSON mods may use <code>passageExtensions</code> to add Duplex markup <code>before</code> or <code>after</code> an existing base-story passage. Extensions run as virtual <code>mod restricted</code> passages, never alter the original text, disappear while their mod is disabled, and use stored import order followed by manifest order.</p><pre><code>{
+  <h3 id="mod-passage-extensions">Restricted passage extensions</h3>
+  <p>Schema 1 mods may use <code>passageExtensions</code> to add Duplex markup <code>before</code> or <code>after</code> an existing base-story passage. Extensions run as virtual <code>mod restricted</code> passages, never alter the original text, disappear while their mod is disabled, and use stored import order followed by manifest order.</p>
+  <div class="code"><div class="codebar"><span>Mod manifest</span><button type="button">Copy</button></div><pre>{
   "schema": 1,
   "id": "example.quest-pack",
   "name": "Example Quest Pack",
@@ -205,12 +513,299 @@ Current tags: &lt;&lt;= tags().join(", ")&gt;&gt;</pre></div><p>Unknown passages
     "placement": "after",
     "content": "&lt;&lt;if $hauntedHouseStarted&gt;&gt;[[Investigate the old house-&gt;Old House]]&lt;&lt;/if&gt;&gt;"
   }]
-}</code></pre><p>Targets must already exist and cannot be protected story UI/initialization passages or passages tagged <code>widget</code>, <code>grammar</code>, <code>script</code>, or <code>stylesheet</code>. Restricted mode follows nested includes and uses a limited expression interpreter rather than JavaScript. Conditionals, switches, printing, links, controls, includes, literals, variables, safe operators, tags, and controlled variable assignment are supported; browser APIs, arbitrary calls, scripts, widgets, and executable-code registration are blocked. Restricted HTML and Markdown output is sanitized to remove event handlers, dangerous elements, and executable URLs. Save history retains base output only and reconstructs extension output from the mods that are currently enabled. See the bundled mod documentation for the complete protected list and policy.</p></section></main></div>
+}</pre></div>
+  <p>Targets must already exist and cannot be protected story UI or initialization passages, or passages tagged <code>widget</code>, <code>grammar</code>, <code>script</code>, or <code>stylesheet</code>. Restricted mode follows nested includes and uses a limited expression interpreter rather than JavaScript. Conditionals, switches, printing, links, controls, includes, literals, variables, safe operators, tags, and controlled variable assignment are supported; browser APIs, arbitrary calls, scripts, widgets, and executable-code registration are blocked. Restricted HTML and Markdown output is sanitized. <code>&lt;&lt;skipto&gt;&gt;</code> and <code>&lt;&lt;skipsummary&gt;&gt;</code> are ignored inside extensions.</p>
+  <p class="warning"><b>Data only.</b> JavaScript mods, CSS, assets, archives, and network downloads are not supported. Mod text is never executed as JavaScript. See the <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md">mod guide</a> and its <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/examples/more-birds.json">example manifest</a>.</p>
+</section>
+
+<!-- Saves -->
+<section id="saves" class="section">
+  <header><span>Player safety</span><h2>Saves and portable backups</h2></header>
+  <p>Duplex keeps one browser save per story. Players can export that progress as a JSON file and import it in another browser or device. Imported files are checked for a Duplex marker, supported schema, matching story identity, valid history, and known passages before progress is replaced. The complete inventory hierarchy takes part in <b>Save</b>, import/export, <b>Back</b>, <b>Restart</b>, and history restoration.</p>
+  <div class="columns">
+    <div><h3>Save dialog</h3><ul>
+      <li><b>Save</b> stores progress in this browser.</li>
+      <li><b>Load</b> restores the browser save.</li>
+      <li><b>Export</b> downloads a portable JSON backup.</li>
+      <li><b>Import</b> validates and restores a backup.</li>
+      <li><b>Delete</b> removes the browser save.</li>
+    </ul></div>
+    <div><h3>JavaScript API</h3><div class="table">
+      <div><code>Save.save()</code><span>Store the browser save.</span></div>
+      <div><code>Save.load()</code><span>Restore it.</span></div>
+      <div><code>Save.delete()</code><span>Remove it.</span></div>
+      <div><code>Save.export(filename?)</code><span>Download JSON.</span></div>
+      <div><code>Save.import(source)</code><span>Import JSON, an object, or a File.</span></div>
+      <div><code>Save.serialize()</code><span>Return JSON text.</span></div>
+      <div><code>Save.parse(text)</code><span>Validate JSON text.</span></div>
+    </div></div>
+  </div>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Save.save();
+Save.export();
+
+// File imports return a promise.
+Save.import(file).then(() =&gt; {
+  UI.alert("Save imported.");
+});</pre></div>
+  <p class="note">Loaded saves have any JavaScript stripped out, and forged controls in a save file are rejected, so a shared save file cannot run code. The API is available as both <code>Save</code> and <code>Duplex.Save</code>. Duplex has one browser slot rather than SugarCube’s multi-slot system.</p>
+</section>
+
+<!-- Widgets -->
+<section id="widgets" class="section">
+  <header><span>Reusable macros</span><h2>Widgets</h2></header>
+  <p>Define custom macros in passages with the <code>widget</code> tag. They load before <code>StoryInit</code>. A widget whose output is a single paragraph prints inline, so it can sit mid-sentence; output with blank-line paragraph breaks keeps its paragraphs.</p>
+  <div class="columns">
+    <div><h3>Ordinary widget</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: Bird Widgets [widget]
+
+&lt;&lt;widget "birdname"&gt;&gt;
+  The bird is &lt;&lt;= _args[0]&gt;&gt;.
+&lt;&lt;/widget&gt;&gt;
+
+&lt;&lt;birdname "Common nighthawk"&gt;&gt;</pre></div></div>
+    <div><h3>Container widget</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: Bird Widgets [widget]
+
+&lt;&lt;widget "birdnote" container&gt;&gt;
+  &lt;aside&gt;&lt;&lt;= _contents&gt;&gt;&lt;/aside&gt;
+&lt;&lt;/widget&gt;&gt;
+
+&lt;&lt;birdnote&gt;&gt;Active at dusk.&lt;&lt;/birdnote&gt;&gt;</pre></div></div>
+  </div>
+  <div class="table">
+    <div><code>_args[0]</code><span>First parsed argument.</span></div>
+    <div><code>_args.raw</code><span>Raw argument string.</span></div>
+    <div><code>_args.full</code><span>Full argument compatibility value.</span></div>
+    <div><code>_args.name</code><span>Invoked widget name.</span></div>
+    <div><code>_contents</code><span>Container widget contents.</span></div>
+    <div><code>$args</code><span>Deprecated compatibility alias.</span></div>
+  </div>
+</section>
+
+<!-- Grammar -->
+<section id="grammar" class="section">
+  <header><span>Random words · 1.6.0+</span><h2>Grammar</h2></header>
+  <p>Tag a passage <code>grammar</code> to make a word list: one option per line, with blank lines and <code>//</code> lines skipped. Repeat a line to make it more likely. The passage name becomes a macro that prints a random option inline.</p>
+  <div class="columns">
+    <div><h3>Word list</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: wolf-like [grammar]
+wolfish
+wolfin
+wolf-like
+lupine</pre></div></div>
+    <div><h3>Use it</h3><div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>Its &lt;&lt;wolf-like&gt;&gt; eyes caught the light.
+&lt;&lt;wolf-like.upperFirst&gt;&gt; shapes circle the fire.
+
+&lt;&lt;run Grammar.keep("wolf-like", "$wolfWord")&gt;&gt;
+The $wolfWord one returns.</pre></div></div>
+  </div>
+  <h3>Macros</h3>
+  <div class="table">
+    <div><code>&lt;&lt;name&gt;&gt;</code><span>A random option, new every time.</span></div>
+    <div><code>&lt;&lt;name keep&gt;&gt;</code><span>Picks once, then repeats it. Stored in <code>$grammarKept</code>, so saves keep it.</span></div>
+    <div><code>&lt;&lt;name reroll&gt;&gt;</code><span>Picks a new kept option.</span></div>
+    <div><code>&lt;&lt;grammar "name"&gt;&gt;</code><span>Generic form for any list, including names that clash with a macro. <code>keep</code> and <code>reroll</code> work here too.</span></div>
+  </div>
+  <h3>Capital letters <small>(1.8.0)</small></h3>
+  <div class="table">
+    <div><code>&lt;&lt;name.upperFirst&gt;&gt;</code><span>Capitalizes the first letter (<code>bird</code> → <code>Bird</code>); the rest stays as written.</span></div>
+    <div><code>&lt;&lt;name.upper&gt;&gt;</code><span>Whole option in capitals (<code>BIRD</code>).</span></div>
+    <div><code>&lt;&lt;name.lower&gt;&gt;</code><span>Whole option in lowercase (<code>bird</code>).</span></div>
+    <div><code>&lt;&lt;grammar "name.upper"&gt;&gt;</code><span>The generic form takes a case style too, as a suffix or as <code>&lt;&lt;grammar "name" upper&gt;&gt;</code>.</span></div>
+  </div>
+  <p>Case styles combine with <code>keep</code> and <code>reroll</code> (<code>&lt;&lt;name.upperFirst keep&gt;&gt;</code>) and work inside widgets.</p>
+  <h3>JavaScript</h3>
+  <div class="table">
+    <div><code>Grammar.pick(name)</code><span>Return a pick as plain text, with nested lists and variables filled in. Names take case suffixes: <code>Grammar.pick("animal.upperFirst")</code>.</span></div>
+    <div><code>Grammar.save(name, "$var")</code><span>Store a new pick as plain text.</span></div>
+    <div><code>Grammar.keep(name, "$var")</code><span>Store a pick only if the variable is empty.</span></div>
+    <div><code>Grammar.define(name, options)</code><span>Create or replace a list from code.</span></div>
+    <div><code>Config.grammar.avoidRepeats</code><span>Default <code>true</code>: lists of three or more never repeat the previous pick.</span></div>
+  </div>
+  <p>Options are processed like passage text, so they can hold variables, links, HTML, and other grammar macros, including their own name for recursive lists (nesting stops at 20 levels). Use hyphens, not underscores, in list names, because <code>_word</code> reads as a temporary variable, and avoid dots, since <code>.</code> starts a case style. The full API is <code>pick</code>, <code>pickRaw</code>, <code>save</code>, <code>keep</code>, <code>kept</code>, <code>reroll</code>, <code>forget</code>, <code>has</code>, <code>list</code>, <code>names</code>, and <code>define</code>, on <code>Grammar</code> or <code>Duplex.grammar</code>.</p>
+</section>
+
+<!-- Content skip -->
+<section id="content-skip" class="section">
+  <header><span>Reader comfort · 1.7.0+</span><h2>Skip tagged content</h2></header>
+  <p>Duplex can warn readers about passages with sensitive content and let them skip those passages, one at a time with a <b>Skip</b> button or automatically for whole categories they choose in <b>Settings</b>. Skipping hides a passage's text but still runs it, so every <code>&lt;&lt;set&gt;&gt;</code> and inventory change still happens and your variables stay consistent.</p>
+  <ol class="steps">
+    <li><b>Tag the passage</b> Add one or more content tags. Capital letters don't matter. Use <code>skip</code> for any optional scene, such as a long recap.
+      <div class="chips"><code>skip</code><code>sex</code><code>violence</code><code>gore</code><code>abuse</code><code>self-harm</code><code>drugs</code><code>death</code></div>
+      A notice with a <b>Skip</b> button appears under the passage title.</li>
+    <li><b>Choose where Skip goes</b> Duplex uses the passage named by <code>&lt;&lt;skipto&gt;&gt;</code>, or else the first link that leads somewhere else. With neither, the button is disabled. <code>&lt;&lt;skipto&gt;&gt;</code> prints nothing and accepts a name or an expression such as <code>&lt;&lt;skipto $nextScene&gt;&gt;</code>.</li>
+    <li><b>Add a summary (optional)</b> <code>&lt;&lt;skipsummary&gt;&gt;</code> is shown only when the passage is skipped automatically, so readers don't lose the plot. It may contain links and variables.</li>
+    <li><b>Readers choose</b> <b>Settings → Content</b> lists every content tag the story uses, each with a checkbox. Checked tags are skipped automatically, saved per story in the reader's browser. A skipped passage shows <b>Continue</b> and <b>Show anyway</b>. <kbd>Shift</kbd>+<kbd>S</kbd> skips the current tagged passage.</li>
+  </ol>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: The Ambush [violence gore]
+&lt;&lt;skipto "Clearing"&gt;&gt;
+&lt;&lt;skipsummary&gt;&gt;You drive off the shades, but you are wounded.&lt;&lt;/skipsummary&gt;&gt;
+&lt;&lt;set $health -= 2&gt;&gt;
+The shades tear at you. Steel flashes.
+
+[[Fight back-&gt;Clearing]]
+[[Flee-&gt;Riverbank]]</pre></div>
+
+  <h3>Configure it</h3>
+  <p>Every setting lives on <code>Config.skip</code> in Story JavaScript. Change only what you need.</p>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>// Add your own tags and their reader-facing names.
+Config.skip.tags.push('spiders', 'body-horror');
+Config.skip.labels.spiders = 'Spiders';
+Config.skip.labels['body-horror'] = 'Body horror';
+
+// Skip these automatically until the reader changes the setting.
+Config.skip.defaults = ['gore'];
+
+// Hide the notice on passages that are not being skipped.
+Config.skip.showNotice = false;
+
+// Jump straight past auto-skipped passages instead of showing Continue.
+Config.skip.autoAdvance = true;
+
+// List every tag in Config.skip.tags in Settings, even unused ones.
+Config.skip.showAllTags = true;</pre></div>
+
+  <h3>Use it from code</h3>
+  <div class="table">
+    <div><code>Duplex.skip.skip()</code><span>Skip the current passage if it has a content tag and a target. Returns <code>true</code> if it moved.</span></div>
+    <div><code>Duplex.skip.target(name?)</code><span>The skip target of the current passage, or of the shown passage <code>name</code>.</span></div>
+    <div><code>Duplex.skip.contentTags(name?)</code><span>The content tags on a passage.</span></div>
+    <div><code>Duplex.skip.shouldSkip(name)</code><span>Whether the reader's settings skip that passage.</span></div>
+    <div><code>Duplex.skip.isSkipped(tag)</code><span>Read the reader's choice for one tag; <code>set(tag, true/false)</code> changes it.</span></div>
+    <div><code>Duplex.skip.list()</code><span><code>[{ tag, label, skipped }]</code> for the tags shown in Settings.</span></div>
+    <div><code>Duplex.skip.reset()</code><span>Clear the reader's choices back to <code>Config.skip.defaults</code>.</span></div>
+  </div>
+  <div class="code"><div class="codebar"><span>StoryMenu</span><button type="button">Copy</button></div><pre>&lt;&lt;button "Skip this scene"&gt;&gt;&lt;&lt;run Duplex.skip.skip()&gt;&gt;&lt;&lt;/button&gt;&gt;</pre></div>
+  <div class="note"><b>Things to know.</b> Only the passage the reader navigates to is checked, so tag the outer passage rather than one pulled in with <code>&lt;&lt;include&gt;&gt;</code>. UI passages such as <code>StoryInit</code>, <code>StoryMenu</code>, and <code>StorySettings</code> are never skipped. With <code>autoAdvance</code>, Duplex follows at most 20 auto-skipped passages in a row.</div>
+  <h3>Styling</h3>
+  <div class="code"><div class="codebar"><span>Story Stylesheet</span><button type="button">Copy</button></div><pre>.duplex-content-notice { }             /* the notice bar */
+.duplex-content-notice.is-skipped { }  /* the auto-skip placeholder */
+.duplex-skip-summary { }               /* the summary inside the placeholder */
+.duplex-passage.is-content-skipped { } /* a passage whose text is hidden */</pre></div>
+  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/CONTENT-SKIP.md">step-by-step content skip guide</a> has the full default <code>Config.skip</code> object.</p>
+</section>
+
+<!-- Tags -->
+<section id="tags" class="section">
+  <header><span>Passage metadata</span><h2>Check passage tags</h2></header>
+  <p>In <code>StoryInit</code>, explicitly name the passage because no ordinary passage is rendering yet.</p>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if tags("Start").includes("scrolling")&gt;&gt;
+  &lt;&lt;set $passageMode = "append"&gt;&gt;
+&lt;&lt;elseif hasTag("Start", "pages")&gt;&gt;
+  &lt;&lt;set $passageMode = "replace"&gt;&gt;
+&lt;&lt;else&gt;&gt;
+  &lt;&lt;set $passageMode = "replace"&gt;&gt;
+&lt;&lt;/if&gt;&gt;</pre></div>
+  <p>Inside an ordinary rendering passage, omit the title:</p>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>&lt;&lt;if hasTag("forest")&gt;&gt;
+  You are beneath the trees.
+&lt;&lt;/if&gt;&gt;
+Current tags: &lt;&lt;= tags().join(", ")&gt;&gt;</pre></div>
+  <p>Unknown passages return an empty tag array. JavaScript may use <code>Duplex.tags()</code> and <code>Duplex.hasTag()</code>.</p>
+  <h3>Tags with built-in meaning</h3>
+  <div class="chips"><code>widget</code><code>grammar</code><code>markdown</code><code>skip</code><code>sex</code><code>violence</code><code>gore</code><code>abuse</code><code>self-harm</code><code>drugs</code><code>death</code></div>
+</section>
+
+<!-- API -->
+<section id="api" class="section">
+  <header><span>Extension</span><h2>JavaScript API</h2></header>
+  <div class="table">
+    <div><code>Duplex.go(title)</code><span>Navigate to a passage.</span></div>
+    <div><code>Duplex.back()</code><span>Restore the previous history moment.</span></div>
+    <div><code>Duplex.restart()</code><span>Reset and return to the start.</span></div>
+    <div><code>Duplex.mode()</code><span>Return append or replace.</span></div>
+    <div><code>Duplex.tags(title?)</code><span>Return a passage’s tags.</span></div>
+    <div><code>Duplex.hasTag(title?, tag)</code><span>Test one passage tag.</span></div>
+    <div><code>Duplex.random(array)</code><span>Return a random array item.</span></div>
+    <div><code>Duplex.audio</code><span>Native audio registry.</span></div>
+    <div><code>Duplex.UI</code><span>Dialog and UI API.</span></div>
+    <div><code>Duplex.inventory</code><span>Inventory and room API (also global <code>Inventory</code>).</span></div>
+    <div><code>Duplex.mods</code><span>JSON mod manager.</span></div>
+    <div><code>Duplex.Save</code><span>Save and backup API.</span></div>
+    <div><code>Duplex.UIBarL / UIBarR</code><span>Sidebar controllers.</span></div>
+    <div><code>Duplex.shortcuts</code><span>Keyboard shortcuts: add, get, list, set.</span></div>
+    <div><code>Duplex.widgets</code><span>Registered widgets.</span></div>
+    <div><code>Duplex.grammar</code><span>Grammar lists. Also global <code>Grammar</code>.</span></div>
+    <div><code>Duplex.skip</code><span>Content skipping. Also global <code>Skip</code>.</span></div>
+    <div><code>Duplex.version</code><span>The running Duplex version, such as <code>"1.8.0"</code>.</span></div>
+  </div>
+  <p>Globals include <code>State</code>, <code>setup</code>, <code>Config</code>, <code>SimpleAudio</code>, <code>UI</code>, <code>Save</code>, <code>Inventory</code>, <code>Grammar</code>, <code>UIBarL</code>, and <code>UIBarR</code>.</p>
+</section>
+
+<!-- Reference -->
+<section id="reference" class="section">
+  <header><span>At a glance</span><h2>Reference and limits</h2></header>
+  <div class="columns">
+    <div><h3>Special passages</h3><div class="table">
+      <div><code>StoryInit</code><span>Startup initialization.</span></div>
+      <div><code>StoryCaption</code><span>Left-bar caption.</span></div>
+      <div><code>StoryMenu</code><span>Left-bar menu.</span></div>
+      <div><code>StoryLeftBar</code><span>Custom left content.</span></div>
+      <div><code>StoryRightBar</code><span>Custom right content.</span></div>
+      <div><code>StorySettings</code><span>Shown at the top of Settings.</span></div>
+    </div></div>
+    <div><h3>Included facilities</h3><ul>
+      <li>Story JavaScript and Stylesheet</li>
+      <li><code>widget</code> and <code>grammar</code> passages</li>
+      <li>Content notices and skipping</li>
+      <li>Back and Restart</li>
+      <li>Browser save plus JSON export/import</li>
+      <li>Rebindable keyboard shortcuts</li>
+      <li>Responsive dual sidebars</li>
+      <li>Twine 2 and Tweego packaging</li>
+    </ul></div>
+  </div>
+  <div class="warning"><b>Compatibility boundary</b><p>Duplex is not SugarCube or Harlowe. It implements a selected SugarCube-like authoring surface, not every macro, API, save feature, edge case, or third-party extension.</p></div>
+  <div class="license"><span>License</span><b>MIT</b><p>Copyright © 2026 Neston Linden Rainer</p></div>
+</section>
+</main>
+</div>
+
 <footer><img src="duplex-logo.png" alt=""><span>Duplex 1.8.0 documentation</span><a href="#overview">Back to top ↑</a></footer>
+
 <script>
-  const sections=[...document.querySelectorAll('.section')];
-  document.querySelector('#search').addEventListener('input',event=>{const term=event.target.value.trim().toLowerCase();sections.forEach(section=>section.classList.toggle('filtered',Boolean(term)&&!section.textContent.toLowerCase().includes(term)))});
-  document.querySelectorAll('.codebar button').forEach(button=>button.addEventListener('click',async()=>{const text=button.closest('.code').querySelector('pre').textContent;try{await navigator.clipboard.writeText(text)}catch{const area=document.createElement('textarea');area.value=text;document.body.append(area);area.select();document.execCommand('copy');area.remove()}button.textContent='Copied';setTimeout(()=>button.textContent='Copy',1200)}));
+  // Search filter
+  const sections = [...document.querySelectorAll('.section')];
+  document.querySelector('#search').addEventListener('input', event => {
+    const term = event.target.value.trim().toLowerCase();
+    sections.forEach(section => section.classList.toggle('filtered', Boolean(term) && !section.textContent.toLowerCase().includes(term)));
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.codebar button').forEach(button => button.addEventListener('click', async () => {
+    const text = button.closest('.code').querySelector('pre').textContent;
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.append(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    button.textContent = 'Copied';
+    setTimeout(() => button.textContent = 'Copy', 1200);
+  }));
+
+  // Theme toggle: remembers the reader's choice; otherwise follows the system.
+  (() => {
+    const root = document.documentElement;
+    const toggle = document.querySelector('#theme-toggle');
+    const label = toggle.querySelector('.label');
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const current = () => root.getAttribute('data-theme') || (systemDark.matches ? 'dark' : 'light');
+    const render = () => {
+      const dark = current() === 'dark';
+      toggle.setAttribute('aria-pressed', String(dark));
+      toggle.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = dark ? 'Light' : 'Dark';
+    };
+    toggle.addEventListener('click', () => {
+      const next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('duplex-docs-theme', next); } catch (error) {}
+      render();
+    });
+    systemDark.addEventListener?.('change', render);
+    render();
+  })();
 </script>
 </body>
 </html>
