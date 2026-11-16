@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An open book with a small star above it. Replaced by your own icon if you set one. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/icon_page"
+        android:pathData="M30,44 C38,41 46,42 53,46 L53,74 C46,70 38,69 30,72 Z" />
+    <path
+        android:fillColor="@color/icon_page"
+        android:pathData="M78,44 C70,41 62,42 55,46 L55,74 C62,70 70,69 78,72 Z" />
+    <path
+        android:fillColor="@color/icon_spine"
+        android:pathData="M53,46 L55,46 L55,75 L53,75 Z" />
+    <path
+        android:fillColor="@color/icon_star"
+        android:pathData="M54,26 L56.4,32.2 L63,32.6 L57.9,36.8 L59.6,43.2 L54,39.6 L48.4,43.2 L50.1,36.8 L45,32.6 L51.6,32.2 Z" />
+</vector>

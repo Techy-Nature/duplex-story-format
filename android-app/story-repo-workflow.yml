@@ -1,0 +1,22 @@
+# Copy this file into your story repo as .github/workflows/app.yml
+# Every push to main builds a new APK and puts it on your Releases page.
+name: Build story app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  app:
+    uses: Techy-Nature/duplex-story-format/.github/workflows/story-app.yml@main
+    with:
+      app_name: Journey Into The Astralscapes
+      app_id: io.github.techynature.astralscapes
+      story_path: src
+      # assets_path: media        # optional folder of images/audio
+      # icon: media/icon.png      # optional square PNG icon
+    secrets: inherit

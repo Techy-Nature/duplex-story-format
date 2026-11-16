@@ -38,6 +38,10 @@ Browser-based Twine generally cannot install a local `file://` URL. Host the fol
 
 You can write Duplex stories as plain-text Twee and build them on your phone with Tweego in Termux. See the step-by-step [Tweego on Termux guide](Duplex%201.5.0/duplex-format/TWEEGO-TERMUX.md).
 
+## Package a story as an Android app
+
+GitHub can turn your story repo into an installable Android app on every push, with your story's name and icon. Add one short workflow file to your story repo; see the [app guide](android-app/APP-GUIDE.md).
+
 ## Included syntax
 
 - Links: `[[Passage]]`, `[[Label->Passage]]`, `[[Label|Passage]]`

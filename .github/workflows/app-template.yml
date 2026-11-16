@@ -1,0 +1,31 @@
+# Builds the sample story with the app template, so changes to the template
+# or the story-app workflow are checked before they reach your story repo.
+name: App template
+
+on:
+  pull_request:
+    paths:
+      - "android-app/**"
+      - ".github/workflows/story-app.yml"
+      - ".github/workflows/app-template.yml"
+      - "Duplex 1.5.0/duplex-format/format.js"
+  push:
+    branches: [main]
+    paths:
+      - "android-app/**"
+      - ".github/workflows/story-app.yml"
+      - ".github/workflows/app-template.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sample-app:
+    uses: ./.github/workflows/story-app.yml
+    with:
+      app_name: Duplex App Sample
+      app_id: io.github.techynature.duplexsample
+      story_path: android-app/sample
+      duplex_ref: ${{ github.head_ref || github.ref_name }}
+      release: false

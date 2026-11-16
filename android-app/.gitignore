@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.kotlin/
+# Filled in by the build workflow from your story:
+app/src/main/assets/story/
+app/src/main/res/drawable-nodpi/ic_story_icon.png
