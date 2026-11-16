@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="story_background">#FF111317</color>
+    <color name="icon_background">#FF1B2230</color>
+    <color name="icon_page">#FFE8DCC4</color>
+    <color name="icon_spine">#FF5B8DB8</color>
+    <color name="icon_star">#FFE0A458</color>
+</resources>

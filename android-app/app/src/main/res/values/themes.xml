@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark from the first frame, so there is no white flash before the story loads. -->
+    <style name="Theme.StoryApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/story_background</item>
+        <item name="android:colorBackground">@color/story_background</item>
+        <item name="android:statusBarColor">@color/story_background</item>
+        <item name="android:navigationBarColor">@color/story_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

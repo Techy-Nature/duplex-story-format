@@ -1,0 +1,23 @@
+:: StoryTitle
+Duplex App Sample
+
+:: StoryData
+{
+  "ifid": "6C1C7F3A-2B7E-4C55-9C0B-8E4D2F1A9B35",
+  "format": "Duplex",
+  "format-version": "1.8.0",
+  "start": "Start"
+}
+
+:: StoryInit
+<<set $passageMode = "replace">>
+
+:: Start
+This little story checks that the Android app wrapper works.
+
+[[Go on->Second]]
+
+:: Second
+Saves, settings and mods should all work inside the app.
+
+[[Back to the start->Start]]
