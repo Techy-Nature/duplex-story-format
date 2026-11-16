@@ -47,6 +47,20 @@ From then on, every push builds a new version, and installing it updates the app
 
 **Tip:** to build without pushing, open **Actions → Build story app → Run workflow**.
 
+## On git.gay (or another Forgejo server)
+
+This only works if your account has Actions runners: check **Settings → Actions → Runners** for at least one runner that shows as online, and note its label.
+
+1. In your story repo on git.gay, create `.forgejo/workflows/app.yml` and paste in the whole of [`forgejo-story-workflow.yml`](forgejo-story-workflow.yml).
+2. Change the lines under `env:` the same way as in the table above (`APP_NAME`, `APP_ID`, `STORY_PATH`, and optionally `ASSETS_PATH` and `ICON`).
+3. Change `runs-on: docker` to your runner's label if it's different.
+4. Make sure Actions is turned on for the repo (**Settings → Units** or **Settings → Repository**, depending on the version), then commit and push.
+5. Watch the **Actions** tab. When it's green, the APK is on the repo's **Releases** page.
+
+If publishing fails with a permission error, make an access token (**Settings → Applications**, with repository write access) and add it as a repo secret named `RELEASE_TOKEN`. Signing secrets work the same as below, added under the repo's **Settings → Actions → Secrets**.
+
+Android builds need a few GB of memory, so a very small shared runner may run out. If that happens, the GitHub mirror route (git.gay pushes to a GitHub copy that builds the app) always works.
+
 ## Optional: sign with your own key
 
 Builds are signed with a shared public key by default. That's fine for you and friends, but anyone with that key could make an update that installs over yours. To use your own key instead:
