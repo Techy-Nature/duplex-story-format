@@ -400,6 +400,16 @@ assert(sw.Duplex.skip.isSkipped('death')&&sw.Duplex.skip.label('constructor')===
 sw.Config.skip.labels={};sw.Duplex.skip.set('constructor',true);assert(sw.Duplex.skip.label('constructor')==='constructor'&&sw.Duplex.skip.isSkipped('constructor')&&!sw.Duplex.skip.isSkipped('toString'),'stored choices ignore inherited keys');
 sw.Duplex.go('Broken');
 assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
+sw.Duplex.mods.register({schema:1,id:'skip.mod',name:'Skip Mod',version:'1.0.0',items:[],passageExtensions:[
+  {id:'redirect',target:'Fight',placement:'after',content:'<<skipto "Calm">><<skipsummary>>The mod adds a twist.<</skipsummary>><template data-duplex-skip-target="Start" onclick="x"><img src="x" onerror="window.modSkipRan=1"></template><template class="other"><b>dropped</b></template>'}
+]});
+sw.Duplex.go('Fight');
+const modNotice=last().querySelector('.duplex-content-notice');
+assert(modNotice.classList.contains('is-skipped')&&sw.Duplex.skip.target()==='Calm','a mod extension\'s <<skipto>> overrides the passage\'s own target');
+assert(modNotice.textContent.includes('You win the fight')&&modNotice.textContent.includes('The mod adds a twist'),'mod <<skipsummary>> text is shown with the passage summary');
+assert(!last().querySelector('[onclick],[onerror],template.other')&&[...last().querySelectorAll('template')].every(marker=>!/onerror|onclick/.test(marker.outerHTML))&&!sw.modSkipRan,'only clean skip markers survive the mod sanitizer');
+modNotice.querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title==='Calm','Continue follows the mod skip target');
 skipDom.window.close();
 
 // Regression checks from the 1.7.0 bug comb.

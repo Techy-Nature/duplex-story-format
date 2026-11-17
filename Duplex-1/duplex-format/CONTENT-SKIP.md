@@ -138,7 +138,7 @@ For example, a custom button in `StoryMenu`:
 
 * Only the passage the reader navigates to is checked. Content tags on a passage pulled in with `<<include>>` are ignored, so tag the outer passage.
 * Passages that run as UI (`StoryInit`, `StoryCaption`, `StoryMenu`, the bars, `StorySettings`) are never skipped.
-* `<<skipto>>` and `<<skipsummary>>` are ignored inside mod passage extensions.
+* `<<skipto>>` and `<<skipsummary>>` work inside mod passage extensions. A mod's `<<skipto>>` overrides the passage's own; if several mods set one, the last-loaded mod wins. Summaries from the passage and from mods are shown together, in reading order.
 * With `autoAdvance`, Duplex follows at most 20 auto-skipped passages in a row, to avoid loops.
 
 ## Styling
