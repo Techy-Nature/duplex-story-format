@@ -474,4 +474,12 @@ blButtons[0].click();
 assert(blBody().textContent.includes('Arrived next'),'clicking a {{button}} goes to its passage');
 buttonLinkDom.window.close();
 
+// Twine 2.6+ story map: button links are reported as references.
+const formatText=await readFile(new URL('../format.js', import.meta.url),'utf8');
+const tweegoJson=JSON.parse(formatText.slice(formatText.indexOf('{'),formatText.lastIndexOf('}')+1));
+assert(tweegoJson.name==='Duplex'&&tweegoJson.source===format.source,'Tweego can still read format.js as JSON (first "{" to last "}")');
+const parseReferences=format.editorExtensions?.twine?.['^2.6.0']?.references?.parsePassageText;
+assert(typeof parseReferences==='function','format.js gives Twine a references parser');
+assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's"]),'the references parser finds {{button}}, <<button>> and <<link>> targets');
+
 console.log('Duplex runtime tests passed.');
