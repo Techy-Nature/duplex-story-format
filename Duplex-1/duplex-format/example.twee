@@ -1,0 +1,30 @@
+:: StoryTitle
+Duplex Example
+
+:: StoryInit
+<<set $passageMode = "append">>
+<<set $visits = 0>>
+
+:: Start
+This story is currently in **$passageMode** mode.
+
+[[Walk into the woods->Woods]]
+
+:: Woods
+<<set $visits = $visits + 1>>
+You have entered the woods $visits time(s).
+
+<<if $visits is 1>>The trail is still unfamiliar.<<else>>You recognize the trail now.<</if>>
+
+[[Visit the stream->Stream]]
+
+<<switch $visits>>
+<<case 1>>A single nighthawk calls overhead.
+<<case 2 3>>Two nighthawks circle above the trail.
+<<default>>The night is crowded with wings.
+<</switch>>
+
+:: Stream
+Water passes over silver stones.
+
+[[Return to the woods->Woods]]

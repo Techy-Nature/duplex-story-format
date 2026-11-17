@@ -81,7 +81,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/tweego" "$RUNNER_TEMP/storyformats/duplex-1"
           unzip -q "$RUNNER_TEMP/tweego.zip" -d "$RUNNER_TEMP/tweego"
           chmod +x "$RUNNER_TEMP/tweego/tweego"
-          cp "duplex/Duplex 1.5.0/duplex-format/format.js" "$RUNNER_TEMP/storyformats/duplex-1/"
+          cp "duplex/Duplex-1/duplex-format/format.js" "$RUNNER_TEMP/storyformats/duplex-1/"
           echo "$RUNNER_TEMP/tweego" >> "$GITHUB_PATH"
           echo "TWEEGO_PATH=$RUNNER_TEMP/storyformats" >> "$GITHUB_ENV"
 

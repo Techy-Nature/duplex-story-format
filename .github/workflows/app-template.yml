@@ -8,7 +8,7 @@ on:
       - "android-app/**"
       - ".github/workflows/story-app.yml"
       - ".github/workflows/app-template.yml"
-      - "Duplex 1.5.0/duplex-format/format.js"
+      - "Duplex-1/duplex-format/format.js"
   push:
     branches: [main]
     paths:
