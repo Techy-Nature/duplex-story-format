@@ -38,6 +38,7 @@
     .duplex-shortcut-row { display:grid; grid-template-columns:minmax(8rem,1fr) auto; align-items:center; gap:1rem; }
     .duplex-shortcut-row button { min-width:8.5rem; }
     .duplex-shortcut-help { color:var(--duplex-muted); font-size:.9rem; }
+    .duplex-mod-extension { display:contents; }
     .duplex-content-notice { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1rem; margin:0 0 1rem; padding:.6rem .9rem; border:1px solid color-mix(in srgb,var(--duplex-accent) 30%,transparent); border-left:.25rem solid var(--duplex-accent); border-radius:.5rem; background:color-mix(in srgb,var(--duplex-accent) 8%,var(--duplex-panel)); font-size:.95rem; }
     .duplex-content-notice.is-skipped { display:block; }
     .duplex-content-notice p { margin:.2rem 0; }
@@ -656,7 +657,7 @@
       }));
       passages.forEach((passage,title)=>{if(passage.virtualMod)passages.delete(title);});virtuals.forEach((passage,title)=>passages.set(title,passage));passageExtensions.clear();extensions.forEach((group,title)=>passageExtensions.set(title,group));
     }
-    function compilePassageExtensions(title,placement){return (passageExtensions.get(title)?.[placement]||[]).map(entry=>{try{return includeNamedPassage(entry.name,{restricted:true,sourcePassage:entry.name});}catch(error){console.error('Duplex restricted compilation:',entry.name,error.message);return '<span class="duplex-error">'+escapeHtml(error.message)+'</span>';}}).join('');}
+    function compilePassageExtensions(title,placement){return (passageExtensions.get(title)?.[placement]||[]).map(entry=>{let html;try{html=includeNamedPassage(entry.name,{restricted:true,sourcePassage:entry.name});}catch(error){console.error('Duplex restricted compilation:',entry.name,error.message);html='<span class="duplex-error">'+escapeHtml(error.message)+'</span>';}return '<div class="duplex-mod-extension" data-mod-extension="'+attr(entry.name)+'">'+html+'</div>';}).join('');}
     function modError(message,manifest){throw new Error('Could not import '+(manifest?.name?'“'+manifest.name+'”':'mod')+': '+message);}
     function plainObject(value){if(!value||Object.prototype.toString.call(value)!=='[object Object]')return false;const prototype=Object.getPrototypeOf(value);return prototype===null||prototype===Object.prototype||(prototype?.constructor?.name==='Object'&&Object.keys(prototype).length===0&&Object.getPrototypeOf(prototype)===null);}
     function validateJson(value,path='manifest',seen=new Set()){
@@ -864,11 +865,12 @@
       function shouldSkip(passageName){return contentTags(passageName).some(isSkipped);}
       function targetFor(article){
         if(!article)return null;
-        // A mod extension's <<skipto>> overrides the story's own (the last-loaded mod wins); otherwise the passage's first <<skipto>> is used.
-        const explicit=[...article.querySelectorAll('.duplex-passage-body template[data-duplex-skip-target]')];
-        const chosen=explicit.filter(marker=>marker.hasAttribute('data-duplex-skip-mod')).at(-1)||explicit[0];
-        if(chosen)return chosen.getAttribute('data-duplex-skip-target');
-        const link=[...article.querySelectorAll('.duplex-passage-body [data-passage]')].find(item=>item.dataset.passage!==article.dataset.passage);
+        // Only the story's own text decides where a story passage skips to. Mod extensions (and the links in them)
+        // never change it; a mod's <<skipto>> only applies to the mod's own text, which is skipped along with the passage.
+        const own=item=>!item.closest('.duplex-mod-extension');
+        const explicit=[...article.querySelectorAll('.duplex-passage-body template[data-duplex-skip-target]')].find(own);
+        if(explicit)return explicit.getAttribute('data-duplex-skip-target');
+        const link=[...article.querySelectorAll('.duplex-passage-body [data-passage]')].find(item=>own(item)&&item.dataset.passage!==article.dataset.passage);
         return link?link.dataset.passage:null;
       }
       const currentArticle=()=>output.lastElementChild;

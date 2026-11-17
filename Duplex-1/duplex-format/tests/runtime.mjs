@@ -401,15 +401,19 @@ sw.Config.skip.labels={};sw.Duplex.skip.set('constructor',true);assert(sw.Duplex
 sw.Duplex.go('Broken');
 assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
 sw.Duplex.mods.register({schema:1,id:'skip.mod',name:'Skip Mod',version:'1.0.0',items:[],passageExtensions:[
-  {id:'redirect',target:'Fight',placement:'after',content:'<<skipto "Calm">><<skipsummary>>The mod adds a twist.<</skipsummary>><template data-duplex-skip-target="Start" onclick="x"><img src="x" onerror="window.modSkipRan=1"></template><template class="other"><b>dropped</b></template>'}
+  {id:'lead-in',target:'Fight',placement:'before',content:'A quest marker glows. [[Follow the marker->Calm]]'},
+  {id:'redirect',target:'Fight',placement:'after',content:'<<skipto "Calm">><<skipsummary>>The mod adds a twist.<</skipsummary>><template data-duplex-skip-target="Start" onclick="x"><img src="x" onerror="window.modSkipRan=1"></template><template class="other"><b>dropped</b></template>'},
+  {id:'lead-in-2',target:'Romance',placement:'before',content:'[[Mod detour->Calm]]'}
 ]});
 sw.Duplex.go('Fight');
 const modNotice=last().querySelector('.duplex-content-notice');
-assert(modNotice.classList.contains('is-skipped')&&sw.Duplex.skip.target()==='Calm','a mod extension\'s <<skipto>> overrides the passage\'s own target');
+assert(modNotice.classList.contains('is-skipped')&&sw.Duplex.skip.target()==='After','a mod\'s <<skipto>> never changes where a story passage skips to');
 assert(modNotice.textContent.includes('You win the fight')&&modNotice.textContent.includes('The mod adds a twist'),'mod <<skipsummary>> text is shown with the passage summary');
 assert(!last().querySelector('[onclick],[onerror],template.other')&&[...last().querySelectorAll('template')].every(marker=>!/onerror|onclick/.test(marker.outerHTML))&&!sw.modSkipRan,'only clean skip markers survive the mod sanitizer');
 modNotice.querySelector('[data-duplex-skip]').click();
-assert(sw.State.history.at(-1).title==='Calm','Continue follows the mod skip target');
+assert(sw.State.history.at(-1).title==='After','Continue follows the story\'s own target');
+sw.Duplex.go('Romance');
+assert(sw.Duplex.skip.target()==='After','links added by mods are not used as the first-link fallback');
 skipDom.window.close();
 
 // Regression checks from the 1.7.0 bug comb.
