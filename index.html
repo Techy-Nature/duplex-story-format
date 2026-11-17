@@ -109,10 +109,10 @@
       <ol>
         <li>Download or clone the repository and keep it somewhere permanent.</li>
         <li>Open <b>Twine → Story Formats → Add</b>.</li>
-        <li>Paste the full file URL to <code>format.js</code> (inside the <code>Duplex 1.5.0/duplex-format</code> folder; the folder name is historical and holds the current release).</li>
+        <li>Paste the full file URL to <code>format.js</code> (inside the <code>Duplex-1/duplex-format</code> folder; the folder name is historical and holds the current release).</li>
         <li>Select <b>Duplex 1.8.0</b> for your story.</li>
       </ol>
-      <div class="code"><div class="codebar"><span>Linux example</span><button type="button">Copy</button></div><pre>file:///home/you/duplex-story-format/Duplex%201.5.0/duplex-format/format.js</pre></div>
+      <div class="code"><div class="codebar"><span>Linux example</span><button type="button">Copy</button></div><pre>file:///home/you/duplex-story-format/Duplex-1/duplex-format/format.js</pre></div>
       <p class="note">Browser Twine may block local file URLs. Use Twine Desktop or host the format online.</p>
     </div>
     <div>
@@ -145,7 +145,7 @@ tweego --version</pre></div></li>
       <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>cd ~
 git clone https://github.com/Techy-Nature/duplex-story-format.git
 mkdir -p ~/storyformats/duplex-1
-cp "duplex-story-format/Duplex 1.5.0/duplex-format/format.js" ~/storyformats/duplex-1/
+cp "duplex-story-format/Duplex-1/duplex-format/format.js" ~/storyformats/duplex-1/
 echo 'export TWEEGO_PATH="$HOME/storyformats"' &gt;&gt; ~/.bashrc
 source ~/.bashrc
 tweego --list-formats</pre></div></li>
@@ -156,7 +156,7 @@ tweego -f duplex-1 -o story.html src/</pre></div></li>
       <div class="code"><div class="codebar"><span>Termux</span><button type="button">Copy</button></div><pre>pkg install python
 python -m http.server 8080</pre></div></li>
   </ol>
-  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/TWEEGO-TERMUX.md">full Termux guide</a> covers updating Duplex, building into Downloads, converting an existing Twine story to Twee, and troubleshooting.</p>
+  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/TWEEGO-TERMUX.md">full Termux guide</a> covers updating Duplex, building into Downloads, converting an existing Twine story to Twee, and troubleshooting.</p>
 
   <h3>StoryData</h3>
   <div class="code"><div class="codebar"><span>Twee</span><button type="button">Copy</button></div><pre>:: StoryData
@@ -516,7 +516,7 @@ Duplex.inventory.addItem(playerBagId, item);</pre></div>
   }]
 }</pre></div>
   <p>Targets must already exist and cannot be protected story UI or initialization passages, or passages tagged <code>widget</code>, <code>grammar</code>, <code>script</code>, or <code>stylesheet</code>. Restricted mode follows nested includes and uses a limited expression interpreter rather than JavaScript. Conditionals, switches, printing, links, controls, includes, literals, variables, safe operators, tags, and controlled variable assignment are supported; browser APIs, arbitrary calls, scripts, widgets, and executable-code registration are blocked. Restricted HTML and Markdown output is sanitized. <code>&lt;&lt;skipto&gt;&gt;</code> and <code>&lt;&lt;skipsummary&gt;&gt;</code> are ignored inside extensions.</p>
-  <p class="warning"><b>Data only.</b> JavaScript mods, CSS, assets, archives, and network downloads are not supported. Mod text is never executed as JavaScript. See the <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md">mod guide</a> and its <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/examples/more-birds.json">example manifest</a>.</p>
+  <p class="warning"><b>Data only.</b> JavaScript mods, CSS, assets, archives, and network downloads are not supported. Mod text is never executed as JavaScript. See the <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md">mod guide</a> and its <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/examples/more-birds.json">example manifest</a>.</p>
 </section>
 
 <!-- Saves -->
@@ -680,7 +680,7 @@ Config.skip.showAllTags = true;</pre></div>
 .duplex-content-notice.is-skipped { }  /* the auto-skip placeholder */
 .duplex-skip-summary { }               /* the summary inside the placeholder */
 .duplex-passage.is-content-skipped { } /* a passage whose text is hidden */</pre></div>
-  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/CONTENT-SKIP.md">step-by-step content skip guide</a> has the full default <code>Config.skip</code> object.</p>
+  <p>The <a href="https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/CONTENT-SKIP.md">step-by-step content skip guide</a> has the full default <code>Config.skip</code> object.</p>
 </section>
 
 <!-- Tags -->

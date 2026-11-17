@@ -1,6 +1,6 @@
 # [Duplex 1.5.0](https://techy-nature.github.io/duplex-story-format/)
 
-Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex%201.5.0/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
+Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
 ## Choose the mode in `StoryInit`
 
@@ -152,7 +152,7 @@ Save.parse(jsonText);        // Validate and return save state.
 
 ## Data-only JSON mods
 
-Duplex 1.5.0 supports validated item-definition and passageExtended JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex%201.5.0/duplex-format/MODS.md) and its [complete example manifest](Duplex%201.5.0/duplex-format/examples/more-birds.json).
+Duplex 1.5.0 supports validated item-definition and passageExtended JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex-1/duplex-format/MODS.md) and its [complete example manifest](Duplex-1/duplex-format/examples/more-birds.json).
 
 ## Nested Bag Inventory
 
@@ -167,7 +167,7 @@ Travel pack (bag-1)
 
 Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
 
-See [`Duplex 1.5.0/duplex-format/README.md`](Duplex%201.5.0/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
+See [`Duplex-1/duplex-format/README.md`](Duplex-1/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
 
 ## Widgets
 

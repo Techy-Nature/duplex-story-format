@@ -52,7 +52,7 @@ Download Duplex and copy its `format.js` into a folder named `duplex-1`:
 cd ~
 git clone https://github.com/Techy-Nature/duplex-story-format.git
 mkdir -p ~/storyformats/duplex-1
-cp "duplex-story-format/Duplex 1.5.0/duplex-format/format.js" ~/storyformats/duplex-1/
+cp "duplex-story-format/Duplex-1/duplex-format/format.js" ~/storyformats/duplex-1/
 ```
 
 The quotes matter, because the folder name `Duplex 1.5.0` contains a space. (The folder name is historical; the `format.js` inside it is the current Duplex release.)
@@ -129,7 +129,7 @@ The path continues.
 The Duplex example story is a good starting point too:
 
 ```sh
-cp "$HOME/duplex-story-format/Duplex 1.5.0/duplex-format/example.twee" src/
+cp "$HOME/duplex-story-format/Duplex-1/duplex-format/example.twee" src/
 ```
 
 ## 5. Build the story
