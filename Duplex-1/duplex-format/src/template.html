@@ -102,7 +102,7 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
+    const Config = window.Config = { rooms: { safeTags: ['safe-room'], unsafeTags: ['unsafe-room','danger-room'] }, displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
       // Passage tags that count as content tags. Readers can skip passages carrying any of them.
       tags: ['skip','sex','violence','gore','abuse','self-harm','drugs','death'],
       // Reader-facing names for tags. Tags without a label are shown as written.
@@ -666,7 +666,7 @@
       [...installedMods.values()].filter(record=>record.enabled).sort((a,b)=>a.order-b.order).forEach(record=>(record.manifest.passages||[]).forEach(entry=>{
         const name=modPassageName(record.manifest.id,entry.name);
         if(baseNames.has(name)||virtuals.has(name))throw new Error('Mod passage name collides with an existing passage: '+name+'.');
-        virtuals.set(name,{name,displayName:entry.name,pid:null,tags:['mod','restricted',...entry.tags],text:entry.text,virtualMod:true,modPassage:true,modId:record.manifest.id});
+        virtuals.set(name,{name,displayName:entry.name,pid:null,tags:['mod','restricted',...entry.tags,...(entry.room?[entry.room+'-room']:[])],text:entry.text,virtualMod:true,modPassage:true,room:entry.room,modId:record.manifest.id});
       }));
       passages.forEach((passage,title)=>{if(passage.virtualMod)passages.delete(title);});virtuals.forEach((passage,title)=>passages.set(title,passage));passageExtensions.clear();extensions.forEach((group,title)=>passageExtensions.set(title,group));
     }
@@ -731,7 +731,8 @@
         if(typeof entry.text!=='string')modError(path+'.text must be a string.',input);
         if(entry.tags!==undefined&&(!Array.isArray(entry.tags)||entry.tags.length>50||entry.tags.some(tag=>typeof tag!=='string'||!/^\S+$/.test(tag))))modError(path+'.tags must be an array of single-word strings.',input);
         const tags=[...new Set(entry.tags??[])],blocked=tags.find(tag=>PROTECTED_MOD_TAGS.has(tag.toLowerCase())||['mod','restricted'].includes(tag.toLowerCase()));if(blocked)modError(path+'.tags may not include “'+blocked+'”.',input);
-        return {name,text:entry.text,tags};
+        if(entry.room!==undefined&&!['safe','unsafe'].includes(entry.room))modError(path+'.room must be "safe" or "unsafe".',input);
+        return {name,text:entry.text,tags,...(entry.room?{room:entry.room}:{})};
       });
       return {...clone(input),items,passageExtensions,passages:modPassages};
     }
@@ -838,6 +839,28 @@
       requestUnpack(id,destinationId){const bag=locateBag(id)?.bag;if(!bag)throw new Error('Bag not found.');const destination=destinationId??locateBag(id)?.parent?.id;if(!destination)throw new Error('Choose a destination bag before unpacking.');if(bagEmpty(bag)||window.confirm('Take everything from '+bag.name+'?'))return Inventory.unpackBag(id,destination);return false;},
       leaveRoom(id,safe=true){const location=locateBag(id);if(!location||!location.bag.room)throw new Error('Room not found.');if(!safe)location.collection.splice(location.collection.indexOf(location.bag),1);refreshInventory();return safe?location.bag:null;}
     };
+    /* Places as rooms: a passage tagged with a safe tag (default `safe-room`) or unsafe tag (default `unsafe-room`/`danger-room`)
+       gets its own top-level room bag while the reader is there. Leaving a safe place keeps its room and everything in it;
+       leaving an unsafe place clears the room tree. Mod places can declare `"room": "safe"` or `"unsafe"`.
+       Hooks: Duplex.rooms, and `:roomenter` / `:roomleave` events on document with {passage, room, safe} in detail. */
+    const Rooms=(()=>{
+      const tagList=value=>(Array.isArray(value)?value:value==null?[]:[value]).map(tag=>String(tag).toLowerCase());
+      function kind(title){if(title==null||!passages.has(String(title)))return null;const declared=passages.get(String(title)).room;if(declared==='safe'||declared==='unsafe')return declared;const own=tags(String(title)).map(tag=>tag.toLowerCase());if(tagList(Config.rooms?.unsafeTags).some(tag=>own.includes(tag)))return 'unsafe';if(tagList(Config.rooms?.safeTags).some(tag=>own.includes(tag)))return 'safe';return null;}
+      const id=title=>'room:'+String(title);
+      function ensure(title){const roomId=id(title);let bag=Inventory.getBag(roomId);if(!bag)bag=Inventory.createBag({name:displayTitle(title),room:true},{id:roomId,name:displayTitle(title),room:true});return bag;}
+      function announce(name,title,safe){document.dispatchEvent(new CustomEvent(name,{detail:{passage:title,name:displayTitle(title),room:id(title),safe}}));}
+      // Called by go() before the new passage renders, so passage code can already use Duplex.rooms.current().
+      function transition(from,to){
+        if(from!=null&&from!==to){const leaving=kind(from);if(leaving){announce(':roomleave',from,leaving==='safe');if(leaving==='unsafe'&&Inventory.getBag(id(from)))Inventory.leaveRoom(id(from),false);}}
+        const entering=kind(to);if(entering&&from!==to){ensure(to);announce(':roomenter',to,entering==='safe');}
+      }
+      return {
+        kind,isRoom:title=>kind(title)!==null,isSafe:title=>kind(title)==='safe',isUnsafe:title=>kind(title)==='unsafe',id,
+        current(){const title=activeRenderTitle??State.history.at(-1)?.title;return kind(title)?Inventory.getBag(id(title))?.id??ensure(title).id:null;},
+        get(title){return Inventory.getBag(id(title));},
+        transition
+      };
+    })();
     // Reader-facing inventory actions report problems in a dialog instead of failing silently.
     function inventoryAction(run){try{return run();}catch(error){UI.alert(error.message,{title:'Inventory'});return false;}}
     let bagClickTimer;
@@ -961,6 +984,8 @@
       if (!passages.has(title)) return render(title);
       if(State.history.length)State.history.at(-1).variables=clone(State.variables);
       if (mode() === 'replace') output.replaceChildren();
+      const previousTitle=State.history.at(-1)?.title;
+      try{Rooms.transition(previousTitle,title);}catch(error){console.error('Duplex rooms:',error);}
       const entry={title};
       const baseHtml=render(title,undefined,entry);
       const skipped=entry.contentSkipped===true;delete entry.contentSkipped;
@@ -1032,7 +1057,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

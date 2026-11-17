@@ -526,4 +526,39 @@ const parseReferences=format.editorExtensions?.twine?.['^2.6.0']?.references?.pa
 assert(typeof parseReferences==='function','format.js gives Twine a references parser');
 assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's"]),'the references parser finds {{button}}, <<button>> and <<link>> targets');
 
+// Places as rooms: safe rooms keep what is left in them, unsafe rooms are cleared when the reader leaves.
+const roomStory=`<tw-storydata name="Rooms" ifid="ROOMS-IFID" startnode="1">
+  ${passage('1','Road','The road. [[Inn]] [[Swamp]] [[Camp]]')}
+  ${passage('2','Inn','A warm inn. <<run Inventory.addItem(Duplex.rooms.current(), {name:"Cloak"})>>[[Road]]','safe-room')}
+  ${passage('3','Swamp','A bog. <<run Inventory.addItem(Duplex.rooms.current(), {name:"Boot"})>>[[Road]]','unsafe-room')}
+  ${passage('4','Camp','A campfire. [[Road]]','camp')}
+  ${passage('5','StoryInit','')}
+</tw-storydata>`;
+const roomDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Rooms').replace('{{STORY_DATA}}',roomStory),{runScripts:'dangerously',url:'https://example.test/rooms',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+const rw=roomDom.window,rooms=rw.Duplex.rooms,roomEvents=[];
+rw.document.addEventListener(':roomenter',event=>roomEvents.push('enter '+event.detail.passage+' '+event.detail.safe));
+rw.document.addEventListener(':roomleave',event=>roomEvents.push('leave '+event.detail.passage+' '+event.detail.safe));
+assert(rooms.current()===null&&!rooms.isRoom('Road'),'untagged places are not rooms');
+rw.Duplex.go('Inn');
+assert(rooms.isSafe('Inn')&&rw.Inventory.getBag('room:Inn')?.room===true&&rw.Inventory.getBag('room:Inn').items[0]?.name==='Cloak','entering a safe place opens its room before the passage runs');
+rw.Duplex.go('Road');
+assert(rw.Inventory.getBag('room:Inn')?.items.length===1,'a safe room keeps what was left in it');
+rw.Duplex.go('Swamp');
+assert(rooms.isUnsafe('Swamp')&&rw.Inventory.getBag('room:Swamp')?.items[0]?.name==='Boot','an unsafe place opens a room too');
+rw.Duplex.go('Road');
+assert(!rw.Inventory.getBag('room:Swamp'),'leaving an unsafe place clears its room');
+rw.Duplex.back();
+assert(rw.Inventory.getBag('room:Swamp')?.items[0]?.name==='Boot','Back restores the unsafe room');
+assert(roomEvents.join('|')==='enter Inn true|leave Inn true|enter Swamp false|leave Swamp false','room enter and leave events fire with safety');
+rw.Config.rooms.safeTags.push('camp');rw.Duplex.go('Road');rw.Duplex.go('Camp');
+assert(rooms.isSafe('Camp')&&rw.Inventory.getBag('room:Camp'),'authors can add their own safe and unsafe tags');
+rw.Duplex.mods.register({schema:1,id:'bog.mod',name:'Bog',version:'1.0.0',items:[],passages:[{name:'Deep Bog',room:'unsafe',text:'Sinking.'},{name:'Hut',room:'safe',text:'Dry.'}]});
+const bog=rw.Duplex.mods.passageName('bog.mod','Deep Bog'),hut=rw.Duplex.mods.passageName('bog.mod','Hut');
+assert(rooms.isUnsafe(bog)&&rooms.isSafe(hut)&&rw.hasTag(bog,'unsafe-room'),'mod places can declare themselves safe or unsafe');
+rw.Duplex.go(bog);assert(rw.Inventory.getBag(rooms.id(bog))?.name==='Deep Bog','mod rooms use the place\'s own name');
+rw.Duplex.go(hut);assert(!rw.Inventory.getBag(rooms.id(bog))&&rw.Inventory.getBag(rooms.id(hut)),'leaving an unsafe mod place clears its room');
+let badRoom=false;try{rw.Duplex.mods.register({schema:1,id:'bad.room',name:'Bad',version:'1.0.0',items:[],passages:[{name:'X',text:'',room:'cozy'}]});}catch(_){badRoom=true;}
+assert(badRoom,'mod room must be safe or unsafe');
+roomDom.window.close();
+
 console.log('Duplex runtime tests passed.');

@@ -89,6 +89,7 @@ Each entry needs a `name` and `text`, and may have `tags`:
 
 * Names must be unique within the mod and may not contain `[`, `]`, `|`, `->` or `<-`.
 * Tags may not include `widget`, `grammar`, `script`, `stylesheet`, `mod` or `restricted`. Content tags such as `skip` or `violence` work as usual, so readers can skip mod places too.
+* Add `"room": "safe"` or `"room": "unsafe"` to make the place an inventory room. Things left in a safe room stay there; an unsafe room is cleared when the reader leaves. See "Safe and unsafe places" in the main README.
 * Mod places are restricted exactly like extensions: no `<<script>>`, `<<run>>`, widgets, or JavaScript, and the same HTML sanitizer.
 
 ### Step 2: Link to them
