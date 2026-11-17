@@ -45,7 +45,7 @@ GitHub can turn your story repo into an installable Android app on every push, w
 ## Included syntax
 
 - Links: `[[Passage]]`, `[[Label->Passage]]`, `[[Label|Passage]]`
-- Button links: `{{button Label|Passage}}` works like `[[Label|Passage]]` but shows a button. `{{button Passage}}`, `{{button Label->Passage}}` and `{{button Passage<-Label}}` work too. In Twine 2.6 and newer, the story map draws these, and `<<button "Label" "Passage">>` / `<<link "Label" "Passage">>` targets, as dashed connector lines.
+- Button links: `{{button Label|Passage}}` works like `[[Label|Passage]]` but shows a button. `{{button Passage}}`, `{{button Label->Passage}}` and `{{button Passage<-Label}}` work too. The word `button` can be left out: `{{Label|Passage}}`, `{{Label->Passage}}` and `{{Passage<-Label}}` always make a button, and `{{Passage}}` does when a passage with that name exists. Other `{{...}}` text is shown as written. In Twine 2.6 and newer, the story map draws these, and `<<button "Label" "Passage">>` / `<<link "Label" "Passage">>` targets, as dashed connector lines.
 - Variables: `$name`
 - Set: `<<set $name = "Nest">>` or `<<set $name to "Nest">>`
 - Print: `<<print $name>>` or `<<= $name>>`
