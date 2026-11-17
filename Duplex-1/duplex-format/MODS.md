@@ -1,6 +1,6 @@
 # Data-only mods
 
-Duplex 1.5.0 supports browser-installed JSON mods containing item definitions. It does not support JavaScript, CSS, passages, images, archives, downloads, or any executable mod content.
+Duplex supports browser-installed JSON mods containing item definitions, additions to existing passages, and new places (passages) of their own. It does not support JavaScript, CSS, images, archives, downloads, or any executable mod content.
 
 ## Manifest schema 1
 
@@ -68,3 +68,52 @@ Enabled extensions are represented internally as non-navigable `DuplexMod:<mod-i
 Restricted mode propagates through every nested `<<include>>`. Quest-oriented `<<if>>`/`<<elseif>>`/`<<else>>`, `<<switch>>`/`<<case>>`/`<<default>>`, `<<print>>`, links, buttons, input controls, includes, and simple `<<set>>` assignments remain available. Their expressions use a limited interpreter—not JavaScript—and support string, number, Boolean, null, and undefined literals; story and temporary variable property reads; parentheses; safe arithmetic, comparisons, and Boolean operators; `tags()`, `hasTag()`, and `.includes()`. Calls to browser globals or arbitrary functions, computed property access, object construction, and assignment expressions are not part of the grammar.
 
 Duplex also sanitizes all restricted output, including raw markup and Markdown output, through an element and attribute allowlist. Event-handler attributes, executable/embedded elements, `javascript:`/`vbscript:` URLs, and non-image or non-base64 `data:` URLs are removed. Duplex blocks `<<script>>`, `<<run>>`, `<<unset>>`, widget definitions and calls, audio-registration/control macros, unsupported expressions, and assignments other than controlled story/temporary variable paths. A blocked macro renders a localized error and is logged with its virtual passage name; unrelated passage rendering continues.
+
+Extensions may use `<<skipsummary>>…<</skipsummary>>`: when a reader skips the passage, the mod's summary is shown after the passage's own. A mod cannot change where a story passage skips to, so `<<skipto>>` and links inside an extension are never used as the passage's skip target. Skip markers are kept as inert `<template>` elements; any other `<template>`, and any attribute other than the marker's own, is still removed. Each extension's output is wrapped in `<div class="duplex-mod-extension" data-mod-extension="DuplexMod:<mod-id>:<extension-id>">` (styled `display:contents`, so layout is unchanged). See [CONTENT-SKIP.md](CONTENT-SKIP.md).
+
+## Mod places (new passages)
+
+A mod can add its own places with a `passages` array, and link to them from its extensions. This is how a quest mod adds new locations without touching the story's own passages. See [`examples/quest-mod.json`](examples/quest-mod.json) for a complete manifest.
+
+### Step 1: Add the places
+
+Each entry needs a `name` and `text`, and may have `tags`:
+
+```json
+"passages": [
+  { "name": "Old House", "tags": ["skip"], "text": "<<skipto \"Garden\">>The door creaks open. [[Go upstairs->Attic]] [[Leave->Town Square]]" },
+  { "name": "Attic", "text": "Dust and old letters. [[Back down->Old House]]" },
+  { "name": "Garden", "text": "Overgrown roses. [[Return to town->Town Square]]" }
+]
+```
+
+* Names must be unique within the mod and may not contain `[`, `]`, `|`, `->` or `<-`.
+* Tags may not include `widget`, `grammar`, `script`, `stylesheet`, `mod` or `restricted`. Content tags such as `skip` or `violence` work as usual, so readers can skip mod places too.
+* Add `"room": "safe"` or `"room": "unsafe"` to make the place an inventory room. Things left in a safe room stay there; an unsafe room is cleared when the reader leaves. See "Safe and unsafe places" in the main README.
+* Mod places are restricted exactly like extensions: no `<<script>>`, `<<run>>`, widgets, or JavaScript, and the same HTML sanitizer.
+
+### Step 2: Link to them
+
+Link from an extension on one of the story's passages:
+
+```json
+"passageExtensions": [{
+  "id": "house-door", "target": "Town Square", "placement": "after",
+  "content": "[[Investigate the old house->Old House]]"
+}]
+```
+
+### How names are resolved
+
+* Inside a mod's own text (its extensions and its places), a link, `<<skipto>>`, `<<include>>`, or control target that names one of **that mod's** places goes there. Any other name means the story's passage, so `[[Leave->Town Square]]` returns to the story.
+* The story's own text never sees mod places. A story `[[Old House]]` link does not reach a mod's "Old House", and two mods can both have a place called "Attic".
+* Readers see the place's own name as the passage title. Internally it is stored as `DuplexModPassage:<mod-id>:<name>`; `Duplex.mods.passageName("example.quest-pack", "Old House")` returns that name for `Duplex.go()`, `tags()` and `hasTag()`.
+
+### Skipping inside mods
+
+* In a **mod place**, `<<skipto>>` and the first link work exactly as in a story passage, and may point at the mod's places or the story's.
+* In an **extension on a story passage**, a mod cannot change where that passage skips to: its `<<skipto>>` and links are not used. Its `<<skipsummary>>` is shown after the passage's own, since the mod's text is skipped along with the passage.
+
+### Saves and disabling
+
+Saves store the place's internal name. If a save is in a mod place and that mod is missing or disabled, loading explains which mod it needs instead of failing silently. If a mod is disabled while a reader is in one of its places, that passage shows which mod it came from.

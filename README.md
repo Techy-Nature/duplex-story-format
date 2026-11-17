@@ -150,6 +150,37 @@ Travel pack (bag-1)
 
 Moving the medicine pouch into another bag moves that whole branch without merging or redistributing stacks. Opening shows its immediate rows. **Take Everything** (also available by double-click) unpacks only the pouch's immediate items and child bags, so the vial remains inside the lockbox. Duplex validates capacity, room, and ancestry rules before changing anything, making unpacking atomic. Rooms stay top-level: safe-room trees persist when the player leaves, and danger-room cleanup recursively removes only the abandoned room tree. Inventory is included in Back history and save/export/import JSON.
 
+### Safe and unsafe places
+
+Tag a passage `safe-room` or `unsafe-room` (`danger-room` also works) to give that place its own room in the inventory.
+
+1. When the reader enters the place, Duplex opens its room bag (ID `room:<passage name>`) **before** the passage runs.
+2. Put things there with `Duplex.rooms.current()`:
+
+   ```twine
+   <<run Inventory.addItem(Duplex.rooms.current(), {name: "Cloak"})>>
+   ```
+3. When the reader leaves, a **safe** room keeps everything in it for next time. An **unsafe** room is cleared, along with any bags left inside. Back restores it, like any inventory change.
+
+Use your own tag names in Story JavaScript:
+
+```javascript
+Config.rooms.safeTags.push("camp", "home");
+Config.rooms.unsafeTags.push("battlefield");
+```
+
+Hooks for your own code:
+
+```javascript
+Duplex.rooms.current();          // Room bag ID for the current place, or null.
+Duplex.rooms.isSafe("Inn");      // Also isUnsafe(), isRoom(), kind() → "safe" | "unsafe" | null.
+Duplex.rooms.get("Inn");         // The room bag, if it exists.
+document.addEventListener(":roomenter", e => console.log(e.detail)); // {passage, name, room, safe}
+document.addEventListener(":roomleave", e => console.log(e.detail));
+```
+
+Mod places can be rooms too, with `"room": "safe"` or `"room": "unsafe"` (see MODS.md).
+
 See [`Duplex-1/duplex-format/README.md`](Duplex-1/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
 
 ## Widgets

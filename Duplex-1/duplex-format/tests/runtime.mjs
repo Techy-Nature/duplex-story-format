@@ -400,6 +400,50 @@ assert(sw.Duplex.skip.isSkipped('death')&&sw.Duplex.skip.label('constructor')===
 sw.Config.skip.labels={};sw.Duplex.skip.set('constructor',true);assert(sw.Duplex.skip.label('constructor')==='constructor'&&sw.Duplex.skip.isSkipped('constructor')&&!sw.Duplex.skip.isSkipped('toString'),'stored choices ignore inherited keys');
 sw.Duplex.go('Broken');
 assert(last().querySelector('[data-duplex-skip]').disabled&&sw.Duplex.skip.skip()===false&&sw.State.history.at(-1).title==='Broken','Skip is disabled when <<skipto>> names a missing passage');
+sw.Duplex.mods.register({schema:1,id:'skip.mod',name:'Skip Mod',version:'1.0.0',items:[],passageExtensions:[
+  {id:'lead-in',target:'Fight',placement:'before',content:'A quest marker glows. [[Follow the marker->Calm]]'},
+  {id:'redirect',target:'Fight',placement:'after',content:'<<skipto "Calm">><<skipsummary>>The mod adds a twist.<</skipsummary>><template data-duplex-skip-target="Start" onclick="x"><img src="x" onerror="window.modSkipRan=1"></template><template class="other"><b>dropped</b></template>'},
+  {id:'lead-in-2',target:'Romance',placement:'before',content:'[[Mod detour->Calm]]'}
+]});
+sw.Duplex.go('Fight');
+const modNotice=last().querySelector('.duplex-content-notice');
+assert(modNotice.classList.contains('is-skipped')&&sw.Duplex.skip.target()==='After','a mod\'s <<skipto>> never changes where a story passage skips to');
+assert(modNotice.textContent.includes('You win the fight')&&modNotice.textContent.includes('The mod adds a twist'),'mod <<skipsummary>> text is shown with the passage summary');
+assert(!last().querySelector('[onclick],[onerror],template.other')&&[...last().querySelectorAll('template')].every(marker=>!/onerror|onclick/.test(marker.outerHTML))&&!sw.modSkipRan,'only clean skip markers survive the mod sanitizer');
+modNotice.querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title==='After','Continue follows the story\'s own target');
+sw.Duplex.go('Romance');
+assert(sw.Duplex.skip.target()==='After','links added by mods are not used as the first-link fallback');
+// Quest mods can add their own places; their links and <<skipto>> find those places first.
+const questMod={schema:1,id:'quest.mod',name:'Quest',version:'1.0.0',items:[],
+  passageExtensions:[{id:'cave-door',target:'Calm',placement:'after',content:'[[Enter the cave->Cave]]'}],
+  passages:[
+    {name:'Cave',tags:['violence'],text:'<<skipto "Shrine">><<skipsummary>>You escape the cave.<</skipsummary>>Bats everywhere. <<script>>window.questScript=1<</script>>[[Home->Start]] [[Deeper->Shrine]]'},
+    {name:'Shrine',text:'A quiet shrine. <<include "Lore">> [[Back to the story->After]]'},
+    {name:'Lore',text:'old-lore-ok'}
+  ]};
+sw.Duplex.mods.register(questMod);
+const cavePassage='DuplexModPassage:quest.mod:Cave',shrinePassage='DuplexModPassage:quest.mod:Shrine';
+sw.Duplex.skip.set('violence',false);sw.Duplex.go('Calm');
+const caveLink=[...last().querySelectorAll('[data-passage]')].find(link=>link.textContent==='Enter the cave');
+assert(caveLink?.dataset.passage===cavePassage,'a mod extension links to the mod\'s own place');
+caveLink.click();
+assert(sw.State.history.at(-1).title===cavePassage&&last().querySelector('.duplex-passage-title').textContent==='Cave'&&sd.querySelector('#duplex-current-passage').textContent==='Cave','mod places show their own name');
+assert(last().querySelector('.duplex-content-notice')&&sw.Duplex.skip.target()===shrinePassage,'a mod place can be content-tagged and its <<skipto>> goes to the mod\'s own place');
+assert(!sw.questScript&&last().textContent.includes('Blocked'),'mod places are restricted like other mod text');
+assert([...last().querySelectorAll('[data-passage]')].some(link=>link.dataset.passage==='Start'),'mod links to names the mod does not define go to the story');
+last().querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title===shrinePassage&&last().textContent.includes('old-lore-ok'),'Skip follows the mod target, and <<include>> finds the mod\'s own passage');
+assert(sw.tags(cavePassage).includes('violence')&&sw.tags(cavePassage).includes('restricted'),'mod places carry their tags plus mod and restricted');
+sw.Duplex.go('Cave');assert(sd.querySelector('#duplex-passages').textContent.includes('Passage not found: Cave'),'story code cannot reach a mod place by its bare name');
+const questSave=sw.Save.serialize();
+const noModDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip2',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+let questError='';try{noModDom.window.Save.import(questSave);}catch(error){questError=error.message;}
+assert(questError.includes('quest.mod'),'a save in a mod place explains which mod it needs');noModDom.window.close();
+for(const [bad,why] of [[{name:'Lair',text:'',tags:['widget']},'protected tag'],[{name:'A->B',text:''},'link syntax in name'],[{name:'Cave',text:''},'duplicate name']]){
+  let rejected=false;try{sw.Duplex.mods.register({schema:1,id:'bad.'+why.replace(/\W/g,''),name:'Bad',version:'1.0.0',items:[],passages:why==='duplicate name'?[bad,bad]:[bad]});}catch(_){rejected=true;}
+  assert(rejected,'mod passages with a '+why+' are rejected');
+}
 skipDom.window.close();
 
 // Regression checks from the 1.7.0 bug comb.
@@ -481,5 +525,40 @@ assert(tweegoJson.name==='Duplex'&&tweegoJson.source===format.source,'Tweego can
 const parseReferences=format.editorExtensions?.twine?.['^2.6.0']?.references?.parsePassageText;
 assert(typeof parseReferences==='function','format.js gives Twine a references parser');
 assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's"]),'the references parser finds {{button}}, <<button>> and <<link>> targets');
+
+// Places as rooms: safe rooms keep what is left in them, unsafe rooms are cleared when the reader leaves.
+const roomStory=`<tw-storydata name="Rooms" ifid="ROOMS-IFID" startnode="1">
+  ${passage('1','Road','The road. [[Inn]] [[Swamp]] [[Camp]]')}
+  ${passage('2','Inn','A warm inn. <<run Inventory.addItem(Duplex.rooms.current(), {name:"Cloak"})>>[[Road]]','safe-room')}
+  ${passage('3','Swamp','A bog. <<run Inventory.addItem(Duplex.rooms.current(), {name:"Boot"})>>[[Road]]','unsafe-room')}
+  ${passage('4','Camp','A campfire. [[Road]]','camp')}
+  ${passage('5','StoryInit','')}
+</tw-storydata>`;
+const roomDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Rooms').replace('{{STORY_DATA}}',roomStory),{runScripts:'dangerously',url:'https://example.test/rooms',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+const rw=roomDom.window,rooms=rw.Duplex.rooms,roomEvents=[];
+rw.document.addEventListener(':roomenter',event=>roomEvents.push('enter '+event.detail.passage+' '+event.detail.safe));
+rw.document.addEventListener(':roomleave',event=>roomEvents.push('leave '+event.detail.passage+' '+event.detail.safe));
+assert(rooms.current()===null&&!rooms.isRoom('Road'),'untagged places are not rooms');
+rw.Duplex.go('Inn');
+assert(rooms.isSafe('Inn')&&rw.Inventory.getBag('room:Inn')?.room===true&&rw.Inventory.getBag('room:Inn').items[0]?.name==='Cloak','entering a safe place opens its room before the passage runs');
+rw.Duplex.go('Road');
+assert(rw.Inventory.getBag('room:Inn')?.items.length===1,'a safe room keeps what was left in it');
+rw.Duplex.go('Swamp');
+assert(rooms.isUnsafe('Swamp')&&rw.Inventory.getBag('room:Swamp')?.items[0]?.name==='Boot','an unsafe place opens a room too');
+rw.Duplex.go('Road');
+assert(!rw.Inventory.getBag('room:Swamp'),'leaving an unsafe place clears its room');
+rw.Duplex.back();
+assert(rw.Inventory.getBag('room:Swamp')?.items[0]?.name==='Boot','Back restores the unsafe room');
+assert(roomEvents.join('|')==='enter Inn true|leave Inn true|enter Swamp false|leave Swamp false','room enter and leave events fire with safety');
+rw.Config.rooms.safeTags.push('camp');rw.Duplex.go('Road');rw.Duplex.go('Camp');
+assert(rooms.isSafe('Camp')&&rw.Inventory.getBag('room:Camp'),'authors can add their own safe and unsafe tags');
+rw.Duplex.mods.register({schema:1,id:'bog.mod',name:'Bog',version:'1.0.0',items:[],passages:[{name:'Deep Bog',room:'unsafe',text:'Sinking.'},{name:'Hut',room:'safe',text:'Dry.'}]});
+const bog=rw.Duplex.mods.passageName('bog.mod','Deep Bog'),hut=rw.Duplex.mods.passageName('bog.mod','Hut');
+assert(rooms.isUnsafe(bog)&&rooms.isSafe(hut)&&rw.hasTag(bog,'unsafe-room'),'mod places can declare themselves safe or unsafe');
+rw.Duplex.go(bog);assert(rw.Inventory.getBag(rooms.id(bog))?.name==='Deep Bog','mod rooms use the place\'s own name');
+rw.Duplex.go(hut);assert(!rw.Inventory.getBag(rooms.id(bog))&&rw.Inventory.getBag(rooms.id(hut)),'leaving an unsafe mod place clears its room');
+let badRoom=false;try{rw.Duplex.mods.register({schema:1,id:'bad.room',name:'Bad',version:'1.0.0',items:[],passages:[{name:'X',text:'',room:'cozy'}]});}catch(_){badRoom=true;}
+assert(badRoom,'mod room must be safe or unsafe');
+roomDom.window.close();
 
 console.log('Duplex runtime tests passed.');

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "id": "example.quest-pack",
+  "name": "Example Quest Pack",
+  "version": "1.0.0",
+  "author": "Example",
+  "description": "Adds an old house to explore, reached from the town square.",
+  "requires": {
+    "duplex": ">=1.8.0"
+  },
+  "items": [
+    {
+      "id": "brass-key",
+      "name": "Brass Key",
+      "description": "Opens the attic.",
+      "tags": [
+        "quest"
+      ]
+    }
+  ],
+  "passageExtensions": [
+    {
+      "id": "house-door",
+      "target": "Town Square",
+      "placement": "after",
+      "content": "[[Investigate the old house->Old House]]"
+    }
+  ],
+  "passages": [
+    {
+      "name": "Old House",
+      "tags": [
+        "skip"
+      ],
+      "text": "<<skipto \"Garden\">>\n<<skipsummary>>You search the house and slip out through the garden.<</skipsummary>>\nThe door creaks open onto a dark hall.\n\n[[Go upstairs->Attic]]\n[[Leave->Town Square]]",
+      "room": "unsafe"
+    },
+    {
+      "name": "Attic",
+      "text": "Dust, old letters, and a brass key on a nail.\n\n[[Back down->Old House]]",
+      "room": "safe"
+    },
+    {
+      "name": "Garden",
+      "text": "Overgrown roses hide a gate back to town.\n\n[[Return to town->Town Square]]"
+    }
+  ]
+}
