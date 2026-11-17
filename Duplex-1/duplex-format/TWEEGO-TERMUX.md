@@ -1,37 +1,16 @@
 # Build Duplex stories with Tweego on Android (Termux)
 
-[Tweego](https://www.motoslave.net/tweego/) is a command-line compiler for Twine stories written as plain text (Twee). There is no official Android download, but Tweego is written in Go, so you can build it inside [Termux](https://termux.dev/) in a few minutes. This guide walks through installing it, adding Duplex as a story format, and building a playable `story.html` on your phone.
+[Tweego](https://www.motoslave.net/tweego/) is a command-line compiler for Twine stories written as plain text (Twee). There is no official Android download, but [Termux](https://termux.dev/) packages it, so you can install it in one command. This guide walks through installing it, adding Duplex as a story format, and building a playable `story.html` on your phone.
 
 > **Get Termux from F-Droid or GitHub**, not the Play Store. The Play Store version is outdated and its package installs often fail.
 
-## 1. Install Go and Git
+## 1. Install Tweego and Git
 
-Open Termux and run:
+Termux has its own Tweego package, so you don't need to build anything. Open Termux and run:
 
 ```sh
 pkg update
-pkg install golang git
-```
-
-Check that Go works:
-
-```sh
-go version
-```
-
-## 2. Build and install Tweego
-
-```sh
-go install github.com/tmedwards/tweego@master
-```
-
-Use `@master`, **not** `@latest`. Tweego's version tags predate Go modules, so `@latest` picks an old `v2.0.0+incompatible` build with no pinned dependencies. Go then grabs the newest versions of everything, which can fail or demand a newer Go than you have. `@master` is the same code as the Tweego 2.1.1 release, with its dependencies pinned.
-
-Go puts the program in `~/go/bin`. Add that folder to your `PATH`, now and for every future session:
-
-```sh
-echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.bashrc
-source ~/.bashrc
+pkg install tweego git
 ```
 
 Check it:
@@ -41,6 +20,31 @@ tweego --version
 ```
 
 You should see `tweego, v2.1.1`.
+
+## 2. (Only if step 1 failed) Build Tweego with Go instead
+
+Skip this step if `tweego --version` worked. If the package isn't available on your device, build Tweego yourself:
+
+```sh
+pkg install golang
+go install github.com/tmedwards/tweego@master
+```
+
+Use `@master`, **not** `@latest`. Tweego's version tags predate Go modules, so `@latest` picks an old `v2.0.0+incompatible` build with no pinned dependencies, which can fail or demand a newer Go than you have. `@master` is the same code as the Tweego 2.1.1 release, with its dependencies pinned.
+
+Check that the program was built. This should list `tweego`:
+
+```sh
+ls ~/go/bin
+```
+
+Go puts the program in `~/go/bin`, so add that folder to your `PATH`. **Type or copy this line exactly, with no backslashes before the `$` signs.** A line like `"\$PATH:..."` breaks your `PATH`, and then Termux can't find any program.
+
+```sh
+echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.bashrc
+source ~/.bashrc
+tweego --version
+```
 
 ## 3. Add Duplex as a story format
 
@@ -54,8 +58,6 @@ git clone https://github.com/Techy-Nature/duplex-story-format.git
 mkdir -p ~/storyformats/duplex-1
 cp "duplex-story-format/Duplex-1/duplex-format/format.js" ~/storyformats/duplex-1/
 ```
-
-The quotes matter, because the folder name `Duplex 1.5.0` contains a space. (The folder name is historical; the `format.js` inside it is the current Duplex release.)
 
 Tell Tweego where your formats live:
 
@@ -200,15 +202,19 @@ This keeps your `StoryData`, IFID and passages, so you can keep editing the stor
 
 | Message | Fix |
 | --- | --- |
-| `tweego: command not found` | Run `source ~/.bashrc`, or check that `~/go/bin` is on your `PATH` (step 2). |
-| `requires go >= …` or a dependency error during `go install` | You used `@latest`. Use `@master` (step 2). If it still fails, run `pkg upgrade golang`. |
+| `The program tweego is not installed` or `tweego: command not found` | Run `pkg install tweego` (step 1). If you built it with Go, run `ls ~/go/bin` to check it exists and `source ~/.bashrc` to load your `PATH` (step 2). |
+| Every command says it is not installed, even `ls` | A broken `PATH` line, often `"\$PATH:\$HOME/go/bin"` with backslashes, is in `~/.bashrc`. Run `export PATH="$PREFIX/bin"`, then `sed -i '/go\/bin/d' ~/.bashrc`, then close and reopen Termux. |
+| `requires go >= …` or a dependency error during `go install` | You used `@latest`. Use `@master` (step 2). If it still fails, run `pkg upgrade golang`, or use `pkg install tweego` instead. |
 | `Story format search directories not found.` | `TWEEGO_PATH` isn't set. Run `source ~/.bashrc` (step 3). |
 | `Story IFID not found` | Add a `StoryData` passage (step 4). |
 | `--list-formats` doesn't show Duplex | Make sure the file is at `~/storyformats/duplex-1/format.js`, not one folder deeper. |
 
 ## What was tested
 
-These steps were checked on a Linux computer with Tweego 2.1.1 built from `@master`:
+- Termux's `tweego` package is version 2.1.1, built from the official release (checked against the [Termux package recipe](https://github.com/termux/termux-packages/blob/master/packages/tweego/build.sh)).
+- On a real phone with F-Droid Termux and Go 1.27.3, `go install …@master` downloaded fine. The `PATH` line was then entered with backslashes (`\$PATH`), which broke `PATH`; that is why step 2 now warns about it.
+
+The rest was checked on a Linux computer with Tweego 2.1.1 built from `@master`:
 
 - `go install github.com/tmedwards/tweego@master` builds; `@latest` failed here because it pulled in dependencies that need a newer Go.
 - The same build compiles for Android (`GOOS=android GOARCH=arm64`), the target Termux uses.
