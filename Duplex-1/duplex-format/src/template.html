@@ -331,7 +331,7 @@
     function interactive(text,name) {
       const block=container(text,name), argv=tokens(block.args), squareLink=/^\[\[[\s\S]*\]\]$/.test(argv[0]||'')?linkParts(argv[0].slice(2,-2)):null;
       const label=squareLink?squareLink.label:value(argv[0]), target=squareLink?squareLink.target:argv[1] && !/^(?:transition|t8n)$/i.test(argv[1]) ? value(argv[1]) : null;
-      const id=action({kind:name,body:block.body,target,context:{...(compileContexts.at(-1)||{} )}});
+      const id=action({kind:name,body:block.body,target:target==null?null:resolvePassage(target),context:{...(compileContexts.at(-1)||{} )}});
       const tag=name==='button'?'button':'a', href=tag==='a'?' href="#"':'';
       return {length:block.length,html:'<'+tag+href+' class="duplex-link" data-duplex-action="'+id+'">'+escapeHtml(label)+'</'+tag+'>'};
     }
@@ -352,7 +352,7 @@
       const a=tokens(argSource), recv=receiver(a.shift()), id=action({kind:name,receiver:recv});
       if(name==='checkbox') { const off=value(a[0]),on=value(a[1]), checked=a.includes('checked') || (a.includes('autocheck') && getReceiver(recv)===on); deferred.get(id).off=off; deferred.get(id).on=on; setReceiver(recv,checked?on:off); return '<input type="checkbox" data-duplex-action="'+id+'"'+(checked?' checked':'')+'>' }
       if(name==='radiobutton') { const checkedValue=value(a[0]),checked=a.includes('checked') || (a.includes('autocheck') && getReceiver(recv)===checkedValue); deferred.get(id).value=checkedValue; if(checked)setReceiver(recv,checkedValue); return '<input type="radio" name="'+escapeHtml(recv)+'" data-duplex-action="'+id+'"'+(checked?' checked':'')+'>' }
-      const defaultValue=value(a[0]); setReceiver(recv,defaultValue); const autofocus=a.includes('autofocus')?' autofocus':'', passage=a.find((x,i)=>i>0 && x!=='autofocus'); deferred.get(id).target=passage?value(passage):null;
+      const defaultValue=value(a[0]); setReceiver(recv,defaultValue); const autofocus=a.includes('autofocus')?' autofocus':'', passage=a.find((x,i)=>i>0 && x!=='autofocus'); deferred.get(id).target=passage?resolvePassage(value(passage)):null;
       if(name==='textarea') return '<textarea data-duplex-action="'+id+'"'+autofocus+'>'+escapeHtml(defaultValue)+'</textarea>';
       return '<input type="'+(name==='numberbox'?'number':'text')+'" value="'+escapeHtml(defaultValue)+'" data-duplex-action="'+id+'"'+autofocus+'>';
     }
@@ -524,7 +524,7 @@
       try{const next={...context,restricted:context.restricted||passage.tags.includes('restricted'),sourcePassage:context.restricted?context.sourcePassage:title};const source=passage.tags.some(tag=>tag.toLowerCase()==='markdown')?'<<markdown>>\n'+passage.text+'\n<</markdown>>':passage.text;return compile(source,next);}
       finally{includeStack.pop();}
     }
-    function includePassage(argSource,context) { return includeNamedPassage(String(evaluate(argSource)),context); }
+    function includePassage(argSource,context) { return includeNamedPassage(resolvePassage(evaluate(argSource),context),context); }
     function compile(source,context) {
       context=context||compileContexts.at(-1)||{restricted:false,sourcePassage:activeRenderTitle};compileContexts.push(context);
       let out='', i=0;
@@ -538,7 +538,7 @@
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
         if (/^<<script(?:\s|>>)/i.test(rest)) { const found=container(rest,'script');if(context.restricted)out+=restrictedError('script',context);else out+=scriptMacro(rest).html;i+=found.length;continue; }
         const skipTo=rest.match(/^<<skipto\s+([\s\S]*?)>>/i);
-        if(skipTo){const target=value(tokens(skipTo[1])[0]);if(target!=null&&String(target))out+='<template data-duplex-skip-target="'+attr(target)+'"'+(context.restricted?' data-duplex-skip-mod':'')+'></template>';i+=skipTo[0].length;continue;}
+        if(skipTo){const target=value(tokens(skipTo[1])[0]);if(target!=null&&String(target))out+='<template data-duplex-skip-target="'+attr(resolvePassage(target,context))+'"'+(context.restricted?' data-duplex-skip-mod':'')+'></template>';i+=skipTo[0].length;continue;}
         if(/^<<skipsummary(?:\s|>>)/i.test(rest)){const found=container(rest,'skipsummary');out+='<template class="duplex-skip-summary-source"'+(context.restricted?' data-duplex-skip-mod':'')+'>'+compile(found.body,context)+'</template>';i+=found.length;continue;}
         const include=rest.match(/^<<include\s+([\s\S]*?)>>/i);
         if(include){out+=includePassage(include[1],context);i+=include[0].length;continue;}
@@ -574,7 +574,7 @@
         const link=rest.match(/^\[\[([\s\S]*?)\]\]/);
         if (link) {
           const {label,target}=linkParts(link[1]);
-          out += '<a href="#" class="duplex-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</a>';
+          out += '<a href="#" class="duplex-link" data-passage="' + attr(resolvePassage(target,context)) + '">' + escapeHtml(label) + '</a>';
           i += link[0].length; continue;
         }
         // {{button Label|Passage}} is [[Label|Passage]] shown as a button; -> and <- work too.
@@ -617,6 +617,14 @@
       [...buttons,{label:'Close',action:()=>closeDialog(closeFn)}].forEach(def=>{const button=document.createElement('button');button.type='button';button.textContent=def.label;button.addEventListener('click',def.action);actions.append(button);});
       if(!box.open)box.showModal(); return box;
     }
+    // Mods can add their own passages (places). Inside a mod's text, a link, <<skipto>>, <<include>> or control target that
+    // names one of that mod's passages goes there; any other name means the story's passage. Story text never sees mod passages.
+    const MOD_PASSAGE_PREFIX='DuplexModPassage:';
+    function modPassageName(modId,name){return MOD_PASSAGE_PREFIX+modId+':'+name;}
+    function contextModId(context){const source=context?.restricted?passages.get(context.sourcePassage):null;return source?.virtualMod?source.modId:null;}
+    function resolvePassage(target,context=compileContexts.at(-1)){const name=String(target??''),modId=contextModId(context);if(modId){const own=modPassageName(modId,name);if(passages.has(own))return own;}return name;}
+    function missingPassageMessage(title){title=String(title);if(title.startsWith(MOD_PASSAGE_PREFIX)){const rest=title.slice(MOD_PASSAGE_PREFIX.length),split=rest.indexOf(':');return 'The place “'+rest.slice(split+1)+'” comes from the mod “'+rest.slice(0,split)+'”, which is not installed or is disabled.';}return 'Passage not found: '+title;}
+    function displayTitle(title){return passages.get(title)?.displayName??title;}
     function storyId(){return data.getAttribute('ifid')||data.getAttribute('name')||document.title;}
     const shortcutStorageKey=()=> 'duplex-shortcuts-'+storyId();
     const shortcutNames={Alt:'Alt',Control:'Ctrl',Meta:'Meta',Shift:'Shift',' ':'Space',ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right'};
@@ -654,6 +662,11 @@
         if(baseNames.has(name)||virtuals.has(name))throw new Error('Virtual mod passage name collides with an existing passage: '+name+'.');
         virtuals.set(name,{name,pid:null,tags:['mod','restricted'],text:extension.content,virtualMod:true,modId:record.manifest.id,extensionId:extension.id});
         const group=extensions.get(extension.target)||{before:[],after:[]};group[extension.placement].push({name,order:record.order,index});extensions.set(extension.target,group);
+      }));
+      [...installedMods.values()].filter(record=>record.enabled).sort((a,b)=>a.order-b.order).forEach(record=>(record.manifest.passages||[]).forEach(entry=>{
+        const name=modPassageName(record.manifest.id,entry.name);
+        if(baseNames.has(name)||virtuals.has(name))throw new Error('Mod passage name collides with an existing passage: '+name+'.');
+        virtuals.set(name,{name,displayName:entry.name,pid:null,tags:['mod','restricted',...entry.tags],text:entry.text,virtualMod:true,modPassage:true,modId:record.manifest.id});
       }));
       passages.forEach((passage,title)=>{if(passage.virtualMod)passages.delete(title);});virtuals.forEach((passage,title)=>passages.set(title,passage));passageExtensions.clear();extensions.forEach((group,title)=>passageExtensions.set(title,group));
     }
@@ -709,7 +722,18 @@
         if(item.tags!==undefined&&(!Array.isArray(item.tags)||item.tags.some(tag=>typeof tag!=='string')))modError(path+'.tags must be an array of strings.',input);
         return {...clone(item),id:item.id,name:item.name,description:item.description===undefined?'':String(item.description),type:item.type===undefined?'item':String(item.type),quantity:Math.max(1,Math.min(1000,Number(quantity)||1)),properties:clone(item.properties??{}),tags:clone(item.tags??[])};
       });
-      return {...clone(input),items,passageExtensions};
+      if(input.passages!==undefined&&!Array.isArray(input.passages))modError('passages must be an array.',input);
+      if((input.passages??[]).length>500)modError('a mod may add at most 500 passages.',input);
+      const passageNames=new Set(),modPassages=(input.passages??[]).map((entry,index)=>{
+        const path='passages['+index+']';if(!plainObject(entry))modError(path+' must be a plain JSON object.',input);
+        if(typeof entry.name!=='string'||!entry.name.trim()||entry.name.length>200||/[\u0000-\u001f\[\]|]|->|<-/.test(entry.name))modError(path+'.name must be a nonempty name without brackets, |, -> or <-.',input);
+        const name=entry.name.trim();if(passageNames.has(name))modError(path+'.name duplicates “'+name+'”.',input);passageNames.add(name);
+        if(typeof entry.text!=='string')modError(path+'.text must be a string.',input);
+        if(entry.tags!==undefined&&(!Array.isArray(entry.tags)||entry.tags.length>50||entry.tags.some(tag=>typeof tag!=='string'||!/^\S+$/.test(tag))))modError(path+'.tags must be an array of single-word strings.',input);
+        const tags=[...new Set(entry.tags??[])],blocked=tags.find(tag=>PROTECTED_MOD_TAGS.has(tag.toLowerCase())||['mod','restricted'].includes(tag.toLowerCase()));if(blocked)modError(path+'.tags may not include “'+blocked+'”.',input);
+        return {name,text:entry.text,tags};
+      });
+      return {...clone(input),items,passageExtensions,passages:modPassages};
     }
     function modDatabase(){return new Promise((resolve,reject)=>{if(!window.indexedDB){resolve(null);return;}const request=indexedDB.open('duplex-mods-'+storyId(),1);request.onupgradeneeded=()=>request.result.createObjectStore('mods',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
     async function persistMod(record){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').put(clone(record));request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
@@ -724,6 +748,7 @@
       createItem(modId,itemId,overrides={}){const definition=Mods.getItem(modId,itemId);if(!definition)throw new Error('Enabled mod item not found: '+modId+':'+itemId+'.');if(!plainObject(overrides))throw new Error('Item overrides must be a plain object.');const reserved=['id','modId','definitionId'];for(const key of Object.keys(overrides))if(reserved.includes(key))throw new Error('The reserved item property “'+key+'” cannot be overridden.');const result={...definition,...clone(overrides),id:String(modId)+':'+String(itemId),modId:String(modId),definitionId:String(itemId)};if(!Number.isInteger(result.quantity)||result.quantity<1||result.quantity>1000)throw new Error('Item quantity must be an integer between 1 and 1000.');result.properties=clone(result.properties??{});result.tags=clone(result.tags??[]);return result;},
       async enable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=true;try{await persistMod({id:record.manifest.id,enabled:true,order:record.order,manifest:record.manifest});}catch(error){record.enabled=false;throw error;}rebuildPassageExtensions();return true;},async disable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=false;try{await persistMod({id:record.manifest.id,enabled:false,order:record.order,manifest:record.manifest});}catch(error){record.enabled=true;throw error;}rebuildPassageExtensions();return true;},isEnabled(id){return installedMods.get(String(id))?.enabled===true;},
       checkSave(mods){const warnings=[];(Array.isArray(mods)?mods:[]).forEach(expected=>{if(!expected||typeof expected.id!=='string'||typeof expected.version!=='string')return;const found=installedMods.get(expected.id);if(!found)warnings.push(expected.id+' '+expected.version+' — missing');else if(!found.enabled)warnings.push(expected.id+' '+expected.version+' — installed but disabled');else if(found.manifest.version!==expected.version)warnings.push(expected.id+' '+expected.version+' — installed version is '+found.manifest.version);});return warnings;},
+      passageName(modId,name){return modPassageName(String(modId),String(name));},
       open(){renderMods();}
     };
     function renderMods(message='',isError=false){
@@ -754,7 +779,7 @@
       if(!legacy&&(value.format!=='DuplexSave'||value.schema!==1))throw new Error('This is not a supported Duplex save file.');
       if(!legacy&&value.story!==storyId())throw new Error('This save belongs to a different story.');
       if(!Array.isArray(value.history)||!value.history.length||!value.variables||typeof value.variables!=='object'||Array.isArray(value.variables))throw new Error('The save file is incomplete or damaged.');
-      value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string'||!passages.has(entry.title))throw new Error('The save refers to a passage that does not exist in this story.');});
+      value.history.forEach(entry=>{if(!entry||typeof entry.title!=='string')throw new Error('The save file is incomplete or damaged.');if(!passages.has(entry.title))throw new Error(entry.title.startsWith(MOD_PASSAGE_PREFIX)?'This save needs a mod. '+missingPassageMessage(entry.title):'The save refers to a passage that does not exist in this story.');});
       const history=value.history.map(entry=>({title:entry.title,baseHtml:(entry.baseHtml??entry.html)==null?undefined:stripSaveScripts(entry.baseHtml??entry.html),variables:clone(entry.variables),mode:entry.mode,...(entry.revealed===true?{revealed:true}:{})}));
       const warnings=Mods.checkSave(value.mods);warnings.forEach(message=>console.warn(message));return {history,variables:clone(value.variables),actions:value.actions,warnings};
     }
@@ -835,11 +860,11 @@
       update(){
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
         regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(!region)return;try{region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';}catch(error){console.error(name+':',error);region.innerHTML='<div class="duplex-error">'+escapeHtml(name+': '+error.message)+'</div>';}});
-        const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?.title||'—';if(display)display.textContent=mode();
+        const current=State.history.at(-1); const title=document.querySelector('#duplex-current-passage'),display=document.querySelector('#duplex-current-mode');if(title)title.textContent=current?displayTitle(current.title):'—';if(display)display.textContent=mode();
         const summary=document.querySelector('#duplex-inventory-summary');if(summary){let count=0;walkBags(()=>{count++;});summary.textContent=count+' bag'+(count===1?'':'s');}
         document.dispatchEvent(new CustomEvent(':uiupdate')); return UI;
       },
-      jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:title,action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
+      jumpto(options,closeFn){const seen=[...new Set(State.history.map(entry=>entry.title))];dialog(options?.title||'Jump To','<p>Choose a visited passage.</p>',seen.map(title=>({label:displayTitle(title),action:()=>{go(title);closeDialog(closeFn);}})),closeFn);},
       share(options,closeFn){const url=location.href;if(navigator.share)navigator.share({title:document.title,url}).finally(()=>closeFn?.());else dialog(options?.title||'Share','<p><a href="'+escapeHtml(url)+'">'+escapeHtml(url)+'</a></p>',[],closeFn);}
     };
     // Content skipping: passages tagged with a content tag (Config.skip.tags) get a notice with a Skip button,
@@ -918,7 +943,7 @@
     })();
     function render(title, restoreBaseHtml, entry) {
       const passage=passages.get(title);
-      if (!passage) { output.insertAdjacentHTML('beforeend','<div class="duplex-error">Passage not found: ' + escapeHtml(title) + '</div>'); return; }
+      if (!passage) { output.insertAdjacentHTML('beforeend','<div class="duplex-error">' + escapeHtml(missingPassageMessage(title)) + '</div>'); return; }
       State.temporary=Object.create(null);
       let baseHtml=restoreBaseHtml,html;
       const previousRenderTitle=activeRenderTitle; activeRenderTitle=title;
@@ -926,7 +951,7 @@
       catch (error) { html='<div class="duplex-error">' + escapeHtml(error.message) + '</div>'; }
       finally { activeRenderTitle=previousRenderTitle; }
       const article=document.createElement('article'); article.className='duplex-passage'; article.dataset.passage=title;
-      article.innerHTML='<h2 class="duplex-passage-title">' + escapeHtml(title) + '</h2><div class="duplex-passage-body">' + html + '</div>';
+      article.innerHTML='<h2 class="duplex-passage-title">' + escapeHtml(displayTitle(title)) + '</h2><div class="duplex-passage-body">' + html + '</div>';
       if(entry)articleEntries.set(article,entry);
       output.append(article);
       if(entry)entry.contentSkipped=ContentSkip.decorate(article);

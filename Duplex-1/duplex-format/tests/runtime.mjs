@@ -414,6 +414,36 @@ modNotice.querySelector('[data-duplex-skip]').click();
 assert(sw.State.history.at(-1).title==='After','Continue follows the story\'s own target');
 sw.Duplex.go('Romance');
 assert(sw.Duplex.skip.target()==='After','links added by mods are not used as the first-link fallback');
+// Quest mods can add their own places; their links and <<skipto>> find those places first.
+const questMod={schema:1,id:'quest.mod',name:'Quest',version:'1.0.0',items:[],
+  passageExtensions:[{id:'cave-door',target:'Calm',placement:'after',content:'[[Enter the cave->Cave]]'}],
+  passages:[
+    {name:'Cave',tags:['violence'],text:'<<skipto "Shrine">><<skipsummary>>You escape the cave.<</skipsummary>>Bats everywhere. <<script>>window.questScript=1<</script>>[[Home->Start]] [[Deeper->Shrine]]'},
+    {name:'Shrine',text:'A quiet shrine. <<include "Lore">> [[Back to the story->After]]'},
+    {name:'Lore',text:'old-lore-ok'}
+  ]};
+sw.Duplex.mods.register(questMod);
+const cavePassage='DuplexModPassage:quest.mod:Cave',shrinePassage='DuplexModPassage:quest.mod:Shrine';
+sw.Duplex.skip.set('violence',false);sw.Duplex.go('Calm');
+const caveLink=[...last().querySelectorAll('[data-passage]')].find(link=>link.textContent==='Enter the cave');
+assert(caveLink?.dataset.passage===cavePassage,'a mod extension links to the mod\'s own place');
+caveLink.click();
+assert(sw.State.history.at(-1).title===cavePassage&&last().querySelector('.duplex-passage-title').textContent==='Cave'&&sd.querySelector('#duplex-current-passage').textContent==='Cave','mod places show their own name');
+assert(last().querySelector('.duplex-content-notice')&&sw.Duplex.skip.target()===shrinePassage,'a mod place can be content-tagged and its <<skipto>> goes to the mod\'s own place');
+assert(!sw.questScript&&last().textContent.includes('Blocked'),'mod places are restricted like other mod text');
+assert([...last().querySelectorAll('[data-passage]')].some(link=>link.dataset.passage==='Start'),'mod links to names the mod does not define go to the story');
+last().querySelector('[data-duplex-skip]').click();
+assert(sw.State.history.at(-1).title===shrinePassage&&last().textContent.includes('old-lore-ok'),'Skip follows the mod target, and <<include>> finds the mod\'s own passage');
+assert(sw.tags(cavePassage).includes('violence')&&sw.tags(cavePassage).includes('restricted'),'mod places carry their tags plus mod and restricted');
+sw.Duplex.go('Cave');assert(sd.querySelector('#duplex-passages').textContent.includes('Passage not found: Cave'),'story code cannot reach a mod place by its bare name');
+const questSave=sw.Save.serialize();
+const noModDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip2',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+let questError='';try{noModDom.window.Save.import(questSave);}catch(error){questError=error.message;}
+assert(questError.includes('quest.mod'),'a save in a mod place explains which mod it needs');noModDom.window.close();
+for(const [bad,why] of [[{name:'Lair',text:'',tags:['widget']},'protected tag'],[{name:'A->B',text:''},'link syntax in name'],[{name:'Cave',text:''},'duplicate name']]){
+  let rejected=false;try{sw.Duplex.mods.register({schema:1,id:'bad.'+why.replace(/\W/g,''),name:'Bad',version:'1.0.0',items:[],passages:why==='duplicate name'?[bad,bad]:[bad]});}catch(_){rejected=true;}
+  assert(rejected,'mod passages with a '+why+' are rejected');
+}
 skipDom.window.close();
 
 // Regression checks from the 1.7.0 bug comb.
