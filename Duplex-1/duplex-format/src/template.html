@@ -320,6 +320,12 @@
       return {length:block.length,html:compile(html)};
     }
     // Splits the inside of [[...]] into its label and target, accepting ->, <- and | forms.
+    function shortButtonLink(rest,context){
+      const found=rest.match(/^\{\{([^{}\n]+?)\}\}/);
+      if(!found)return null;
+      if(/\||->|<-/.test(found[1]))return found;
+      return passages.has(resolvePassage(found[1].trim(),context))?found:null;
+    }
     function linkParts(body) {
       let label,target;
       if (body.includes('->')) [label,target]=body.split(/->(.+)/s);
@@ -578,10 +584,12 @@
           i += link[0].length; continue;
         }
         // {{button Label|Passage}} is [[Label|Passage]] shown as a button; -> and <- work too.
-        const buttonLink=rest.match(/^\{\{button\s+([\s\S]*?)\}\}/i);
+        // The word "button" may be left out: {{Label|Passage}}, {{Label->Passage}}, {{Passage<-Label}},
+        // or {{Passage}} when a passage of that name exists. Any other {{...}} text is left alone.
+        const buttonLink=rest.match(/^\{\{button\s+([\s\S]*?)\}\}/i)||shortButtonLink(rest,context);
         if (buttonLink) {
           const {label,target}=linkParts(buttonLink[1]);
-          out += '<button type="button" class="duplex-link duplex-button-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</button>';
+          out += '<button type="button" class="duplex-link duplex-button-link" data-passage="' + attr(resolvePassage(target,context)) + '">' + escapeHtml(label) + '</button>';
           i += buttonLink[0].length; continue;
         }
         const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);

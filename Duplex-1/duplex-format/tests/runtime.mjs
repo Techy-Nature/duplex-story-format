@@ -508,11 +508,11 @@ hostileDom.window.close();
 comb.window.close();combLoaded.window.close();
 
 // {{button Label|Passage}} is a [[link]] shown as a button.
-const buttonLinkStory=`<tw-storydata name="Button Links" ifid="BUTTON-LINK-IFID" startnode="1">${passage('1','Start','{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Third}} {{button Next}} [[Plain->Next]] {{not a button}}')}${passage('2','Next','Arrived next')}${passage('3','Third','Arrived third')}</tw-storydata>`;
+const buttonLinkStory=`<tw-storydata name="Button Links" ifid="BUTTON-LINK-IFID" startnode="1">${passage('1','Start','{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Third}} {{button Next}} [[Plain->Next]] {{not a button}} {{Short|Next}} {{Short arrow->Third}} {{Next}}')}${passage('2','Next','Arrived next')}${passage('3','Third','Arrived third')}</tw-storydata>`;
 const buttonLinkDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Button Links').replace('{{STORY_DATA}}',buttonLinkStory),{runScripts:'dangerously',url:'https://example.test/button-links',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
 const bld=buttonLinkDom.window.document, blBody=()=>bld.querySelector('#duplex-passages > article:last-child .duplex-passage-body');
 const blButtons=[...blBody().querySelectorAll('button.duplex-button-link')];
-assert(blButtons.map(button=>button.textContent+'>'+button.dataset.passage).join(',')==='Go on>Next,Back>Start,Third>Third,Next>Next','{{button}} accepts |, ->, <- and plain forms, in any letter case');
+assert(blButtons.map(button=>button.textContent+'>'+button.dataset.passage).join(',')==='Go on>Next,Back>Start,Third>Third,Next>Next,Short>Next,Short arrow>Third,Next>Next','{{button}} accepts |, ->, <- and plain forms, in any letter case, and the word button may be left out');
 assert(blBody().textContent.includes('{{not a button}}'),'other {{...}} text is left alone');
 blButtons[0].click();
 assert(blBody().textContent.includes('Arrived next'),'clicking a {{button}} goes to its passage');
@@ -524,7 +524,7 @@ const tweegoJson=JSON.parse(formatText.slice(formatText.indexOf('{'),formatText.
 assert(tweegoJson.name==='Duplex'&&tweegoJson.source===format.source,'Tweego can still read format.js as JSON (first "{" to last "}")');
 const parseReferences=format.editorExtensions?.twine?.['^2.6.0']?.references?.parsePassageText;
 assert(typeof parseReferences==='function','format.js gives Twine a references parser');
-assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's"]),'the references parser finds {{button}}, <<button>> and <<link>> targets');
+assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}} {{Short|Crossover}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's",'Crossover']),'the references parser finds {{button}}, <<button>> and <<link>> targets');
 
 // Places as rooms: safe rooms keep what is left in them, unsafe rooms are cleared when the reader leaves.
 const roomStory=`<tw-storydata name="Rooms" ifid="ROOMS-IFID" startnode="1">
