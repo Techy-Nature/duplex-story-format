@@ -574,6 +574,13 @@
           out += '<a href="#" class="duplex-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</a>';
           i += link[0].length; continue;
         }
+        // {{button Label|Passage}} is [[Label|Passage]] shown as a button; -> and <- work too.
+        const buttonLink=rest.match(/^\{\{button\s+([\s\S]*?)\}\}/i);
+        if (buttonLink) {
+          const {label,target}=linkParts(buttonLink[1]);
+          out += '<button type="button" class="duplex-link duplex-button-link" data-passage="' + attr(target) + '">' + escapeHtml(label) + '</button>';
+          i += buttonLink[0].length; continue;
+        }
         const variable=rest.match(/^[\$_]([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/);
         if (variable && (i===0 || !/[\w$]/.test(source[i-1]))) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
         out += source[i++];

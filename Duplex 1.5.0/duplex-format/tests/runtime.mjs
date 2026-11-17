@@ -463,4 +463,15 @@ assert(hw.State.variables.gold===3,'genuine controls still work in a cleaned sav
 hostileDom.window.close();
 comb.window.close();combLoaded.window.close();
 
+// {{button Label|Passage}} is a [[link]] shown as a button.
+const buttonLinkStory=`<tw-storydata name="Button Links" ifid="BUTTON-LINK-IFID" startnode="1">${passage('1','Start','{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Third}} {{button Next}} [[Plain->Next]] {{not a button}}')}${passage('2','Next','Arrived next')}${passage('3','Third','Arrived third')}</tw-storydata>`;
+const buttonLinkDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Button Links').replace('{{STORY_DATA}}',buttonLinkStory),{runScripts:'dangerously',url:'https://example.test/button-links',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+const bld=buttonLinkDom.window.document, blBody=()=>bld.querySelector('#duplex-passages > article:last-child .duplex-passage-body');
+const blButtons=[...blBody().querySelectorAll('button.duplex-button-link')];
+assert(blButtons.map(button=>button.textContent+'>'+button.dataset.passage).join(',')==='Go on>Next,Back>Start,Third>Third,Next>Next','{{button}} accepts |, ->, <- and plain forms, in any letter case');
+assert(blBody().textContent.includes('{{not a button}}'),'other {{...}} text is left alone');
+blButtons[0].click();
+assert(blBody().textContent.includes('Arrived next'),'clicking a {{button}} goes to its passage');
+buttonLinkDom.window.close();
+
 console.log('Duplex runtime tests passed.');
