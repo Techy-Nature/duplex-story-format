@@ -1,4 +1,4 @@
-# [Duplex 1.8.0](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.9.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -30,7 +30,7 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.8.0** for your story.
+4. Select **Duplex 1.9.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -334,6 +334,8 @@ The generated `format.js` is the file Twine installs.
 
 MIT.
 
-## Data-only JSON mods
+## Mods
 
-Duplex 1.5.0 supports validated item-definition JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex-1/duplex-format/MODS.md) and its [complete example manifest](Duplex-1/duplex-format/examples/more-birds.json).
+Since 1.9.0, quest and passage mods can be plain `.mod` text files that look like Twee: `:: after Forest1` followed by the text to add, `::` passages for new places, and the mod's name as its id. See the [step-by-step .mod guide](Duplex-1/duplex-format/MOD-PATCHES.md) and [`examples/haunted-house.mod`](Duplex-1/duplex-format/examples/haunted-house.mod).
+
+Duplex also supports validated item-definition JSON mods through `Duplex.mods`, stored per story in IndexedDB. See the [mod authoring and player guide](Duplex-1/duplex-format/MODS.md) and its [complete example manifest](Duplex-1/duplex-format/examples/more-birds.json).

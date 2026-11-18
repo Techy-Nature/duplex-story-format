@@ -1,18 +1,20 @@
 # Data-only mods
 
+> **New in 1.9.0:** quest and passage mods are easier to write as plain `.mod` text files (`:: after Forest1`, then your text). See [MOD-PATCHES.md](MOD-PATCHES.md). Everything below still works, and items keep this JSON format.
+
 Duplex supports browser-installed JSON mods containing item definitions, additions to existing passages, and new places (passages) of their own. It does not support JavaScript, CSS, images, archives, downloads, or any executable mod content.
 
 ## Manifest schema 1
 
-A manifest requires `schema` (currently `1`), a case-sensitive `id`, nonempty `name` and `version`, and an `items` array. Optional metadata includes `author`, `description`, `forStory`, and `requires.duplex` (for example `">=1.5.0"`). `forStory` must equal the story IFID or name.
+A manifest requires `schema` (currently `1`) and nonempty `name` and `version`. `id` is optional and defaults to the name (since 1.9.0); an id may be up to 100 characters without `:`, `[`, `]`, `|` or line breaks. `items` defaults to an empty array. Optional metadata includes `author`, `description`, `forStory`, and `requires.duplex` (for example `">=1.5.0"`). `forStory` must equal the story IFID or name.
 
 Each item requires a local `id` and nonempty `name`. Defaults are `description: ""`, `type: "item"`, `quantity: 1`, `properties: {}`, and `tags: []`. Quantities must be integers from 1 through the inventory stack limit of 1000. See [`examples/more-birds.json`](examples/more-birds.json) for a complete manifest.
 
-IDs allow ASCII letters, numbers, dots, underscores, and hyphens. An item's runtime identity is `mod-id:item-id`; therefore two mods may both define `healing-potion` without a collision. Duplicate IDs within a mod and duplicate installed mod IDs are rejected rather than overwritten.
+Item IDs (and extension IDs) allow ASCII letters, numbers, dots, underscores, and hyphens. An item's runtime identity is `mod-id:item-id`; therefore two mods may both define `healing-potion` without a collision. Duplicate IDs within a mod and duplicate installed mod IDs are rejected rather than overwritten.
 
 ## Import and use
 
-Players can choose **Mods** in Duplex's left bar or authors can call `Duplex.mods.open()`. The manager imports `.json`/`application/json` files, lists installed metadata and item counts, and enables, disables, or removes mods. Imports are validated atomically and stored per story IFID in IndexedDB. Imported mods are enabled by default and do not award items.
+Players can choose **Mods** in Duplex's left bar or authors can call `Duplex.mods.open()`. The manager's **Import mod** button imports `.mod` and `.json` files, lists installed metadata and item counts, and enables, disables, or removes mods. Imports are validated atomically and stored per story IFID in IndexedDB. Imported mods are enabled by default and do not award items.
 
 Story JavaScript can also import JSON text or a plain object, then retrieve a protected definition:
 

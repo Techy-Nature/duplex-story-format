@@ -128,7 +128,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.8.0','format version');
+assert(format.version === '1.9.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -560,5 +560,72 @@ rw.Duplex.go(hut);assert(!rw.Inventory.getBag(rooms.id(bog))&&rw.Inventory.getBa
 let badRoom=false;try{rw.Duplex.mods.register({schema:1,id:'bad.room',name:'Bad',version:'1.0.0',items:[],passages:[{name:'X',text:'',room:'cozy'}]});}catch(_){badRoom=true;}
 assert(badRoom,'mod room must be safe or unsafe');
 roomDom.window.close();
+
+// Patch-style .mod files: plain text, "Key: value" settings, Twee-like "::" sections, name as id.
+const patchStory=`<tw-storydata name="Patch Test" ifid="PATCH-IFID" startnode="1">
+  ${passage('1','Forest1','Tall pines.')}
+  ${passage('2','Town Square','The square.')}
+  ${passage('3','Widgets','',"widget")}
+  ${passage('4','StoryInit','')}
+</tw-storydata>`;
+const patchDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Patch Test').replace('{{STORY_DATA}}',patchStory),{runScripts:'dangerously',url:'https://example.test/patch',beforeParse(window){window.indexedDB=indexedDB;window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};window.HTMLDialogElement.prototype.close=function(){this.open=false;};}});
+const pw=patchDom.window;await pw.Duplex.ready;
+const patchLast=()=>pw.document.querySelector('article:last-child .duplex-passage-body');
+const patchText=`Mod: Night Walk
+Author: Neston
+
+:: before Forest1
+patch-before
+
+:: after Forest1
+After a while, a [[lantern->Lantern Path]] glows.
+\\:: escaped line
+
+:: Lantern Path [skip safe-room]
+<<skipto "Forest1">>A path of lanterns. <<script>>window.patchScript=1<</script>>[[Back->Forest1]]
+
+:: place After Dark
+night-place
+
+:: items
+[{ "id": "lantern", "name": "Lantern" }]
+`;
+const patchParsed=pw.Duplex.mods.parse(patchText);
+assert(patchParsed.name==='Night Walk'&&patchParsed.version==='1.0.0'&&patchParsed.passageExtensions.length===2&&patchParsed.passages.length===2&&patchParsed.items.length===1&&!pw.Duplex.mods.has('Night Walk'),'parse() turns .mod text into a manifest without installing it');
+assert(patchParsed.passageExtensions[1].content.includes('After a while')&&patchParsed.passageExtensions[1].content.endsWith(':: escaped line')&&patchParsed.passages[1].name==='After Dark','section bodies keep prose, \\:: escapes, and :: place names that start with a keyword');
+const patchMod=await pw.Duplex.mods.import(patchText);
+assert(patchMod.id==='Night Walk'&&pw.Duplex.mods.has('Night Walk'),'the mod name is its id');
+pw.Duplex.go('Forest1');
+assert(/patch-before[\s\S]*Tall pines\.[\s\S]*After a while/.test(patchLast().textContent),':: before and :: after add text around the story passage');
+const lanternLink=[...patchLast().querySelectorAll('[data-passage]')].find(link=>link.textContent==='lantern'),lanternPlace=pw.Duplex.mods.passageName('Night Walk','Lantern Path');
+assert(lanternLink?.dataset.passage===lanternPlace,'patch extension links reach the mod\'s own place');
+lanternLink.click();
+assert(!pw.patchScript&&patchLast().textContent.includes('Blocked')&&pw.Duplex.rooms.isSafe(lanternPlace)&&pw.tags(lanternPlace).includes('skip'),'patch places are restricted and keep their Twee tags');
+assert(pw.Duplex.mods.createItem('Night Walk','lantern').id==='Night Walk:lantern','patch mods can define items with the usual JSON');
+await pw.Duplex.mods.disable('Night Walk');pw.Duplex.go('Forest1');assert(!patchLast().textContent.includes('patch-before'),'disabling a patch mod removes its text');await pw.Duplex.mods.enable('Night Walk');
+const fileMod=new pw.File(['﻿:: after Town Square\r\nfrom-file\r\n'],'Market Day.mod',{type:''});fileMod.text=()=>Promise.resolve('﻿:: after Town Square\r\nfrom-file\r\n');
+await pw.Duplex.mods.import(fileMod);pw.Duplex.go('Town Square');
+assert(pw.Duplex.mods.has('Market Day')&&patchLast().textContent.includes('from-file'),'a .mod file with no Mod: line is named after the file');
+const reopened=new JSDOM(format.source.replace('{{STORY_NAME}}','Patch Test').replace('{{STORY_DATA}}',patchStory),{runScripts:'dangerously',url:'https://example.test/patch',beforeParse(window){window.indexedDB=indexedDB;window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+await reopened.window.Duplex.ready;reopened.window.Duplex.go('Forest1');
+assert(reopened.window.Duplex.mods.has('Night Walk')&&reopened.window.document.querySelector('article:last-child').textContent.includes('patch-before'),'patch mods are stored and restored like JSON mods');reopened.window.close();
+for(const [bad,expect,why] of [
+  [':: after Forest2\nx','line 1','missing target names its line'],
+  ['Mod: A\n\n:: after Widgets\nx','line 3','protected passage names its section line'],
+  ['Mod: B\nColour: red','unknown setting','unknown settings'],
+  ['Mod: C\n:: items\n[oops','not valid JSON','broken item JSON'],
+  ['Mod: D\nVersion: 1\nVersion: 2','set twice','repeated settings'],
+  ['Mod: E:F\n:: after Forest1\nx','colons','colons in the name'],
+  ['Mod: Night Walk\n:: after Forest1\nx','already installed','duplicate names'],
+  [':: after Forest1\nx','Mod:','a mod with no name']
+]){let message='';try{await pw.Duplex.mods.import(bad);}catch(error){message=error.message;}assert(message.includes(expect),why+' rejected (got: '+message+')');}
+await pw.Duplex.mods.import({schema:1,name:'Named Only',version:'1.0.0',items:[{id:'x',name:'X'}]});
+assert(pw.Duplex.mods.has('Named Only')&&pw.Duplex.mods.createItem('Named Only','x').id==='Named Only:x','JSON mods may leave out id and use their name');
+const taggedItems=pw.Duplex.mods.parse('Mod: Tagged\n:: Quest Items [items]\n[{ "id": "rope", "name": "Rope" }]\n:: Shed [Items]\n[{ "id": "axe", "name": "Axe" }]\n:: Itemsworth Hall [itemsy]\nnot-items');
+assert(taggedItems.items.map(item=>item.id).join()==='rope,axe'&&taggedItems.passages.length===1&&taggedItems.passages[0].name==='Itemsworth Hall','an [items] tag works like :: items');
+const exampleMod=await readFile(new URL('../examples/haunted-house.mod', import.meta.url),'utf8');
+const exampleManifest=pw.Duplex.mods.parse(exampleMod);
+assert(exampleManifest.name==='Haunted House'&&exampleManifest.passages.length===3&&exampleManifest.items[0].id==='brass-key','the example .mod parses');
+patchDom.window.close();
 
 console.log('Duplex runtime tests passed.');
