@@ -640,6 +640,9 @@ const speechStory=`<tw-storydata name="Speech" startnode="1">
 <<speech noportrait "Wynn">>Plain<</speech>>
 <<speech portrait "img/x.png" name "<b>Tag</b>" circle>>Named<</speech>>`)}
   ${passage('3','Next','next')}
+  ${passage('4','Mirror',`<<speaker "You" player circle right>>
+<<speech "You">>That's me.<</speech>>
+<<speech "You" "img/mask.png">>In a mask.<</speech>>`)}
 </tw-storydata>`;
 const speechDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Speech').replace('{{STORY_DATA}}',speechStory.replace('$where','the den')),{runScripts:'dangerously',url:'https://example.test/speech',beforeParse(window){window.indexedDB=indexedDB;window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
 const speechWin=speechDom.window;await speechWin.Duplex.ready;const bubbles=[...speechWin.document.querySelectorAll('#duplex-passages .duplex-speech')];
@@ -657,6 +660,18 @@ assert(!noPicB.querySelector('.duplex-speech-portrait'),'noportrait hides the sa
 assert(has(namedB,'circle')&&namedB.querySelector('.duplex-speech-name').textContent==='<b>Tag</b>'&&!namedB.querySelector('.duplex-speech-name b')&&namedB.querySelector('img').getAttribute('src')==='img/x.png','name text is escaped and portrait "file" works without a speaker');
 assert(speechWin.Duplex.speakers.has('Rook')&&speechWin.Duplex.speakers.get('Rook').shape==='circle'&&speechWin.Duplex.speakers.names().join()==='Wynn,Rook','Duplex.speakers reads saved speakers');
 assert(speechWin.Duplex.speakers.define('Moth','"img/moth.png" night whisper')&&speechWin.Duplex.speakers.get('Moth').color==='night'&&speechWin.Duplex.speakers.get('Moth').image==='img/moth.png','Duplex.speakers.define saves a speaker from JavaScript');
+let portraitRenders=0;speechWin.setup.playerPortrait={renderCurrent(){portraitRenders++;speechWin.document.documentElement.style.setProperty('--player-chat-portrait','url("data:image/png;base64,AAAA")');return Promise.resolve();}};
+speechWin.Duplex.go('Mirror');await new Promise(resolve=>setTimeout(resolve,0));
+const mirror=[...speechWin.document.querySelectorAll('#duplex-passages article:last-child .duplex-speech')];
+assert(mirror[0].querySelector('.duplex-speech-player')&&!mirror[0].querySelector('img')&&mirror[0].querySelector('.duplex-speech-player').getAttribute('aria-label')==='You'&&has(mirror[0],'circle','right'),'a player speaker draws the player portrait instead of an <img>');
+assert(mirror[1].querySelector('img')?.getAttribute('src')==='img/mask.png'&&!mirror[1].querySelector('.duplex-speech-player'),'a picture after a player speaker swaps in that picture');
+assert(portraitRenders===1,'the story player-portrait renderer is asked to draw once (got '+portraitRenders+')');
+speechWin.Duplex.go('Mirror');await new Promise(resolve=>setTimeout(resolve,0));
+assert(portraitRenders===1,'the renderer is not asked again once the portrait exists');
+speechWin.Duplex.speakers.setPlayerPortrait('img/me "x".png');
+assert(speechWin.document.documentElement.style.getPropertyValue('--duplex-player-portrait').includes('img/me %22x%22.png'),'Duplex.speakers.setPlayerPortrait sets the player picture safely');
+speechWin.Duplex.speakers.setPlayerPortrait(null);
+assert(!speechWin.document.documentElement.style.getPropertyValue('--duplex-player-portrait'),'setPlayerPortrait(null) clears it');
 await speechWin.Duplex.mods.import('Mod: Bubble Mod\n:: after Next\n<<speech "Wynn" dashed fill "#000">>From a mod<</speech>><<speaker "Evil" "x.png">>');
 speechWin.Duplex.go('Next');
 const modBubble=speechWin.document.querySelector('#duplex-passages article:last-child .duplex-speech');

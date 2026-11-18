@@ -55,7 +55,8 @@
     .duplex-speech--right { flex-direction:row-reverse; padding:.85rem .85rem .85rem 1.5rem; }
     .duplex-speech--small { --duplex-speech-portrait:4.5rem; }
     .duplex-speech--large { --duplex-speech-portrait:9.5rem; }
-    .duplex-speech-portrait { flex:none; width:var(--duplex-speech-portrait); aspect-ratio:1; overflow:hidden; background:#fff; border:var(--duplex-speech-line) solid var(--duplex-speech-ink); border-radius:1.15rem; }
+    .duplex-speech-portrait { flex:none; width:var(--duplex-speech-portrait); aspect-ratio:1; overflow:hidden; background-color:#fff; border:var(--duplex-speech-line) solid var(--duplex-speech-ink); border-radius:1.15rem; }
+    .duplex-speech-player { background-image:var(--duplex-player-portrait,var(--player-chat-portrait,none)); background-size:cover; background-position:var(--duplex-player-portrait-position,center top); background-repeat:no-repeat; }
     .duplex-speech--circle .duplex-speech-portrait { border-radius:50%; }
     #duplex-passages .duplex-speech-portrait img { display:block; width:100%; height:100%; max-width:none; object-fit:cover; }
     .duplex-speech-text { flex:1; min-width:0; align-self:center; position:relative; z-index:1; }
@@ -90,7 +91,7 @@
     .duplex-speech--gold { --duplex-speech-fill:#ffe9a0; }
     .duplex-speech--white { --duplex-speech-fill:#fafafa; }
     .duplex-speech--night { --duplex-speech-fill:#23262d; --duplex-speech-ink:#e8ecf1; --duplex-speech-text:#f1f3f5; --duplex-speech-halo:transparent; }
-    .duplex-speech--night .duplex-speech-portrait { background:#17191d; }
+    .duplex-speech--night .duplex-speech-portrait { background-color:#17191d; }
     @media (max-width:650px) { .duplex-speech { --duplex-speech-portrait:4.75rem; --duplex-speech-line:3px; gap:.75rem; padding:.65rem 1rem .65rem .65rem; } .duplex-speech--right { padding:.65rem .65rem .65rem 1rem; } .duplex-speech--small { --duplex-speech-portrait:3.5rem; } .duplex-speech--large { --duplex-speech-portrait:6.25rem; } .duplex-speech--double { --duplex-speech-line:6px; } .duplex-speech--shout { padding:1.5rem 1.8rem 3rem 1.6rem; } .duplex-speech--shout.duplex-speech--right { padding:1.5rem 1.6rem 3rem 1.8rem; } }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
@@ -415,6 +416,23 @@
     const SPEECH_SIZES=new Set(['small','medium','large']);
     const SPEECH_VALUE_KEYS={fill:'fill',outline:'line',line:'line',ink:'line',text:'text',name:'name',portrait:'image',image:'image',img:'image'};
     const safeSpeechColor=raw=>{const text=String(raw??'').trim();return /^(?:#[0-9a-f]{3,8}|[a-z]{3,24}|(?:rgb|hsl)a?\([0-9.,%\s\/deg]+\))$/i.test(text)?text:null;};
+    /* The player bubble (<<speech player>>) shows whatever image the CSS variable --duplex-player-portrait
+       (or a story's own --player-chat-portrait) holds. If the story has a setup.playerPortrait renderer
+       with renderCurrent(), Duplex asks it to draw once when the first player bubble appears. */
+    let playerPortraitAsked=false;
+    function requestPlayerPortrait() {
+      const root=document.documentElement,styles=getComputedStyle(root);
+      if(playerPortraitAsked||styles.getPropertyValue('--duplex-player-portrait').trim()||styles.getPropertyValue('--player-chat-portrait').trim())return;
+      const api=window.setup&&window.setup.playerPortrait;
+      if(!api||typeof api.renderCurrent!=='function')return;
+      playerPortraitAsked=true;
+      Promise.resolve().then(()=>api.renderCurrent()).catch(error=>{playerPortraitAsked=false;console.warn('Duplex <<speech player>>: the player portrait could not be drawn:',error&&error.message||error);});
+    }
+    function setPlayerPortrait(url) {
+      const root=document.documentElement.style;
+      if(url==null||url==='')root.removeProperty('--duplex-player-portrait');
+      else root.setProperty('--duplex-player-portrait','url("'+String(url).replace(/["\\\n\r]/g,encodeURIComponent)+'")');
+    }
     function speechOptions(argv,options) {
       options={...options};
       for(let index=0;index<argv.length;index++){
@@ -425,11 +443,12 @@
         else if(SPEECH_SIZES.has(word))options.size=word;
         else if(word==='left'||word==='right')options.side=word;
         else if(word==='tail'||word==='notail')options.tail=word==='tail';
-        else if(word==='noportrait'){options.image=null;options.noPortrait=true;}
+        else if(word==='noportrait'){options.image=null;options.player=false;options.noPortrait=true;}
+        else if(word==='player'){options.image=null;options.player=true;options.noPortrait=false;}
         else if(Object.hasOwn(SPEECH_VALUE_KEYS,word)&&index+1<argv.length){
           const key=SPEECH_VALUE_KEYS[word],given=value(argv[++index]);
           if(key==='fill'||key==='line'||key==='text'){const color=safeSpeechColor(given);if(color)options[key]=color;else console.warn('Duplex <<speech>>: "'+given+'" is not a color Duplex can use for '+word+'.');}
-          else if(key==='image'){options.image=given==null?null:String(given);options.noPortrait=false;}
+          else if(key==='image'){options.image=given==null?null:String(given);options.player=false;options.noPortrait=false;}
           else options.name=given==null?'':String(given);
         }
         else {let given;try{given=value(raw);}catch(_){given=raw;}options.extra=[...(options.extra||[]),given];}
@@ -452,14 +471,15 @@
       if(extra.length&&!options.noPortrait){
         const given=String(extra[0]);
         if(!options.speaker&&!/[\/.:]/.test(given))console.warn('Duplex <<speech>>: no speaker named "'+given+'". Add <<speaker "'+given+'" "portrait.png">> to StoryInit, or give a picture file.');
-        else options.image=given;
+        else {options.image=given;options.player=false;}
       }
       const side=options.side||'left',outline=options.outline||'solid';
       const classes=['duplex-speech','duplex-speech--'+outline,'duplex-speech--'+(options.color||'cyan'),'duplex-speech--'+side,'duplex-speech--'+(options.shape||'square'),'duplex-speech--'+(options.size||'medium')];
       if(options.tail===false)classes.push('duplex-speech--notail');
       const style=[['fill','--duplex-speech-fill'],['line','--duplex-speech-ink'],['text','--duplex-speech-text']].filter(([key])=>options[key]).map(([key,property])=>property+':'+options[key]).join(';');
       const label=options.name||options.speaker||'';
-      const portrait=options.image&&!options.noPortrait?'<span class="duplex-speech-portrait"><img src="'+attr(options.image)+'" alt="'+attr(label)+'"></span>':'';
+      if(options.player&&!options.noPortrait)requestPlayerPortrait();
+      const portrait=options.player&&!options.noPortrait?'<span class="duplex-speech-portrait duplex-speech-player" role="img" aria-label="'+attr(label||'Player')+'"></span>':options.image&&!options.noPortrait?'<span class="duplex-speech-portrait"><img src="'+attr(options.image)+'" alt="'+attr(label)+'"></span>':'';
       const name=options.name?'<span class="duplex-speech-name">'+escapeHtml(options.name)+'</span>':'';
       const tail=options.tail===false?'':'<span class="duplex-speech-tail" aria-hidden="true"></span>';
       const html='</p><div class="'+classes.join(' ')+'"'+(style?' style="'+attr(style)+'"':'')+(options.speaker?' data-speaker="'+attr(options.speaker)+'"':'')+'>'+portrait+'<div class="duplex-speech-text">'+name+compile(block.body,context)+'</div>'+tail+'</div><p>';
@@ -1235,7 +1255,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name))},version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name)),setPlayerPortrait},version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

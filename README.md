@@ -197,7 +197,7 @@ See [`Duplex-1/duplex-format/README.md`](Duplex-1/duplex-format/README.md#Nested
 <<speech "Rook" shout>>Absolutely not!<</speech>>
 ```
 
-Outlines: `solid`, `dashed`, `dotted`, `double`, `thought`, `shout`, `whisper`, `none`. Colors: `cyan`, `pink`, `lavender`, `mint`, `peach`, `gold`, `white`, `night`, or `fill`/`outline`/`text "color"`. Portraits: `square` or `circle`, `small`/`medium`/`large`, `left` or `right`. A story widget named `speech` still wins over the built-in. See the step-by-step [speech bubble guide](Duplex-1/duplex-format/SPEECH-BUBBLES.md).
+Outlines: `solid`, `dashed`, `dotted`, `double`, `thought`, `shout`, `whisper`, `none`. Colors: `cyan`, `pink`, `lavender`, `mint`, `peach`, `gold`, `white`, `night`, or `fill`/`outline`/`text "color"`. Portraits: `square` or `circle`, `small`/`medium`/`large`, `left` or `right`. Use `player` in place of a picture to show the portrait the player built (`setup.playerPortrait` or `Duplex.speakers.setPlayerPortrait`). A story widget named `speech` still wins over the built-in. See the step-by-step [speech bubble guide](Duplex-1/duplex-format/SPEECH-BUBBLES.md).
 
 ## Widgets
 

@@ -94,8 +94,48 @@ For your own colors, use these with a color in quotes, such as `"#ffb3b3"`, `"re
 | `noportrait`    | Hide the portrait for this bubble |
 | `name "Text"`   | Show a small name label above the words |
 | `portrait "file.png"` | Set the picture by option instead of by position |
+| `player`        | Use the player's own portrait (see below) |
 
 On phones, portraits shrink automatically so the words still have room.
+
+## Use the player's own portrait
+
+If your story builds a player portrait (like the Astralscapes portrait renderer in Story
+JavaScript, `setup.playerPortrait`), use the word `player` instead of a picture:
+
+1. Make sure the portrait renderer script is in your Story JavaScript, as before.
+2. In `StoryInit`, save the player as a speaker with `player` in place of the picture:
+
+   ```twee
+   <<speaker "You" player circle right lavender>>
+   ```
+
+3. Write their lines like anyone else's:
+
+   ```twee
+   <<speech "You">>I'm not scared.<</speech>>
+   ```
+
+The bubble shows the portrait the player made, including their chosen skin, hair and eye
+colors, and a custom chat image if `$p.chatImageCustom` is set. When the player changes their
+colors, the bubbles already on screen update too.
+
+How it works: the renderer stores the finished picture in the CSS variable
+`--player-chat-portrait`, and player bubbles show whatever that variable holds. If no portrait
+has been drawn yet (for example right after loading a save), the first player bubble asks
+`setup.playerPortrait.renderCurrent()` to draw it.
+
+You can also use `player` on a single bubble, such as `<<speech player name "You">>…`, and a
+picture after the name still swaps it out for one line: `<<speech "You" "img/you-masked.png">>`.
+
+Stories without that renderer can set the player picture themselves:
+
+```twee
+<<run Duplex.speakers.setPlayerPortrait("img/player.png")>>
+```
+
+The portrait is cropped to a square from the top center. To crop elsewhere, add this to your
+Story Stylesheet: `.duplex-speech { --duplex-player-portrait-position: center 20%; }`
 
 ## Bubbles without a saved speaker
 
@@ -146,6 +186,7 @@ Duplex.speakers.get('Moth');   // { image: 'img/moth.png', color: 'night', outli
 Duplex.speakers.has('Moth');   // true
 Duplex.speakers.names();       // ['Wynn', 'Rook', 'Moth']
 Duplex.speakers.remove('Moth');
+Duplex.speakers.setPlayerPortrait('img/player.png'); // picture for `player` bubbles; null clears it
 ```
 
 ## Notes
