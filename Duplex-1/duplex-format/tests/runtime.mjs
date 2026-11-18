@@ -628,4 +628,40 @@ const exampleManifest=pw.Duplex.mods.parse(exampleMod);
 assert(exampleManifest.name==='Haunted House'&&exampleManifest.passages.length===3&&exampleManifest.items[0].id==='brass-key','the example .mod parses');
 patchDom.window.close();
 
+// Speech bubbles: <<speaker>> presets, <<speech>> options, safe colors, restricted mods.
+const speechStory=`<tw-storydata name="Speech" startnode="1">
+  ${passage('2','StoryInit',`<<speaker "Wynn" "img/wynn.png">>
+<<speaker "Rook" "img/rook.png" circle right lavender name "Rook">>`)}
+  ${passage('1','Start',`<<speech "Wynn">>Hello from $where. [[Onward->Next]]<</speech>>
+<<speech "Rook" shout notail>>Loud!<</speech>>
+<<speech "Wynn" "img/wynn-angry.png" thought mint small left>>Hmm.<</speech>>
+<<speech fill "#ffb3b3" outline "red;background:url(x)" text "rgb(10, 20, 30)">>Custom<</speech>>
+<<speech "Nobody">>Who?<</speech>>
+<<speech noportrait "Wynn">>Plain<</speech>>
+<<speech portrait "img/x.png" name "<b>Tag</b>" circle>>Named<</speech>>`)}
+  ${passage('3','Next','next')}
+</tw-storydata>`;
+const speechDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Speech').replace('{{STORY_DATA}}',speechStory.replace('$where','the den')),{runScripts:'dangerously',url:'https://example.test/speech',beforeParse(window){window.indexedDB=indexedDB;window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+const speechWin=speechDom.window;await speechWin.Duplex.ready;const bubbles=[...speechWin.document.querySelectorAll('#duplex-passages .duplex-speech')];
+assert(bubbles.length===7,'every <<speech>> draws one bubble (got '+bubbles.length+')');
+const [plainB,shoutB,thoughtB,customB,unknownB,noPicB,namedB]=bubbles;
+const has=(el,...names)=>names.every(name=>el.classList.contains('duplex-speech--'+name));
+assert(has(plainB,'solid','cyan','left','square','medium')&&plainB.querySelector('.duplex-speech-portrait img').getAttribute('src')==='img/wynn.png'&&plainB.querySelector('.duplex-speech-tail')&&plainB.dataset.speaker==='Wynn','a saved speaker gives the default bubble: solid, cyan, left, rounded square, tail');
+assert(plainB.querySelector('.duplex-speech-text [data-passage=Next]')?.textContent==='Onward'&&plainB.textContent.includes('Hello from the den.'),'bubble text compiles links and markup');
+assert(!plainB.closest('p'),'a bubble is never nested inside a paragraph');
+assert(has(shoutB,'shout','lavender','right','circle')&&!shoutB.querySelector('.duplex-speech-tail')&&shoutB.querySelector('.duplex-speech-name').textContent==='Rook','options on <<speech>> add to the speaker preset, and notail drops the tail');
+assert(has(thoughtB,'thought','mint','small','left','square')&&thoughtB.querySelector('img').getAttribute('src')==='img/wynn-angry.png','a picture after the speaker name swaps the portrait for one bubble, and left overrides the preset side');
+assert(!customB.querySelector('.duplex-speech-portrait')&&customB.style.getPropertyValue('--duplex-speech-fill')==='#ffb3b3'&&customB.style.getPropertyValue('--duplex-speech-text').replace(/\s/g,'')==='rgb(10,20,30)'&&!customB.getAttribute('style').includes('url('),'custom colors are set, and unsafe color text is refused');
+assert(!unknownB.querySelector('.duplex-speech-portrait')&&unknownB.textContent.includes('Who?'),'an unknown speaker name draws a bubble without a broken picture');
+assert(!noPicB.querySelector('.duplex-speech-portrait'),'noportrait hides the saved portrait');
+assert(has(namedB,'circle')&&namedB.querySelector('.duplex-speech-name').textContent==='<b>Tag</b>'&&!namedB.querySelector('.duplex-speech-name b')&&namedB.querySelector('img').getAttribute('src')==='img/x.png','name text is escaped and portrait "file" works without a speaker');
+assert(speechWin.Duplex.speakers.has('Rook')&&speechWin.Duplex.speakers.get('Rook').shape==='circle'&&speechWin.Duplex.speakers.names().join()==='Wynn,Rook','Duplex.speakers reads saved speakers');
+assert(speechWin.Duplex.speakers.define('Moth','"img/moth.png" night whisper')&&speechWin.Duplex.speakers.get('Moth').color==='night'&&speechWin.Duplex.speakers.get('Moth').image==='img/moth.png','Duplex.speakers.define saves a speaker from JavaScript');
+await speechWin.Duplex.mods.import('Mod: Bubble Mod\n:: after Next\n<<speech "Wynn" dashed fill "#000">>From a mod<</speech>><<speaker "Evil" "x.png">>');
+speechWin.Duplex.go('Next');
+const modBubble=speechWin.document.querySelector('#duplex-passages article:last-child .duplex-speech');
+assert(modBubble&&has(modBubble,'dashed')&&modBubble.textContent.includes('From a mod')&&!modBubble.hasAttribute('style'),'mods can use <<speech>> with presets, but inline colors are stripped');
+assert(!speechWin.Duplex.speakers.has('Evil')&&speechWin.document.querySelector('#duplex-passages article:last-child').textContent.includes('Blocked <<speaker>>'),'mods cannot define speakers');
+speechDom.window.close();
+
 console.log('Duplex runtime tests passed.');

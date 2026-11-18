@@ -50,6 +50,48 @@
     .duplex-skip-settings h3 { margin:0 0 .5rem; font-size:1rem; }
     .duplex-skip-row { display:flex; align-items:center; gap:.65rem; padding:.25rem 0; cursor:pointer; }
     .duplex-skip-row input { width:1.1rem; height:1.1rem; accent-color:var(--duplex-accent); }
+    /* <<speech>> bubbles. Colors and sizes are custom properties, so a story stylesheet can restyle any preset. */
+    .duplex-speech { --duplex-speech-fill:#a8fbff; --duplex-speech-ink:#121417; --duplex-speech-text:#121417; --duplex-speech-line:4px; --duplex-speech-dash:solid; --duplex-speech-radius:1.6rem; --duplex-speech-portrait:7rem; --duplex-speech-tail-x:1.6rem; --duplex-speech-halo:#ffffff59; position:relative; display:flex; align-items:flex-start; gap:1.1rem; margin:1.25rem 0 2.75rem; padding:.85rem 1.5rem .85rem .85rem; color:var(--duplex-speech-text); background:var(--duplex-speech-fill); border:var(--duplex-speech-line) var(--duplex-speech-dash) var(--duplex-speech-ink); border-radius:var(--duplex-speech-radius); filter:drop-shadow(0 0 1px var(--duplex-speech-halo)) drop-shadow(0 0 1px var(--duplex-speech-halo)); }
+    .duplex-speech--right { flex-direction:row-reverse; padding:.85rem .85rem .85rem 1.5rem; }
+    .duplex-speech--small { --duplex-speech-portrait:4.5rem; }
+    .duplex-speech--large { --duplex-speech-portrait:9.5rem; }
+    .duplex-speech-portrait { flex:none; width:var(--duplex-speech-portrait); aspect-ratio:1; overflow:hidden; background:#fff; border:var(--duplex-speech-line) solid var(--duplex-speech-ink); border-radius:1.15rem; }
+    .duplex-speech--circle .duplex-speech-portrait { border-radius:50%; }
+    #duplex-passages .duplex-speech-portrait img { display:block; width:100%; height:100%; max-width:none; object-fit:cover; }
+    .duplex-speech-text { flex:1; min-width:0; align-self:center; position:relative; z-index:1; }
+    .duplex-speech-text > p:first-of-type { margin-top:0; }
+    .duplex-speech-text > p:last-child { margin-bottom:0; }
+    .duplex-speech-text .duplex-link { color:inherit; text-decoration:underline; }
+    .duplex-speech-name { display:block; margin-bottom:.15rem; font-weight:700; font-size:.85em; letter-spacing:.02em; }
+    .duplex-speech-tail { position:absolute; top:100%; left:var(--duplex-speech-tail-x); width:2rem; height:2.1rem; margin-top:calc(-1 * var(--duplex-speech-line) - 1px); background:var(--duplex-speech-fill); border:var(--duplex-speech-line) var(--duplex-speech-dash) var(--duplex-speech-ink); border-top:0; border-radius:0 0 1.6rem .4rem; transform:skewX(16deg); transform-origin:top; }
+    .duplex-speech--right .duplex-speech-tail { left:auto; right:var(--duplex-speech-tail-x); border-radius:0 0 .4rem 1.6rem; transform:skewX(-16deg); }
+    .duplex-speech--notail { margin-bottom:1.25rem; }
+    .duplex-speech--dashed { --duplex-speech-dash:dashed; }
+    .duplex-speech--dotted { --duplex-speech-dash:dotted; --duplex-speech-line:5px; }
+    .duplex-speech--double { --duplex-speech-dash:double; --duplex-speech-line:7px; }
+    .duplex-speech--double .duplex-speech-tail, .duplex-speech--dotted .duplex-speech-tail { border-style:solid; border-width:0 4px 4px; }
+    .duplex-speech--whisper { --duplex-speech-dash:dashed; --duplex-speech-line:2px; }
+    .duplex-speech--whisper .duplex-speech-text { font-style:italic; opacity:.85; }
+    .duplex-speech--none { border-color:transparent; }
+    .duplex-speech--none .duplex-speech-tail { border-color:transparent; }
+    .duplex-speech--thought { --duplex-speech-radius:3rem; }
+    .duplex-speech--thought .duplex-speech-tail { width:1.2rem; height:1.2rem; margin-top:.35rem; border:var(--duplex-speech-line) solid var(--duplex-speech-ink); border-radius:50%; transform:none; }
+    .duplex-speech--thought .duplex-speech-tail::after { content:""; position:absolute; top:1.05rem; left:-1rem; width:.7rem; height:.7rem; background:var(--duplex-speech-fill); border:var(--duplex-speech-line) solid var(--duplex-speech-ink); border-radius:50%; }
+    .duplex-speech--right.duplex-speech--thought .duplex-speech-tail::after { left:auto; right:-1rem; }
+    .duplex-speech--shout { --duplex-speech-shape:polygon(2% 10%,8% 2%,15% 8%,23% 0%,31% 6%,40% 1%,50% 6%,60% 0%,70% 6%,80% 1%,88% 7%,96% 2%,97% 15%,100% 27%,97% 40%,100% 53%,97% 66%,99% 80%,93% 88%,85% 84%,77% 90%,67% 85%,57% 91%,47% 86%,37% 91%,27% 86%,14% 100%,14% 87%,6% 90%,3% 78%,0% 66%,3% 54%,0% 42%,3% 29%,0% 18%); padding:2rem 2.6rem 3.6rem 2.2rem; margin-bottom:1.25rem; background:var(--duplex-speech-ink); border:0; border-radius:0; clip-path:var(--duplex-speech-shape); font-weight:700; }
+    .duplex-speech--shout.duplex-speech--right { --duplex-speech-shape:polygon(98% 10%,92% 2%,85% 8%,77% 0%,69% 6%,60% 1%,50% 6%,40% 0%,30% 6%,20% 1%,12% 7%,4% 2%,3% 15%,0% 27%,3% 40%,0% 53%,3% 66%,1% 80%,7% 88%,15% 84%,23% 90%,33% 85%,43% 91%,53% 86%,63% 91%,73% 86%,86% 100%,86% 87%,94% 90%,97% 78%,100% 66%,97% 54%,100% 42%,97% 29%,100% 18%); padding:2rem 2.2rem 3.6rem 2.6rem; }
+    .duplex-speech--shout::before { content:""; position:absolute; inset:calc(var(--duplex-speech-line) * 1.75); background:var(--duplex-speech-fill); clip-path:var(--duplex-speech-shape); }
+    .duplex-speech--shout .duplex-speech-portrait { position:relative; z-index:1; }
+    .duplex-speech--shout .duplex-speech-tail { display:none; }
+    .duplex-speech--pink { --duplex-speech-fill:#ffc9e4; }
+    .duplex-speech--lavender { --duplex-speech-fill:#ddd0ff; }
+    .duplex-speech--mint { --duplex-speech-fill:#c3f5d3; }
+    .duplex-speech--peach { --duplex-speech-fill:#ffd9bb; }
+    .duplex-speech--gold { --duplex-speech-fill:#ffe9a0; }
+    .duplex-speech--white { --duplex-speech-fill:#fafafa; }
+    .duplex-speech--night { --duplex-speech-fill:#23262d; --duplex-speech-ink:#e8ecf1; --duplex-speech-text:#f1f3f5; --duplex-speech-halo:transparent; }
+    .duplex-speech--night .duplex-speech-portrait { background:#17191d; }
+    @media (max-width:650px) { .duplex-speech { --duplex-speech-portrait:4.75rem; --duplex-speech-line:3px; gap:.75rem; padding:.65rem 1rem .65rem .65rem; } .duplex-speech--right { padding:.65rem .65rem .65rem 1rem; } .duplex-speech--small { --duplex-speech-portrait:3.5rem; } .duplex-speech--large { --duplex-speech-portrait:6.25rem; } .duplex-speech--double { --duplex-speech-line:6px; } .duplex-speech--shout { padding:1.5rem 1.8rem 3rem 1.6rem; } .duplex-speech--shout.duplex-speech--right { padding:1.5rem 1.6rem 3rem 1.8rem; } }
     .duplex-passage { padding:1.75rem 0; animation:duplex-in .18s ease-out; }
     .duplex-passage + .duplex-passage { border-top:1px solid #ffffff20; }
     .duplex-passage-title { margin:0 0 1rem; font-size:1.15rem; color:var(--duplex-muted); }
@@ -362,6 +404,67 @@
       if(name==='textarea') return '<textarea data-duplex-action="'+id+'"'+autofocus+'>'+escapeHtml(defaultValue)+'</textarea>';
       return '<input type="'+(name==='numberbox'?'number':'text')+'" value="'+escapeHtml(defaultValue)+'" data-duplex-action="'+id+'"'+autofocus+'>';
     }
+    /* Speech bubbles: <<speech [speaker or portrait] [options]>>Text<</speech>> draws a comic-style
+       bubble with an optional portrait. <<speaker "Name" "portrait.png" [options]>> saves options
+       under a name (usually in StoryInit) so <<speech "Name">> can reuse them. A story widget
+       named "speech" or "speaker" still wins over these built-ins. Duplex.speakers is the JS API. */
+    const Speakers=new Map();
+    const SPEECH_OUTLINES=new Set(['solid','dashed','dotted','double','thought','shout','whisper','none']);
+    const SPEECH_COLORS=new Set(['cyan','pink','lavender','mint','peach','gold','white','night']);
+    const SPEECH_SHAPES={square:'square',rounded:'square',circle:'circle',round:'circle',circular:'circle'};
+    const SPEECH_SIZES=new Set(['small','medium','large']);
+    const SPEECH_VALUE_KEYS={fill:'fill',outline:'line',line:'line',ink:'line',text:'text',name:'name',portrait:'image',image:'image',img:'image'};
+    const safeSpeechColor=raw=>{const text=String(raw??'').trim();return /^(?:#[0-9a-f]{3,8}|[a-z]{3,24}|(?:rgb|hsl)a?\([0-9.,%\s\/deg]+\))$/i.test(text)?text:null;};
+    function speechOptions(argv,options) {
+      options={...options};
+      for(let index=0;index<argv.length;index++){
+        const raw=argv[index],word=raw.toLowerCase();
+        if(SPEECH_OUTLINES.has(word))options.outline=word;
+        else if(SPEECH_COLORS.has(word))options.color=word;
+        else if(SPEECH_SHAPES[word])options.shape=SPEECH_SHAPES[word];
+        else if(SPEECH_SIZES.has(word))options.size=word;
+        else if(word==='left'||word==='right')options.side=word;
+        else if(word==='tail'||word==='notail')options.tail=word==='tail';
+        else if(word==='noportrait'){options.image=null;options.noPortrait=true;}
+        else if(Object.hasOwn(SPEECH_VALUE_KEYS,word)&&index+1<argv.length){
+          const key=SPEECH_VALUE_KEYS[word],given=value(argv[++index]);
+          if(key==='fill'||key==='line'||key==='text'){const color=safeSpeechColor(given);if(color)options[key]=color;else console.warn('Duplex <<speech>>: "'+given+'" is not a color Duplex can use for '+word+'.');}
+          else if(key==='image'){options.image=given==null?null:String(given);options.noPortrait=false;}
+          else options.name=given==null?'':String(given);
+        }
+        else {let given;try{given=value(raw);}catch(_){given=raw;}options.extra=[...(options.extra||[]),given];}
+      }
+      return options;
+    }
+    function speakerMacro(argSource,context) {
+      if(context.restricted)return restrictedError('speaker',context);
+      const argv=tokens(argSource);let name;try{name=value(argv[0]);}catch(_){name=argv[0];}
+      if(name==null||!String(name).trim()){console.warn('Duplex <<speaker>>: give the speaker a name first, like <<speaker "Wynn" "wynn.png">>.');return '';}
+      const options=speechOptions(argv.slice(1),{});const extra=options.extra||[];delete options.extra;
+      if(extra.length&&options.image===undefined)options.image=String(extra[0]);
+      Speakers.set(String(name),options);return '';
+    }
+    function speechMacro(text,context) {
+      const block=container(text,'speech'),argv=tokens(block.args);let options={};
+      if(argv.length){let first;try{first=value(argv[0]);}catch(_){first=argv[0];}if(first!=null&&Speakers.has(String(first))){options={...Speakers.get(String(first)),speaker:String(first)};argv.shift();}}
+      options=speechOptions(argv,options);
+      const extra=options.extra||[];
+      if(extra.length&&!options.noPortrait){
+        const given=String(extra[0]);
+        if(!options.speaker&&!/[\/.:]/.test(given))console.warn('Duplex <<speech>>: no speaker named "'+given+'". Add <<speaker "'+given+'" "portrait.png">> to StoryInit, or give a picture file.');
+        else options.image=given;
+      }
+      const side=options.side||'left',outline=options.outline||'solid';
+      const classes=['duplex-speech','duplex-speech--'+outline,'duplex-speech--'+(options.color||'cyan'),'duplex-speech--'+side,'duplex-speech--'+(options.shape||'square'),'duplex-speech--'+(options.size||'medium')];
+      if(options.tail===false)classes.push('duplex-speech--notail');
+      const style=[['fill','--duplex-speech-fill'],['line','--duplex-speech-ink'],['text','--duplex-speech-text']].filter(([key])=>options[key]).map(([key,property])=>property+':'+options[key]).join(';');
+      const label=options.name||options.speaker||'';
+      const portrait=options.image&&!options.noPortrait?'<span class="duplex-speech-portrait"><img src="'+attr(options.image)+'" alt="'+attr(label)+'"></span>':'';
+      const name=options.name?'<span class="duplex-speech-name">'+escapeHtml(options.name)+'</span>':'';
+      const tail=options.tail===false?'':'<span class="duplex-speech-tail" aria-hidden="true"></span>';
+      const html='</p><div class="'+classes.join(' ')+'"'+(style?' style="'+attr(style)+'"':'')+(options.speaker?' data-speaker="'+attr(options.speaker)+'"':'')+'>'+portrait+'<div class="duplex-speech-text">'+name+compile(block.body,context)+'</div>'+tail+'</div><p>';
+      return {length:block.length,html};
+    }
     function cacheAudio(argSource) {
       const a=tokens(argSource), id=value(a.shift()), audio=document.createElement('audio'); audio.preload='auto';
       a.map(value).forEach(raw=>{ let src=String(raw),type=''; const spec=src.match(/^([a-z0-9]+)\|(.+)$/i); if(spec){type='audio/'+spec[1];src=spec[2];} if(passages.has(src))src=passages.get(src).text.trim(); const node=document.createElement('source');node.src=src;if(type)node.type=type;audio.append(node); });
@@ -399,7 +502,7 @@
        <<name.lower>> change the letter case of the printed text only (never
        link targets or other markup). Duplex.grammar is the JavaScript API. */
     const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
-    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary']);
+    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary','speech','speaker']);
     const GRAMMAR_CASES={upperfirst:'upperFirst',upper:'upper',lower:'lower'};
     const grammarLast=new Map();
     let grammarDepth=0;
@@ -573,6 +676,9 @@
         }
         const widgetName=rest.match(/^<<([A-Za-z][\w-]*)(?![\w.-])/i)?.[1];
         if(widgetName&&widgets.has(widgetName)){const found=widgets.get(widgetName).container?container(rest,widgetName):{length:rest.match(/^<<[\s\S]*?>>/)[0].length};if(context.restricted)out+=restrictedError(widgetName,context);else out+=invokeWidget(rest,widgetName).html;i+=found.length;continue;}
+        if(/^<<speech(?:\s|>>)/i.test(rest)){const found=speechMacro(rest,context);out+=found.html;i+=found.length;continue;}
+        const speaker=rest.match(/^<<speaker(?:\s+([\s\S]*?))?>>/i);
+        if(speaker){out+=speakerMacro(speaker[1]||'',context);i+=speaker[0].length;continue;}
         const grammarCall=grammarMacro(rest,context);if(grammarCall){out+=grammarCall.html;i+=grammarCall.length;continue;}
         const definition=rest.match(/^<<widget\b/i);if(definition&&context.restricted){const found=container(rest,'widget');out+=restrictedError('widget',context);i+=found.length;continue;}
         const unknown=rest.match(/^<<\/?([A-Za-z][\w-]*)\b[\s\S]*?>>/);
@@ -1129,7 +1235,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name))},version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

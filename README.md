@@ -183,6 +183,22 @@ Mod places can be rooms too, with `"room": "safe"` or `"room": "unsafe"` (see MO
 
 See [`Duplex-1/duplex-format/README.md`](Duplex-1/duplex-format/README.md#Nested-Bag-Inventory) and the documentation website linked at the top of this file for API and interaction details.
 
+## Speech bubbles
+
+`<<speech>>` draws a comic-style speech bubble with a character portrait. Save each character once in `StoryInit`, then write dialogue anywhere:
+
+```twee
+:: StoryInit
+<<speaker "Wynn" "img/wynn.png">>
+<<speaker "Rook" "img/rook.png" circle right lavender>>
+
+:: Attic Door
+<<speech "Wynn">>You go first.<</speech>>
+<<speech "Rook" shout>>Absolutely not!<</speech>>
+```
+
+Outlines: `solid`, `dashed`, `dotted`, `double`, `thought`, `shout`, `whisper`, `none`. Colors: `cyan`, `pink`, `lavender`, `mint`, `peach`, `gold`, `white`, `night`, or `fill`/`outline`/`text "color"`. Portraits: `square` or `circle`, `small`/`medium`/`large`, `left` or `right`. A story widget named `speech` still wins over the built-in. See the step-by-step [speech bubble guide](Duplex-1/duplex-format/SPEECH-BUBBLES.md).
+
 ## Widgets
 
 Create one or more passages with the `widget` tag. Duplex processes their `<<widget>>` definitions during startup.
