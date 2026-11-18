@@ -658,7 +658,7 @@
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.8.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.9.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
@@ -691,6 +691,9 @@
       seen.delete(value);
     }
     function validId(value){return typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);}
+    // A mod's id may be its name (for example "Haunted House"): any text up to 100 characters without colons, brackets,
+    // | or control characters, which would break the internal DuplexMod:<id>:<name> passage names.
+    function validModId(value){return typeof value==='string'&&value.length<=100&&value===value.trim()&&/^[^\s:\[\]|\u0000-\u001f]/.test(value)&&!/[:\[\]|\u0000-\u001f]/.test(value)&&!dangerousKeys.has(value);}
     function versionParts(value){const match=String(value).match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);return match?match.slice(1).map(Number):null;}
     function compareVersion(left,right){for(let i=0;i<3;i++){if(left[i]!==right[i])return left[i]-right[i];}return 0;}
     function compatible(requirement){
@@ -701,10 +704,11 @@
       try{validateJson(input);}catch(error){modError(error.message,input);}
       if(!plainObject(input))modError('the root must be a plain JSON object.',input);
       if(!Number.isInteger(input.schema)||input.schema!==MOD_SCHEMA)modError('schema must be the supported integer 1.',input);
-      if(!validId(input.id))modError('id must be a case-sensitive identifier containing only letters, numbers, dots, underscores, or hyphens.',input);
       if(typeof input.name!=='string'||!input.name.trim())modError('name must be a nonempty string.',input);
+      const modId=input.id===undefined?input.name.trim():input.id;
+      if(!validModId(modId))modError('id (or the name, when there is no id) must be at most 100 characters, with no colons, brackets, | or line breaks.',input);
       if(typeof input.version!=='string'||!input.version.trim())modError('version must be a nonempty string.',input);
-      if(!Array.isArray(input.items))modError('items must be an array.',input);
+      if(input.items!==undefined&&!Array.isArray(input.items))modError('items must be an array.',input);
       if(input.forStory!==undefined&&input.forStory!==storyId()&&input.forStory!==(data.getAttribute('name')||document.title))modError('forStory does not match this story ('+storyId()+').',input);
       if(input.requires!==undefined&&!plainObject(input.requires))modError('requires must be a plain JSON object.',input);
       if(input.requires?.duplex!==undefined&&!compatible(input.requires.duplex))modError('requires.duplex '+input.requires.duplex+' is incompatible with Duplex '+DUPLEX_VERSION+'.',input);
@@ -718,10 +722,10 @@
         const protectedTag=target.tags.find(tag=>PROTECTED_MOD_TAGS.has(tag.toLowerCase()));if(protectedTag)modError(path+'.target “'+extension.target+'” has protected tag “'+protectedTag+'”.',input);
         if(extension.placement!=='before'&&extension.placement!=='after')modError(path+'.placement must be exactly “before” or “after”.',input);
         if(typeof extension.content!=='string')modError(path+'.content must be a string.',input);
-        const virtualName='DuplexMod:'+input.id+':'+extension.id;if(passages.has(virtualName))modError(path+' would collide with passage “'+virtualName+'”.',input);
+        const virtualName='DuplexMod:'+modId+':'+extension.id;if(passages.has(virtualName))modError(path+' would collide with passage “'+virtualName+'”.',input);
         return {id:extension.id,target:extension.target,placement:extension.placement,content:extension.content};
       });
-      const ids=new Set(),items=input.items.map((item,index)=>{
+      const ids=new Set(),items=(input.items??[]).map((item,index)=>{
         const path='items['+index+']';if(!plainObject(item))modError(path+' must be a plain object.',input);
         if(!validId(item.id))modError(path+'.id is missing or invalid.',input);if(ids.has(item.id))modError(path+'.id duplicates “'+item.id+'”.',input);ids.add(item.id);
         if(typeof item.name!=='string'||!item.name.trim())modError(path+'.name must be a nonempty string.',input);
@@ -742,15 +746,71 @@
         if(entry.room!==undefined&&!['safe','unsafe'].includes(entry.room))modError(path+'.room must be "safe" or "unsafe".',input);
         return {name,text:entry.text,tags,...(entry.room?{room:entry.room}:{})};
       });
-      return {...clone(input),items,passageExtensions,passages:modPassages};
+      return {...clone(input),id:modId,items,passageExtensions,passages:modPassages};
     }
+    /* Patch-style mods (.mod text files), inspired by KittyPatcher's plain-text patches. A few optional "Key: value"
+       lines come first, then Twee-like sections:
+         :: after Forest1      text shown after the story passage "Forest1"
+         :: before Forest1     text shown before it
+         :: Old House [skip]   a new place of the mod's own (":: place <name>" when the name starts with a keyword)
+         :: items              a JSON array of items, written exactly as in a JSON mod
+       The mod's name is its id. Without a "Mod:" line the file name is used. The result is an ordinary schema 1
+       manifest, so patch mods are validated, restricted, stored and saved exactly like JSON mods. */
+    const PATCH_SETTINGS={mod:'name',name:'name',version:'version',author:'author',description:'description',story:'forStory',requires:'requires'};
+    function parsePatchMod(source,fileName){
+      const text=String(source).replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n'),lines=text.split('\n');
+      const label=fileName?'“'+String(fileName).split(/[\\/]/).pop()+'”':'mod';
+      const fail=(line,message)=>{throw new Error('Could not import '+label+': line '+line+': '+message);};
+      const manifest={schema:MOD_SCHEMA},sections=[],seen=new Set();let section=null;
+      lines.forEach((line,index)=>{
+        const number=index+1;
+        if(line.startsWith('::')){section={header:line.slice(2).trim(),line:number,body:[]};sections.push(section);return;}
+        if(section){section.body.push(line.startsWith('\\::')?line.slice(1):line);return;}
+        const trimmed=line.trim();if(!trimmed||trimmed.startsWith('#')||trimmed.startsWith('//'))return;
+        const match=trimmed.match(/^([A-Za-z]+)\s*:\s*(.*)$/);
+        if(!match)fail(number,'expected a setting such as “Mod: My Mod”, or a section such as “:: after Forest1”.');
+        const key=PATCH_SETTINGS[match[1].toLowerCase()];
+        if(!key)fail(number,'unknown setting “'+match[1]+'”. Use Mod, Version, Author, Description, Story or Requires.');
+        if(seen.has(key))fail(number,'“'+match[1]+'” is set twice.');seen.add(key);
+        if(!match[2].trim())fail(number,'“'+match[1]+'” needs a value.');
+        manifest[key]=key==='requires'?{duplex:match[2].trim()}:match[2].trim();
+      });
+      if(manifest.name===undefined&&fileName){const base=String(fileName).split(/[\\/]/).pop().replace(/\.txt$/i,'').replace(/\.(?:mod|twee|tw)$/i,'').trim();if(base)manifest.name=base;}
+      if(manifest.name===undefined)fail(1,'add a “Mod: Your Mod Name” line at the top. The name is also the mod’s id.');
+      if(manifest.version===undefined)manifest.version='1.0.0';
+      const items=[],passageExtensions=[],modPassages=[],where={},counts={after:0,before:0};
+      const body=entry=>entry.body.join('\n').replace(/^(?:[ \t]*\n)+/,'').replace(/\s+$/,'');
+      sections.forEach(entry=>{
+        const keyword=entry.header.match(/^(after|before|place|items)(?=\s|:|$):?\s*(.*)$/i),kind=keyword?keyword[1].toLowerCase():'place',rest=keyword?keyword[2].trim():entry.header;
+        const at='the “:: '+entry.header+'” section (line '+entry.line+')';
+        if(kind==='after'||kind==='before'){
+          if(!rest)fail(entry.line,'“:: '+kind+'” needs the name of a story passage, such as “:: '+kind+' Forest1”.');
+          const target=passages.get(rest);if(!target||target.virtualMod)fail(entry.line,'“'+rest+'” is not a passage in this story. Passage names must match exactly, including capital letters.');
+          where['passageExtensions['+passageExtensions.length+']']=at;
+          passageExtensions.push({id:kind+'-'+(++counts[kind]),target:rest,placement:kind,content:body(entry)});
+        }else if(kind==='items'){
+          if(rest)fail(entry.line,'“:: items” takes no name; list the items as a JSON array below it.');
+          let value;try{value=JSON.parse(body(entry)||'[]');}catch(error){fail(entry.line,'the items section is not valid JSON ('+error.message+').');}
+          if(!Array.isArray(value))fail(entry.line,'the items section must be a JSON array: [ { "id": "…", "name": "…" } ].');
+          value.forEach(item=>{where['items['+items.length+']']=at;items.push(item);});
+        }else{
+          const parts=rest.match(/^([^\[{]*?)\s*(?:\[([^\]]*)\])?\s*(?:\{.*\})?\s*$/);
+          if(!parts||!parts[1])fail(entry.line,'a place needs a name, such as “:: Old House [skip]”.');
+          where['passages['+modPassages.length+']']=at;
+          modPassages.push({name:parts[1],tags:(parts[2]||'').split(/\s+/).filter(Boolean),text:body(entry)});
+        }
+      });
+      return {manifest:{...manifest,items,passageExtensions,passages:modPassages},where};
+    }
+    function patchModError(error,where){let message=error.message;for(const [path,label] of Object.entries(where).sort((a,b)=>b[0].length-a[0].length))message=message.split(path+'.').join(label+': ').split(path+' ').join(label+' ');return new Error(message);}
     function modDatabase(){return new Promise((resolve,reject)=>{if(!window.indexedDB){resolve(null);return;}const request=indexedDB.open('duplex-mods-'+storyId(),1);request.onupgradeneeded=()=>request.result.createObjectStore('mods',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
     async function persistMod(record){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').put(clone(record));request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
     async function deleteMod(id){const db=await modDatabase();if(!db)return;await new Promise((resolve,reject)=>{const request=db.transaction('mods','readwrite').objectStore('mods').delete(id);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});db.close();}
     async function loadMods(){const db=await modDatabase();if(!db)return [];const records=await new Promise((resolve,reject)=>{const request=db.transaction('mods').objectStore('mods').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});db.close();const errors=[];for(const record of records){try{const manifest=normalizeMod(record.manifest);installedMods.set(manifest.id,{manifest,enabled:record.enabled!==false,order:Number.isInteger(record.order)?record.order:nextModOrder++});nextModOrder=Math.max(nextModOrder,(Number.isInteger(record.order)?record.order:0)+1);}catch(error){errors.push(error.message);try{await persistMod({...record,enabled:false});}catch(_){}}}rebuildPassageExtensions();return errors;}
     const Mods={
-      register(modData){const manifest=normalizeMod(modData);if(installedMods.has(manifest.id))modError('a mod with id “'+manifest.id+'” is already installed.',manifest);const record={manifest,enabled:true,order:nextModOrder};installedMods.set(manifest.id,record);try{rebuildPassageExtensions();nextModOrder++;}catch(error){installedMods.delete(manifest.id);throw error;}return clone(manifest);},
-      import(source){if(typeof source==='string'){let value;try{value=JSON.parse(source);}catch(_){throw new Error('Could not import mod: the source is not valid JSON.');}return Mods.import(value);}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Mods.import(text));const manifest=Mods.register(source);return persistMod({id:manifest.id,enabled:true,order:installedMods.get(manifest.id).order,manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);rebuildPassageExtensions();throw error;});},
+      register(modData){const wanted=plainObject(modData)?(modData.id??(typeof modData.name==='string'?modData.name.trim():undefined)):undefined;if(typeof wanted==='string'&&installedMods.has(wanted))modError('a mod with id “'+wanted+'” is already installed. Remove it first, or give the new one a different name.',modData);const manifest=normalizeMod(modData);if(installedMods.has(manifest.id))modError('a mod with id “'+manifest.id+'” is already installed.',manifest);const record={manifest,enabled:true,order:nextModOrder};installedMods.set(manifest.id,record);try{rebuildPassageExtensions();nextModOrder++;}catch(error){installedMods.delete(manifest.id);throw error;}return clone(manifest);},
+      // Accepts JSON text, a plain object, patch-style .mod text, or a File. fileName names a patch mod with no "Mod:" line.
+      import(source,fileName){if(typeof source==='string'){const text=source.replace(/^\uFEFF/,'');if(!/^\s*[{[]/.test(text)){const patch=parsePatchMod(text,fileName);let manifest;try{manifest=Mods.register(patch.manifest);}catch(error){throw patchModError(error,patch.where);}return persistMod({id:manifest.id,enabled:true,order:installedMods.get(manifest.id).order,manifest:installedMods.get(manifest.id).manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);rebuildPassageExtensions();throw error;});}let value;try{value=JSON.parse(text);}catch(_){throw new Error('Could not import mod: the source is not valid JSON.');}return Mods.import(value);}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Mods.import(text,source.name));const manifest=Mods.register(source);return persistMod({id:manifest.id,enabled:true,order:installedMods.get(manifest.id).order,manifest}).then(()=>clone(manifest)).catch(error=>{installedMods.delete(manifest.id);rebuildPassageExtensions();throw error;});},
       list(){return [...installedMods.values()].map(record=>({...clone(record.manifest),enabled:record.enabled}));},get(id){const record=installedMods.get(String(id));return record?{...clone(record.manifest),enabled:record.enabled}:null;},has(id){return installedMods.has(String(id));},
       async remove(id){id=String(id);if(!installedMods.has(id))return false;await deleteMod(id);installedMods.delete(id);rebuildPassageExtensions();return true;},
       getItem(modId,itemId){const record=installedMods.get(String(modId));if(!record||!record.enabled)return null;const item=record.manifest.items.find(entry=>entry.id===String(itemId));return item?clone(item):null;},
@@ -758,12 +818,14 @@
       async enable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=true;try{await persistMod({id:record.manifest.id,enabled:true,order:record.order,manifest:record.manifest});}catch(error){record.enabled=false;throw error;}rebuildPassageExtensions();return true;},async disable(id){const record=installedMods.get(String(id));if(!record)return false;record.enabled=false;try{await persistMod({id:record.manifest.id,enabled:false,order:record.order,manifest:record.manifest});}catch(error){record.enabled=true;throw error;}rebuildPassageExtensions();return true;},isEnabled(id){return installedMods.get(String(id))?.enabled===true;},
       checkSave(mods){const warnings=[];(Array.isArray(mods)?mods:[]).forEach(expected=>{if(!expected||typeof expected.id!=='string'||typeof expected.version!=='string')return;const found=installedMods.get(expected.id);if(!found)warnings.push(expected.id+' '+expected.version+' — missing');else if(!found.enabled)warnings.push(expected.id+' '+expected.version+' — installed but disabled');else if(found.manifest.version!==expected.version)warnings.push(expected.id+' '+expected.version+' — installed version is '+found.manifest.version);});return warnings;},
       passageName(modId,name){return modPassageName(String(modId),String(name));},
+      // Turns patch-style .mod text into the equivalent JSON manifest without installing it (handy for checking a mod).
+      parse(text,fileName){return clone(parsePatchMod(text,fileName).manifest);},
       open(){renderMods();}
     };
     function renderMods(message='',isError=false){
-      dialog('Mods','<p id="duplex-mod-message"></p><div id="duplex-mod-list"></div>',[{label:'Import JSON',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(file)Promise.resolve(Mods.import(file)).then(mod=>renderMods('Imported '+mod.name+'.')).catch(error=>renderMods(error.message,true));});picker.click();}}]);
+      dialog('Mods','<p id="duplex-mod-message"></p><div id="duplex-mod-list"></div>',[{label:'Import mod',action:()=>{const picker=document.createElement('input');picker.type='file';picker.accept='.mod,.json,.txt,.twee,.tw,application/json,text/plain';picker.addEventListener('change',()=>{const file=picker.files?.[0];if(file)Promise.resolve(Mods.import(file)).then(mod=>renderMods('Imported '+mod.name+'.')).catch(error=>renderMods(error.message,true));});picker.click();}}]);
       const notice=document.querySelector('#duplex-mod-message');notice.textContent=message;notice.className=isError?'duplex-error':'';const list=document.querySelector('#duplex-mod-list');
-      Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=mod.id+' · '+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
+      Mods.list().forEach(mod=>{const section=document.createElement('section'),heading=document.createElement('h3'),details=document.createElement('p'),toggle=document.createElement('button'),remove=document.createElement('button');heading.textContent=mod.name;details.textContent=(mod.id===mod.name?'':mod.id+' · ')+mod.version+(mod.author?' · '+mod.author:'')+' · '+mod.items.length+' item'+(mod.items.length===1?'':'s')+' · '+(mod.enabled?'Enabled':'Disabled');toggle.textContent=mod.enabled?'Disable':'Enable';toggle.addEventListener('click',()=>Promise.resolve(mod.enabled?Mods.disable(mod.id):Mods.enable(mod.id)).then(()=>renderMods((mod.enabled?'Disabled ':'Enabled ')+mod.name+'.')).catch(error=>renderMods('Could not update '+mod.name+': '+error.message,true)));remove.textContent='Remove';remove.addEventListener('click',()=>{if(confirm('Remove '+mod.name+'?'))Mods.remove(mod.id).then(()=>renderMods('Removed '+mod.name+'.')).catch(error=>renderMods('Could not remove '+mod.name+': '+error.message,true));});section.append(heading,details,toggle,document.createTextNode(' '),remove);list.append(section);});if(!Mods.list().length)list.textContent='No mods are installed.';
     }
     function saveKey(){return 'duplex-save-'+storyId();}
     // Controls such as <<button>> keep their code in the in-memory `deferred` map, keyed by the id in the

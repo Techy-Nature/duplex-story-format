@@ -78,7 +78,7 @@ Expected output:
 Available formats:
   ID                     Name (Version) [Details]
   --------------------   ------------------------------
-  duplex-1               Duplex (1.8.0)
+  duplex-1               Duplex (1.9.0)
 ```
 
 **Updating Duplex later:** run `git -C ~/duplex-story-format pull`, then repeat the `cp` command above.
@@ -108,7 +108,7 @@ My Story
 {
 	"ifid": "PASTE-YOUR-IFID-HERE",
 	"format": "Duplex",
-	"format-version": "1.8.0",
+	"format-version": "1.9.0",
 	"start": "Start"
 }
 ```
@@ -218,7 +218,7 @@ The rest was checked on a Linux computer with Tweego 2.1.1 built from `@master`:
 
 - `go install github.com/tmedwards/tweego@master` builds; `@latest` failed here because it pulled in dependencies that need a newer Go.
 - The same build compiles for Android (`GOOS=android GOARCH=arm64`), the target Termux uses.
-- `tweego --list-formats` lists Duplex 1.8.0 under the ID `duplex-1`.
+- `tweego --list-formats` lists Duplex 1.9.0 under the ID `duplex-1`.
 - Building the Duplex example with and without `-f`, and decompiling it with `-d`, all work, and the built story plays in a mobile-sized browser.
 
 Not yet tried on a real phone: running Termux itself, `termux-setup-storage`, and opening the story from Downloads.
