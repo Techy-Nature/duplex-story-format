@@ -41,6 +41,7 @@
     <a href="#modes">Display modes</a>
     <a href="#core">Core syntax</a>
     <a href="#comments-markdown">Comments &amp; Markdown</a>
+    <a href="#speech">Speech bubbles</a>
     <a href="#logic">Logic &amp; scripting</a>
     <a href="#interactive">Interactive</a>
     <a href="#audio">Audio</a>
@@ -80,6 +81,10 @@
 <section id="whats-new" class="section">
   <header><span>Changelog</span><h2>What's new</h2></header>
   <div class="timeline">
+    <article>
+      <b class="ver">1.9.0</b>
+      <div><h3>Speech bubbles</h3><p><code>&lt;&lt;speech "Wynn"&gt;&gt;Hi!&lt;&lt;/speech&gt;&gt;</code> draws a comic-style bubble with a character portrait. Pick solid, dashed, dotted, double, thought, shout, or whisper outlines, color presets, and square or circle portraits. See <a href="#speech">Speech bubbles</a>.</p></div>
+    </article>
     <article>
       <b class="ver">1.9.0</b>
       <div><h3>Quest mods as plain .mod files</h3><p>Write a quest mod like Twee: <code>:: after Forest1</code>, then the text to add. New places are ordinary <code>::</code> passages, and the mod's name is its id. See <a href="#mod-patches">.mod files</a>.</p></div>
@@ -252,6 +257,32 @@ span several lines. */
     <div><code>&lt;&lt;markdown&gt;&gt;…&lt;&lt;/markdown&gt;&gt;</code><span>Render supported Markdown while processing Duplex variables and macros.</span></div>
     <div><code>[markdown] tag</code><span>Render the whole passage as Markdown.</span></div>
   </div>
+</section>
+
+<!-- Speech bubbles -->
+<section id="speech" class="section">
+  <header><span>Dialogue</span><h2>Speech bubbles</h2></header>
+  <p>Save each character once in <code>StoryInit</code> with <code>&lt;&lt;speaker&gt;&gt;</code>, then write dialogue with <code>&lt;&lt;speech&gt;&gt;</code>. Options after the name change only that bubble, and a picture after the name swaps the portrait for one line.</p>
+  <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
+&lt;&lt;speaker "Wynn" "img/wynn.png"&gt;&gt;
+&lt;&lt;speaker "Rook" "img/rook.png" circle right lavender name "Rook"&gt;&gt;
+
+:: Attic Door
+&lt;&lt;speech "Wynn"&gt;&gt;You go first.&lt;&lt;/speech&gt;&gt;
+&lt;&lt;speech "Rook" shout&gt;&gt;Absolutely not!&lt;&lt;/speech&gt;&gt;
+&lt;&lt;speech "Wynn" thought&gt;&gt;Coward.&lt;&lt;/speech&gt;&gt;
+&lt;&lt;speech fill "#ffe9a0" notail&gt;&gt;No portrait, custom color.&lt;&lt;/speech&gt;&gt;</pre></div>
+  <div class="table">
+    <div><code>solid dashed dotted double thought shout whisper none</code><span>Outline style. <code>solid</code> is the default.</span></div>
+    <div><code>cyan pink lavender mint peach gold white night</code><span>Color preset. <code>cyan</code> is the default; <code>night</code> is a dark bubble.</span></div>
+    <div><code>fill / outline / text "color"</code><span>Your own colors, such as <code>fill "#ffb3b3"</code>.</span></div>
+    <div><code>square circle</code><span>Portrait shape.</span></div>
+    <div><code>small medium large</code><span>Portrait size.</span></div>
+    <div><code>left right</code><span>Which side the portrait and tail sit on.</span></div>
+    <div><code>player</code><span>Use the portrait the player built, from <code>setup.playerPortrait</code> or <code>Duplex.speakers.setPlayerPortrait(url)</code>.</span></div>
+    <div><code>notail noportrait name "Text"</code><span>Drop the tail, hide the portrait, or add a name label.</span></div>
+  </div>
+  <p class="note">A story widget named <code>speech</code> or <code>speaker</code> still wins over the built-in macros. Step-by-step guide: <a href="Duplex-1/duplex-format/SPEECH-BUBBLES.md">SPEECH-BUBBLES.md</a>.</p>
 </section>
 
 <!-- Logic -->
