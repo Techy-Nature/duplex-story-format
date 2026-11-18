@@ -753,7 +753,7 @@
          :: after Forest1      text shown after the story passage "Forest1"
          :: before Forest1     text shown before it
          :: Old House [skip]   a new place of the mod's own (":: place <name>" when the name starts with a keyword)
-         :: items              a JSON array of items, written exactly as in a JSON mod
+         :: items              a JSON array of items, written exactly as in a JSON mod (or any name tagged [items])
        The mod's name is its id. Without a "Mod:" line the file name is used. The result is an ordinary schema 1
        manifest, so patch mods are validated, restricted, stored and saved exactly like JSON mods. */
     const PATCH_SETTINGS={mod:'name',name:'name',version:'version',author:'author',description:'description',story:'forStory',requires:'requires'};
@@ -781,7 +781,9 @@
       const items=[],passageExtensions=[],modPassages=[],where={},counts={after:0,before:0};
       const body=entry=>entry.body.join('\n').replace(/^(?:[ \t]*\n)+/,'').replace(/\s+$/,'');
       sections.forEach(entry=>{
-        const keyword=entry.header.match(/^(after|before|place|items)(?=\s|:|$):?\s*(.*)$/i),kind=keyword?keyword[1].toLowerCase():'place',rest=keyword?keyword[2].trim():entry.header;
+        const keyword=entry.header.match(/^(after|before|place|items)(?=\s|:|$):?\s*(.*)$/i);let kind=keyword?keyword[1].toLowerCase():'place',rest=keyword?keyword[2].trim():entry.header;
+        // An [items] tag on any other section works like ":: items", so ":: Quest Items [items]" can name the list.
+        const tagList=rest.match(/\[([^\]]*)\]/);if(kind==='place'&&tagList&&tagList[1].split(/\s+/).some(tag=>tag.toLowerCase()==='items')){kind='items';rest='';}
         const at='the “:: '+entry.header+'” section (line '+entry.line+')';
         if(kind==='after'||kind==='before'){
           if(!rest)fail(entry.line,'“:: '+kind+'” needs the name of a story passage, such as “:: '+kind+' Forest1”.');

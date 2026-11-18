@@ -480,7 +480,7 @@ Inventory.open();                        // Open the main Inventory browser.</pr
 <section id="mods" class="section">
   <header><span>Data-only extensions</span><h2>Mods</h2></header>
   <h3 id="mod-patches">Quest mods as .mod files <small>(1.9.0)</small></h3>
-  <p>The easiest way to add to a story. A <code>.mod</code> file is plain text: optional settings at the top, then Twee-like sections. <code>:: after Passage</code> and <code>:: before Passage</code> add text around a story passage, any other <code>::</code> line adds a place of the mod's own, and <code>:: items</code> holds a JSON array of items. The mod's name is its id; without a <code>Mod:</code> line, the file name is used.</p>
+  <p>The easiest way to add to a story. A <code>.mod</code> file is plain text: optional settings at the top, then Twee-like sections. <code>:: after Passage</code> and <code>:: before Passage</code> add text around a story passage, any other <code>::</code> line adds a place of the mod's own, and <code>:: items</code> (or any <code>::</code> line tagged <code>[items]</code>) holds a JSON array of items. The mod's name is its id; without a <code>Mod:</code> line, the file name is used.</p>
   <div class="code"><div class="codebar"><span>Haunted House.mod</span><button type="button">Copy</button></div><pre>Mod: Haunted House
 Version: 1.0.0
 Author: Example

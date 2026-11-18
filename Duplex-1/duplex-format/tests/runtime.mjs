@@ -621,6 +621,8 @@ for(const [bad,expect,why] of [
 ]){let message='';try{await pw.Duplex.mods.import(bad);}catch(error){message=error.message;}assert(message.includes(expect),why+' rejected (got: '+message+')');}
 await pw.Duplex.mods.import({schema:1,name:'Named Only',version:'1.0.0',items:[{id:'x',name:'X'}]});
 assert(pw.Duplex.mods.has('Named Only')&&pw.Duplex.mods.createItem('Named Only','x').id==='Named Only:x','JSON mods may leave out id and use their name');
+const taggedItems=pw.Duplex.mods.parse('Mod: Tagged\n:: Quest Items [items]\n[{ "id": "rope", "name": "Rope" }]\n:: Shed [Items]\n[{ "id": "axe", "name": "Axe" }]\n:: Itemsworth Hall [itemsy]\nnot-items');
+assert(taggedItems.items.map(item=>item.id).join()==='rope,axe'&&taggedItems.passages.length===1&&taggedItems.passages[0].name==='Itemsworth Hall','an [items] tag works like :: items');
 const exampleMod=await readFile(new URL('../examples/haunted-house.mod', import.meta.url),'utf8');
 const exampleManifest=pw.Duplex.mods.parse(exampleMod);
 assert(exampleManifest.name==='Haunted House'&&exampleManifest.passages.length===3&&exampleManifest.items[0].id==='brass-key','the example .mod parses');

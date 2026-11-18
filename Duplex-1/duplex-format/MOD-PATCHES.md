@@ -118,6 +118,17 @@ Items keep the same JSON format as JSON mods. Put them in a `:: items` section a
 ]
 ```
 
+You can also give the list a name and tag it `[items]` instead. It works exactly the same as `:: items`:
+
+```
+:: Quest Items [items]
+[
+  { "id": "owl-feather", "name": "Owl Feather" }
+]
+```
+
+The name is only a label for you; it doesn't become a place. You can have several items sections, and their items are combined.
+
 Story code gets them with the mod's name: `Duplex.mods.createItem("Haunted House", "brass-key")`. See [MODS.md](MODS.md) for every item field.
 
 ### Step 6: Install it
@@ -148,6 +159,7 @@ To update a mod, **Remove** the old version first, then import the new file.
 | `:: Place Name [tags]` | Adds a new place of the mod's own. |
 | `:: place Name [tags]` | Same, for names starting with a keyword. |
 | `:: items` | A JSON array of items. |
+| `:: Any Name [items]` | Same as `:: items`, with a label. |
 | `\::` | A literal `::` at the start of a line. |
 
 ## Checking a mod from code
@@ -164,6 +176,6 @@ To update a mod, **Remove** the old version first, then import the new file.
 | `"requires": { "duplex": ">=1.9.0" }` | `Requires: >=1.9.0` |
 | `{ "target": "X", "placement": "after", "content": "…" }` | `:: after X` and the content below it |
 | `{ "name": "Y", "tags": ["skip"], "room": "safe", "text": "…" }` | `:: Y [skip safe-room]` and the text below it |
-| `"items": [ … ]` | `:: items` and the same array below it |
+| `"items": [ … ]` | `:: items` (or `:: Name [items]`) and the same array below it |
 
 Compare [`examples/quest-mod.json`](examples/quest-mod.json) with [`examples/haunted-house.mod`](examples/haunted-house.mod) to see the same mod both ways.
