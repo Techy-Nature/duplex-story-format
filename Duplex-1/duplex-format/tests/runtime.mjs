@@ -672,11 +672,16 @@ speechWin.Duplex.speakers.setPlayerPortrait('img/me "x".png');
 assert(speechWin.document.documentElement.style.getPropertyValue('--duplex-player-portrait').includes('img/me %22x%22.png'),'Duplex.speakers.setPlayerPortrait sets the player picture safely');
 speechWin.Duplex.speakers.setPlayerPortrait(null);
 assert(!speechWin.document.documentElement.style.getPropertyValue('--duplex-player-portrait'),'setPlayerPortrait(null) clears it');
-await speechWin.Duplex.mods.import('Mod: Bubble Mod\n:: after Next\n<<speech "Wynn" dashed fill "#000">>From a mod<</speech>><<speaker "Evil" "x.png">>');
+await speechWin.Duplex.mods.import('Mod: Bubble Mod\n:: after Next\n<<speech "Wynn" dashed fill "#000">>From a mod<</speech>><<speaker "Wynn" "evil.png">><<speaker "Ghost" "img/ghost.png" white thought>><<speaker "Bad" "javascript:alert(1)">><<speech "Ghost">>Boo<</speech>>');
 speechWin.Duplex.go('Next');
 const modBubble=speechWin.document.querySelector('#duplex-passages article:last-child .duplex-speech');
 assert(modBubble&&has(modBubble,'dashed')&&modBubble.textContent.includes('From a mod')&&!modBubble.hasAttribute('style'),'mods can use <<speech>> with presets, but inline colors are stripped');
-assert(!speechWin.Duplex.speakers.has('Evil')&&speechWin.document.querySelector('#duplex-passages article:last-child').textContent.includes('Blocked <<speaker>>'),'mods cannot define speakers');
+assert(speechWin.Duplex.speakers.get('Wynn').image==='img/wynn.png'&&speechWin.document.querySelector('#duplex-passages article:last-child').textContent.includes('cannot replace the story speaker "Wynn"'),'mods cannot replace story speakers');
+const ghost=[...speechWin.document.querySelectorAll('#duplex-passages article:last-child .duplex-speech')].find(bubble=>bubble.textContent.includes('Boo'));
+assert(speechWin.Duplex.speakers.get('Ghost')?.fromMod&&ghost&&has(ghost,'white','thought')&&ghost.querySelector('img').getAttribute('src')==='img/ghost.png','mods can add their own speakers');
+assert(speechWin.Duplex.speakers.has('Bad')&&!speechWin.Duplex.speakers.get('Bad').image,'a mod speaker picture with an unsafe URL is dropped');
+speechWin.Duplex.go('Start');
+assert(speechWin.document.querySelector('#duplex-passages article:last-child .duplex-speech[data-speaker="Wynn"] img').getAttribute('src')==='img/wynn.png','story passages still show the story speaker after a mod tried to replace it');
 speechDom.window.close();
 
 console.log('Duplex runtime tests passed.');

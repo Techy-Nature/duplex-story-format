@@ -456,12 +456,19 @@
       return options;
     }
     function speakerMacro(argSource,context) {
-      if(context.restricted)return restrictedError('speaker',context);
       const argv=tokens(argSource);let name;try{name=value(argv[0]);}catch(_){name=argv[0];}
       if(name==null||!String(name).trim()){console.warn('Duplex <<speaker>>: give the speaker a name first, like <<speaker "Wynn" "wynn.png">>.');return '';}
+      name=String(name);
+      // Mods may add their own speakers, but never replace one the story defined.
+      if(context.restricted&&Speakers.has(name)&&!Speakers.get(name).fromMod){const message='A mod cannot replace the story speaker "'+name+'".';console.warn('Duplex <<speaker>>: '+message);return '<span class="duplex-error">'+escapeHtml(message)+'</span>';}
       const options=speechOptions(argv.slice(1),{});const extra=options.extra||[];delete options.extra;
       if(extra.length&&options.image===undefined)options.image=String(extra[0]);
-      Speakers.set(String(name),options);return '';
+      if(context.restricted){
+        options.fromMod=true;
+        // A mod speaker's picture also shows in story passages, so it must pass the same URL check as mod HTML.
+        if(options.image&&!/\ssrc=/.test(sanitizeRestrictedHtml('<img src="'+attr(options.image)+'">'))){console.warn('Duplex <<speaker>>: mod picture refused: '+options.image);options.image=null;}
+      }
+      Speakers.set(name,options);return '';
     }
     function speechMacro(text,context) {
       const block=container(text,'speech'),argv=tokens(block.args);let options={};

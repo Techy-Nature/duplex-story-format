@@ -193,5 +193,7 @@ Duplex.speakers.setPlayerPortrait('img/player.png'); // picture for `player` bub
 
 - If your story already has its own widget called `speech` or `speaker`, your widget keeps
   working: story widgets always win over these built-in macros.
-- Mods can use `<<speech>>` with saved speakers and the preset options, but custom colors
-  (`fill`, `outline`, `text`) are removed in mods, and mods can't define new speakers.
+- Mods can use `<<speech>>` and can add their own speakers with `<<speaker>>`, but a mod can't
+  replace a speaker the story already defined (it gets an error message instead). A mod
+  speaker's picture must be a normal image path or web link. Custom colors (`fill`, `outline`,
+  `text`) are removed from bubbles drawn inside mod text.
