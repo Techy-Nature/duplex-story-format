@@ -128,7 +128,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.9.1','format version');
+assert(format.version === '1.10.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -507,15 +507,16 @@ assert(hw.State.variables.gold===3,'genuine controls still work in a cleaned sav
 hostileDom.window.close();
 comb.window.close();combLoaded.window.close();
 
-// {{button Label|Passage}} is a [[link]] shown as a button.
-const buttonLinkStory=`<tw-storydata name="Button Links" ifid="BUTTON-LINK-IFID" startnode="1">${passage('1','Start','{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Third}} {{button Next}} [[Plain->Next]] {{not a button}} {{Short|Next}} {{Short arrow->Third}} {{Next}}')}${passage('2','Next','Arrived next')}${passage('3','Third','Arrived third')}</tw-storydata>`;
+// {{Label|Passage}} is a [[link]] shown as a button. The old {{button ...}} form was removed.
+const buttonLinkStory=`<tw-storydata name="Button Links" ifid="BUTTON-LINK-IFID" startnode="1">${passage('1','Start','{{Go on|Next}} {{Back->Start}} {{Third<-Third}} {{Next}} [[Plain->Next]] {{not a button}} {{button Old|Next}} {{BUTTON Next}}')}${passage('2','Next','Arrived next')}${passage('3','Third','Arrived third')}</tw-storydata>`;
 const buttonLinkDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Button Links').replace('{{STORY_DATA}}',buttonLinkStory),{runScripts:'dangerously',url:'https://example.test/button-links',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
 const bld=buttonLinkDom.window.document, blBody=()=>bld.querySelector('#duplex-passages > article:last-child .duplex-passage-body');
 const blButtons=[...blBody().querySelectorAll('button.duplex-button-link')];
-assert(blButtons.map(button=>button.textContent+'>'+button.dataset.passage).join(',')==='Go on>Next,Back>Start,Third>Third,Next>Next,Short>Next,Short arrow>Third,Next>Next','{{button}} accepts |, ->, <- and plain forms, in any letter case, and the word button may be left out');
+assert(blButtons.map(button=>button.textContent+'>'+button.dataset.passage).join(',')==='Go on>Next,Back>Start,Third>Third,Next>Next','{{...}} buttons accept |, ->, <- and plain passage names');
 assert(blBody().textContent.includes('{{not a button}}'),'other {{...}} text is left alone');
+assert(blBody().textContent.includes('{{button Old|Next}}')&&blBody().textContent.includes('{{BUTTON Next}}'),'the removed {{button ...}} form is shown as written');
 blButtons[0].click();
-assert(blBody().textContent.includes('Arrived next'),'clicking a {{button}} goes to its passage');
+assert(blBody().textContent.includes('Arrived next'),'clicking a {{...}} button goes to its passage');
 buttonLinkDom.window.close();
 
 // Twine 2.6+ story map: button links are reported as references.
@@ -524,7 +525,7 @@ const tweegoJson=JSON.parse(formatText.slice(formatText.indexOf('{'),formatText.
 assert(tweegoJson.name==='Duplex'&&tweegoJson.source===format.source,'Tweego can still read format.js as JSON (first "{" to last "}")');
 const parseReferences=format.editorExtensions?.twine?.['^2.6.0']?.references?.parsePassageText;
 assert(typeof parseReferences==='function','format.js gives Twine a references parser');
-assert(JSON.stringify(parseReferences(`{{button Go on|Next}} {{BUTTON Back->Start}} {{button Third<-Label}} {{button Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}} {{Short|Crossover}}`))===JSON.stringify(['Next','Start','Third','Plain','Camp',"It's",'Crossover']),'the references parser finds {{button}}, <<button>> and <<link>> targets');
+assert(JSON.stringify(parseReferences(`{{Go on|Next}} {{Back->Start}} {{Third<-Label}} {{button Old|Gone}} {{Plain}} <<button "Rest" "Camp">><</button>> <<link 'x' 'It\\'s'>><</link>> <<link "y">><</link>> <<link "z" "transition">><</link>> {{not a button}} {{Short|Crossover}}`))===JSON.stringify(['Next','Start','Third','Camp',"It's",'Crossover']),'the references parser finds {{...}}, <<button>> and <<link>> targets, and skips the removed {{button ...}} form');
 
 // Places as rooms: safe rooms keep what is left in them, unsafe rooms are cleared when the reader leaves.
 const roomStory=`<tw-storydata name="Rooms" ifid="ROOMS-IFID" startnode="1">

@@ -78,7 +78,7 @@ Expected output:
 Available formats:
   ID                     Name (Version) [Details]
   --------------------   ------------------------------
-  duplex-1               Duplex (1.9.1)
+  duplex-1               Duplex (1.10.0)
 ```
 
 **Updating Duplex later:** run `git -C ~/duplex-story-format pull`, then repeat the `cp` command above.
@@ -108,7 +108,7 @@ My Story
 {
 	"ifid": "PASTE-YOUR-IFID-HERE",
 	"format": "Duplex",
-	"format-version": "1.9.1",
+	"format-version": "1.10.0",
 	"start": "Start"
 }
 ```
@@ -220,7 +220,8 @@ This keeps your `StoryData`, IFID and passages, so you can keep editing the stor
 | `requires go >= …` or a dependency error during `go install` | You used `@latest`. Use `@master` (step 2). If it still fails, run `pkg upgrade golang`, or use `pkg install tweego` instead. |
 | `Story format search directories not found.` | `TWEEGO_PATH` isn't set. Run `source ~/.bashrc` (step 3). |
 | `Story IFID not found` | Add a `StoryData` passage (step 4). |
-| `{{Label\|Passage}}` or `{{Passage}}` shows as text instead of a button | Your copy of Duplex is from before short button links were added (17 Nov 2026). Update it (end of step 3), check `tweego --list-formats` shows 1.9.1, and build again. |
+| `{{Label\|Passage}}` or `{{Passage}}` shows as text instead of a button | Your copy of Duplex is from before short button links were added (17 Nov 2026). Update it (end of step 3), check `tweego --list-formats` shows 1.10.0, and build again. |
+| `{{button ...}}` shows as text | That older form was removed in 1.10.0. Delete the word `button`: `{{button Settings}}` becomes `{{Settings}}`, and `{{button Go\|Woods}}` becomes `{{Go\|Woods}}`. |
 | A picture shows only its description | The browser can't reach the file next to the story. Put the picture in `src/` so Tweego packs it in (step 5). |
 | Saves say they last only until you close the page | The browser opened the story from a `content://` link and blocks saving. Use Option A in step 6, or press **Export** in **Saves** to keep a backup. |
 | `--list-formats` doesn't show Duplex | Make sure the file is at `~/storyformats/duplex-1/format.js`, not one folder deeper. |
@@ -234,7 +235,7 @@ The rest was checked on a Linux computer with Tweego 2.1.1 built from `@master`:
 
 - `go install github.com/tmedwards/tweego@master` builds; `@latest` failed here because it pulled in dependencies that need a newer Go.
 - The same build compiles for Android (`GOOS=android GOARCH=arm64`), the target Termux uses.
-- `tweego --list-formats` lists Duplex 1.9.1 under the ID `duplex-1`.
+- `tweego --list-formats` lists Duplex 1.10.0 under the ID `duplex-1`.
 - Building the Duplex example with and without `-f`, and decompiling it with `-d`, all work, and the built story plays in a mobile-sized browser.
 
 Not yet tried on a real phone: running Termux itself, `termux-setup-storage`, and opening the story from Downloads.
