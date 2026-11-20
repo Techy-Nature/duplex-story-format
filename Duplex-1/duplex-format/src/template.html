@@ -396,6 +396,8 @@
     function shortButtonLink(rest,context){
       const found=rest.match(/^\{\{([^{}\n]+?)\}\}/);
       if(!found)return null;
+      // The old {{button ...}} form was removed in 1.10.0; it is shown as written so it is easy to spot.
+      if(/^button\s/i.test(found[1])){console.warn('Duplex: {{button ...}} was removed in 1.10.0. Write '+found[0].replace(/^\{\{button\s+/i,'{{')+' instead.');return null;}
       if(/\||->|<-/.test(found[1]))return found;
       return passages.has(resolvePassage(found[1].trim(),context))?found:null;
     }
@@ -746,10 +748,9 @@
           out += '<a href="#" class="duplex-link" data-passage="' + attr(resolvePassage(target,context)) + '">' + escapeHtml(label) + '</a>';
           i += link[0].length; continue;
         }
-        // {{button Label|Passage}} is [[Label|Passage]] shown as a button; -> and <- work too.
-        // The word "button" may be left out: {{Label|Passage}}, {{Label->Passage}}, {{Passage<-Label}},
-        // or {{Passage}} when a passage of that name exists. Any other {{...}} text is left alone.
-        const buttonLink=rest.match(/^\{\{button\s+([\s\S]*?)\}\}/i)||shortButtonLink(rest,context);
+        // {{Label|Passage}} is [[Label|Passage]] shown as a button: {{Label->Passage}} and {{Passage<-Label}} work too,
+        // and {{Passage}} does when a passage of that name exists. Any other {{...}} text is left alone.
+        const buttonLink=shortButtonLink(rest,context);
         if (buttonLink) {
           const {label,target}=linkParts(buttonLink[1]);
           out += '<button type="button" class="duplex-link duplex-button-link" data-passage="' + attr(resolvePassage(target,context)) + '">' + escapeHtml(label) + '</button>';
@@ -821,7 +822,7 @@
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.9.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.10.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);

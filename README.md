@@ -1,4 +1,4 @@
-# [Duplex 1.9.1](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.10.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -30,7 +30,7 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.9.1** for your story.
+4. Select **Duplex 1.10.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -45,7 +45,7 @@ GitHub can turn your story repo into an installable Android app on every push, w
 ## Included syntax
 
 - Links: `[[Passage]]`, `[[Label->Passage]]`, `[[Label|Passage]]`
-- Button links: `{{button Label|Passage}}` works like `[[Label|Passage]]` but shows a button. `{{button Passage}}`, `{{button Label->Passage}}` and `{{button Passage<-Label}}` work too. The word `button` can be left out: `{{Label|Passage}}`, `{{Label->Passage}}` and `{{Passage<-Label}}` always make a button, and `{{Passage}}` does when a passage with that name exists. Other `{{...}}` text is shown as written. In Twine 2.6 and newer, the story map draws these, and `<<button "Label" "Passage">>` / `<<link "Label" "Passage">>` targets, as dashed connector lines.
+- Button links: `{{Label|Passage}}` works like `[[Label|Passage]]` but shows a button. `{{Label->Passage}}` and `{{Passage<-Label}}` work too, and `{{Passage}}` makes a button when a passage with that name exists. Other `{{...}}` text is shown as written. (The older `{{button Label|Passage}}` form was removed in 1.10.0; drop the word `button`.) In Twine 2.6 and newer, the story map draws these, and `<<button "Label" "Passage">>` / `<<link "Label" "Passage">>` targets, as dashed connector lines.
 - Variables: `$name`
 - Set: `<<set $name = "Nest">>` or `<<set $name to "Nest">>`
 - Print: `<<print $name>>` or `<<= $name>>`
