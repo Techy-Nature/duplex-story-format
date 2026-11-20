@@ -78,7 +78,7 @@ Expected output:
 Available formats:
   ID                     Name (Version) [Details]
   --------------------   ------------------------------
-  duplex-1               Duplex (1.9.0)
+  duplex-1               Duplex (1.9.1)
 ```
 
 **Updating Duplex later:** run `git -C ~/duplex-story-format pull`, then repeat the `cp` command above.
@@ -108,7 +108,7 @@ My Story
 {
 	"ifid": "PASTE-YOUR-IFID-HERE",
 	"format": "Duplex",
-	"format-version": "1.9.0",
+	"format-version": "1.9.1",
 	"start": "Start"
 }
 ```
@@ -149,6 +149,19 @@ tweego -f duplex-1 -o story.html src/
 ```
 
 No output means success. You now have `story.html`.
+
+### Pictures, music and videos
+
+Put the file in your `src/` folder next to your `.twee` files, for example `src/banner.png`. Tweego packs it into `story.html`, so the picture works wherever the story file goes, even when it is opened from a Files app or a `content://` link.
+
+Then use the file name in your passage:
+
+```twee
+:: Start
+<img src="banner.png" alt="Starry sky banner">
+```
+
+Duplex 1.9.1 and later find the packed file by its name, with or without the extension. Audio works the same way with `<<cacheaudio "theme" "theme.mp3">>`. Large files make `story.html` bigger, so shrink big pictures first.
 
 ### Rebuild automatically while you write
 
@@ -207,6 +220,9 @@ This keeps your `StoryData`, IFID and passages, so you can keep editing the stor
 | `requires go >= …` or a dependency error during `go install` | You used `@latest`. Use `@master` (step 2). If it still fails, run `pkg upgrade golang`, or use `pkg install tweego` instead. |
 | `Story format search directories not found.` | `TWEEGO_PATH` isn't set. Run `source ~/.bashrc` (step 3). |
 | `Story IFID not found` | Add a `StoryData` passage (step 4). |
+| `{{Label\|Passage}}` or `{{Passage}}` shows as text instead of a button | Your copy of Duplex is from before short button links were added (17 Nov 2026). Update it (end of step 3), check `tweego --list-formats` shows 1.9.1, and build again. |
+| A picture shows only its description | The browser can't reach the file next to the story. Put the picture in `src/` so Tweego packs it in (step 5). |
+| Saves say they last only until you close the page | The browser opened the story from a `content://` link and blocks saving. Use Option A in step 6, or press **Export** in **Saves** to keep a backup. |
 | `--list-formats` doesn't show Duplex | Make sure the file is at `~/storyformats/duplex-1/format.js`, not one folder deeper. |
 
 ## What was tested
@@ -218,7 +234,7 @@ The rest was checked on a Linux computer with Tweego 2.1.1 built from `@master`:
 
 - `go install github.com/tmedwards/tweego@master` builds; `@latest` failed here because it pulled in dependencies that need a newer Go.
 - The same build compiles for Android (`GOOS=android GOARCH=arm64`), the target Termux uses.
-- `tweego --list-formats` lists Duplex 1.9.0 under the ID `duplex-1`.
+- `tweego --list-formats` lists Duplex 1.9.1 under the ID `duplex-1`.
 - Building the Duplex example with and without `-f`, and decompiling it with `-d`, all work, and the built story plays in a mobile-sized browser.
 
 Not yet tried on a real phone: running Termux itself, `termux-setup-storage`, and opening the story from Downloads.

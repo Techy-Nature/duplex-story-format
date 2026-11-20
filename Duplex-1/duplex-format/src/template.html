@@ -176,6 +176,36 @@
       name: el.getAttribute('name'), pid: el.getAttribute('pid'), tags: (el.getAttribute('tags') || '').split(/\s+/).filter(Boolean), text: el.textContent
     }));
 
+    // Browser storage can be blocked, e.g. when an Android browser opens the story from a content:// link.
+    // Fall back to memory so buttons keep working; anything kept there is gone when the page closes.
+    const memoryStorage=new Map();
+    const Storage={
+      get(key){try{return localStorage.getItem(key);}catch(_){return memoryStorage.has(key)?memoryStorage.get(key):null;}},
+      set(key,value){try{localStorage.setItem(key,value);}catch(_){memoryStorage.set(key,String(value));}},
+      remove(key){try{localStorage.removeItem(key);}catch(_){memoryStorage.delete(key);}},
+      persistent(){try{const key='duplex-storage-check';localStorage.setItem(key,'1');localStorage.removeItem(key);return true;}catch(_){return false;}}
+    };
+    // Media passages: Tweego turns picture, audio and video files next to your .twee files into passages
+    // tagged Twine.image / Twine.audio / Twine.video that hold the file as a data: URI. An <img src="banner.png">
+    // whose src names one of those passages (with or without the extension and folders) uses the embedded file.
+    const MEDIA_TAGS=['Twine.image','Twine.audio','Twine.video','Twine.vtt'];
+    function mediaPassage(name){const passage=passages.get(name);return passage&&passage.tags.some(tag=>MEDIA_TAGS.includes(tag))?passage:null;}
+    function mediaSource(src){
+      const raw=String(src??'').trim();
+      if(!raw||/^(?:data|blob|https?|content|file):/i.test(raw))return null;
+      let decoded=raw;try{decoded=decodeURIComponent(raw);}catch(_){}
+      const path=decoded.replace(/[?#].*$/,'').replace(/^\.\//,''),base=path.split('/').pop();
+      for(const name of [raw,decoded,path,base,path.replace(/\.[^./]+$/,''),base.replace(/\.[^./]+$/,'')]){const passage=name&&mediaPassage(name);if(passage)return passage.text.trim();}
+      return null;
+    }
+    function applyMedia(root){
+      if(!root||root.nodeType!==1)return;
+      const nodes=root.matches?.('img,audio,video,source,track')?[root]:[];
+      nodes.push(...root.querySelectorAll('img,audio,video,source,track'));
+      nodes.forEach(node=>['src','poster'].forEach(name=>{if(!node.hasAttribute(name))return;const found=mediaSource(node.getAttribute(name));if(found)node.setAttribute(name,found);}));
+    }
+    if(window.MutationObserver)new MutationObserver(records=>records.forEach(record=>{if(record.type==='attributes')applyMedia(record.target);else record.addedNodes.forEach(applyMedia);})).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','poster']});
+
     function tags(passageName) {
       const title=passageName == null ? (activeRenderTitle || State.history.at(-1)?.title) : String(passageName);
       return passages.has(title) ? [...passages.get(title).tags] : [];
@@ -494,7 +524,7 @@
     }
     function cacheAudio(argSource) {
       const a=tokens(argSource), id=value(a.shift()), audio=document.createElement('audio'); audio.preload='auto';
-      a.map(value).forEach(raw=>{ let src=String(raw),type=''; const spec=src.match(/^([a-z0-9]+)\|(.+)$/i); if(spec){type='audio/'+spec[1];src=spec[2];} if(passages.has(src))src=passages.get(src).text.trim(); const node=document.createElement('source');node.src=src;if(type)node.type=type;audio.append(node); });
+      a.map(value).forEach(raw=>{ let src=String(raw),type=''; const spec=src.match(/^([a-z0-9]+)\|(.+)$/i); if(spec){type='audio/'+spec[1];src=spec[2];} const media=mediaSource(src);if(media)src=media;else if(passages.has(src))src=passages.get(src).text.trim(); const node=document.createElement('source');node.src=src;if(type)node.type=type;audio.append(node); });
       AudioEngine.tracks.set(String(id),audio); return '';
     }
     function audioSelection(idList) {
@@ -776,11 +806,11 @@
       for(const raw of parts){const key=shortcutKey(raw);if(['Ctrl','Alt','Shift','Meta'].includes(key)){if(!modifiers.includes(key))modifiers.push(key);}else if(key&&!keys.includes(key))keys.push(key);}
       const ordered=['Shift','Ctrl','Alt','Meta'].filter(key=>modifiers.includes(key)),combined=[...ordered,...keys];return combined.length<=2?combined.join('+'):'';
     };
-    function storedShortcuts(){try{const saved=JSON.parse(localStorage.getItem(shortcutStorageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};}catch(_){return {};}}
+    function storedShortcuts(){try{const saved=JSON.parse(Storage.get(shortcutStorageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};}catch(_){return {};}}
     const shortcutDefinitions=new Map();
     function shortcutValue(definition){return normalizeShortcut(storedShortcuts()[definition.id]??definition.defaultShortcut);}
     function shortcutEvent(event){const parts=[];if(event.ctrlKey)parts.push('Ctrl');if(event.altKey)parts.push('Alt');if(event.shiftKey)parts.push('Shift');if(event.metaKey)parts.push('Meta');const key=shortcutKey(event.key);if(!['Ctrl','Alt','Shift','Meta'].includes(key))parts.push(key);return normalizeShortcut(parts);}
-    function setShortcut(id,value){const definition=shortcutDefinitions.get(String(id));if(!definition)throw new Error('Shortcut not found.');const normalized=normalizeShortcut(value);if(!normalized)throw new Error('A shortcut must contain one or two keys.');const saved=storedShortcuts();saved[definition.id]=normalized;localStorage.setItem(shortcutStorageKey(),JSON.stringify(saved));return normalized;}
+    function setShortcut(id,value){const definition=shortcutDefinitions.get(String(id));if(!definition)throw new Error('Shortcut not found.');const normalized=normalizeShortcut(value);if(!normalized)throw new Error('A shortcut must contain one or two keys.');const saved=storedShortcuts();saved[definition.id]=normalized;Storage.set(shortcutStorageKey(),JSON.stringify(saved));return normalized;}
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
@@ -791,7 +821,7 @@
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.9.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.9.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
@@ -997,11 +1027,11 @@
     const Save=window.Save={
       serialize(){return JSON.stringify(savePayload(),null,2);},
       parse(text){return parseSave(text);},
-      save(){localStorage.setItem(saveKey(),Save.serialize());return true;},
-      load(){const raw=localStorage.getItem(saveKey());if(!raw)return false;const value=JSON.parse(raw);restoreSave(value,{allowLegacy:true});return true;},
-      delete(){localStorage.removeItem(saveKey());return true;},
+      save(){Storage.set(saveKey(),Save.serialize());return true;},
+      load(){const raw=Storage.get(saveKey());if(!raw)return false;const value=JSON.parse(raw);restoreSave(value,{allowLegacy:true});return true;},
+      delete(){Storage.remove(saveKey());return true;},
       export(filename){const blob=new Blob([Save.serialize()],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename||safeFilename()+'-save.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);return link.download;},
-      import(source){if(typeof source==='string'){applySave(parseSave(source));localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Save.import(text));restoreSave(source);localStorage.setItem(saveKey(),JSON.stringify(savePayload()));return true;}
+      import(source){if(typeof source==='string'){applySave(parseSave(source));Storage.set(saveKey(),JSON.stringify(savePayload()));return true;}if(source&&typeof source==='object'&&typeof source.text==='function')return source.text().then(text=>Save.import(text));restoreSave(source);Storage.set(saveKey(),JSON.stringify(savePayload()));return true;}
     };
     /* Bags are a JSON forest.  A child is always the actual bag object, never a
        reference to item stacks which could accidentally flatten its contents. */
@@ -1075,8 +1105,8 @@
       alert(message,options,closeFn){dialog(options?.title||'Alert','<p>'+escapeHtml(message)+'</p>',[],closeFn);},
       restart(){dialog('Restart','<p>Restart the story from the beginning?</p>',[{label:'Restart',action:()=>{closeDialog();restart();}}]);},
       saves(options,closeFn){
-        const has=localStorage.getItem(saveKey())!==null;
-        dialog(options?.title||'Saves','<p>'+(has?'A browser save is available.':'No browser save exists yet.')+'</p><p>Export a backup to keep your progress safe or move it to another browser.</p>',[
+        const has=Storage.get(saveKey())!==null;
+        dialog(options?.title||'Saves','<p>'+(has?'A browser save is available.':'No browser save exists yet.')+'</p>'+(Storage.persistent()?'':'<p class="duplex-error">This browser can\'t keep saves for this page, so a save lasts only until you close it. Use Export to keep your progress.</p>')+'<p>Export a backup to keep your progress safe or move it to another browser.</p>',[
           {label:'Save',action:()=>{Save.save();closeDialog(closeFn);}},
           ...(has?[{label:'Load',action:()=>{try{closeDialog();Save.load();closeFn?.();}catch(error){UI.alert(error.message,{title:'Could not load save'},closeFn);}}}]:[]),
           {label:'Export',action:()=>{Save.export();closeDialog(closeFn);}},
@@ -1106,12 +1136,12 @@
       const toList=value=>(Array.isArray(value)?value:value==null?[]:[value]).map(norm).filter(Boolean);
       const configured=()=>[...new Set(toList(Config.skip?.tags))];
       const defaultTags=()=>toList(Config.skip?.defaults);
-      function stored(){try{const saved=JSON.parse(localStorage.getItem(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?Object.assign(Object.create(null),saved):Object.create(null);}catch(_){return Object.create(null);}}
-      function writeStored(saved){try{localStorage.setItem(storageKey(),JSON.stringify(saved));}catch(_){}}
+      function stored(){try{const saved=JSON.parse(Storage.get(storageKey())||'{}');return saved&&typeof saved==='object'&&!Array.isArray(saved)?Object.assign(Object.create(null),saved):Object.create(null);}catch(_){return Object.create(null);}}
+      function writeStored(saved){try{Storage.set(storageKey(),JSON.stringify(saved));}catch(_){}}
       function label(tag){const key=norm(tag),labels=Config.skip?.labels&&typeof Config.skip.labels==='object'?Config.skip.labels:{};return String(Object.hasOwn(labels,key)?labels[key]:Object.hasOwn(labels,tag)?labels[tag]:tag);}
       function isSkipped(tag){const key=norm(tag),saved=stored();if(Object.hasOwn(saved,key))return saved[key]===true;return defaultTags().includes(key);}
       function set(tag,skipped){const key=norm(tag);if(!key)throw new Error('A content tag name is required.');const saved=stored();saved[key]=Boolean(skipped);writeStored(saved);refresh();return api;}
-      function reset(){try{localStorage.removeItem(storageKey());}catch(_){}refresh();return api;}
+      function reset(){try{Storage.remove(storageKey());}catch(_){}refresh();return api;}
       function storyTags(){const used=new Set();passages.forEach(passage=>passage.tags.forEach(tag=>used.add(norm(tag))));return used;}
       function available(){const used=storyTags(),defaults=defaultTags();return configured().filter(tag=>Config.skip?.showAllTags||used.has(tag)||defaults.includes(tag));}
       function contentTags(passageName){const list=configured();return tags(passageName).filter(tag=>list.includes(norm(tag)));}

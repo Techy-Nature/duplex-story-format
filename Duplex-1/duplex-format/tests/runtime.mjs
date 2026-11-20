@@ -128,7 +128,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.9.0','format version');
+assert(format.version === '1.9.1','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -683,5 +683,35 @@ assert(speechWin.Duplex.speakers.has('Bad')&&!speechWin.Duplex.speakers.get('Bad
 speechWin.Duplex.go('Start');
 assert(speechWin.document.querySelector('#duplex-passages article:last-child .duplex-speech[data-speaker="Wynn"] img').getAttribute('src')==='img/wynn.png','story passages still show the story speaker after a mod tried to replace it');
 speechDom.window.close();
+
+// Media passages (Tweego embeds image files as Twine.image passages) and blocked browser storage (content:// pages).
+const pixel='data:image/png;base64,iVBORw0KGgo=';
+const mediaStory=`<tw-storydata name="Media" startnode="1">
+  ${passage('1','Start',`<img src="banner.png" alt="Banner"><img src="images/banner.png" alt="Folder"><img src="https://example.test/x.png" alt="Web"><img src="missing.png" alt="Missing">{{Go on|Crossover}} {{About}}`)}
+  ${passage('2','banner',pixel,'Twine.image')}
+  ${passage('3','Crossover','Crossed over.')}
+  ${passage('4','About','About text.')}
+</tw-storydata>`;
+const mediaDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Media').replace('{{STORY_DATA}}',mediaStory),{runScripts:'dangerously',url:'https://example.test/media',beforeParse(window){
+  window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};
+  window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
+  Object.defineProperty(window,'localStorage',{configurable:true,get(){throw new window.DOMException('Access is denied for this document.','SecurityError');}});
+}});
+const mw=mediaDom.window;await new Promise(resolve=>setTimeout(resolve,0));
+const mediaImgs=[...mw.document.querySelectorAll('#duplex-passages article:last-child img')];
+assert(mediaImgs[0].getAttribute('src')===pixel,'<img src="banner.png"> uses the embedded Twine.image passage');
+assert(mediaImgs[1].getAttribute('src')===pixel,'a folder path still finds the media passage by file name');
+assert(mediaImgs[2].getAttribute('src')==='https://example.test/x.png'&&mediaImgs[3].getAttribute('src')==='missing.png','web URLs and unknown files are left alone');
+const added=mw.document.createElement('img');added.setAttribute('src','banner.png');mw.document.body.append(added);await new Promise(resolve=>setTimeout(resolve,0));
+assert(added.getAttribute('src')===pixel,'pictures added later by scripts use media passages too');
+const shortButtons=[...mw.document.querySelectorAll('#duplex-passages article:last-child button.duplex-button-link')];
+assert(shortButtons.map(b=>b.dataset.passage).join()==='Crossover,About','short {{Label|Passage}} and {{Passage}} links are buttons');
+shortButtons[0].click();
+assert(mw.document.querySelector('#duplex-passages article:last-child').textContent.includes('Crossed over.'),'button links work when browser storage is blocked');
+mw.UI.saves();
+assert(mw.document.querySelector('#duplex-dialog-body').textContent.includes("can't keep saves"),'Saves warns when browser storage is blocked');
+assert(mw.Save.save()===true&&mw.Save.load()===true,'saving falls back to memory when browser storage is blocked');
+mw.UI.settings?.();
+mediaDom.window.close();
 
 console.log('Duplex runtime tests passed.');
