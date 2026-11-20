@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Complete documentation for Duplex 1.9.0, a dual-mode Twine 2 story format.">
+  <meta name="description" content="Complete documentation for Duplex 1.9.1, a dual-mode Twine 2 story format.">
   <meta name="color-scheme" content="light dark">
-  <title>Duplex 1.9.0 Documentation</title>
+  <title>Duplex 1.9.1 Documentation</title>
   <link rel="icon" href="duplex-logo.png">
   <script>
     // Apply the saved theme before the page paints, so there is no flash.
@@ -22,7 +22,7 @@
 <body>
 <header class="top">
   <a href="#overview"><img src="duplex-logo.png" alt="Duplex logo"><b>Duplex Docs</b></a>
-  <span class="version">v1.9.0</span>
+  <span class="version">v1.9.1</span>
   <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" title="Switch between light and dark">
     <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
     <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -63,7 +63,7 @@
 <main>
 <section id="overview" class="hero">
   <div>
-    <span>Twine 2 story format · 1.9.0</span>
+    <span>Twine 2 story format · 1.9.1</span>
     <h1>Two ways to tell<br><em>one story.</em></h1>
     <p>Switch between a scrolling transcript and page-by-page passages without changing your authoring syntax.</p>
     <a class="button" href="#install">Get started</a><a class="button ghost" href="#whats-new">What's new</a>
@@ -81,6 +81,10 @@
 <section id="whats-new" class="section">
   <header><span>Changelog</span><h2>What's new</h2></header>
   <div class="timeline">
+    <article>
+      <b class="ver">1.9.1</b>
+      <div><h3>Packed pictures and blocked storage</h3><p>Pictures Tweego packs into the story (passages tagged <code>Twine.image</code>) now show up from a plain <code>&lt;img src="banner.png"&gt;</code>. Stories opened from a <code>content://</code> link keep their buttons working when the browser blocks storage, and <b>Saves</b> says when a save won't last.</p></div>
+    </article>
     <article>
       <b class="ver">1.9.0</b>
       <div><h3>Speech bubbles</h3><p><code>&lt;&lt;speech "Wynn"&gt;&gt;Hi!&lt;&lt;/speech&gt;&gt;</code> draws a comic-style bubble with a character portrait. Pick solid, dashed, dotted, double, thought, shout, or whisper outlines, color presets, and square or circle portraits. See <a href="#speech">Speech bubbles</a>.</p></div>
@@ -119,7 +123,7 @@
         <li>Download or clone the repository and keep it somewhere permanent.</li>
         <li>Open <b>Twine → Story Formats → Add</b>.</li>
         <li>Paste the full file URL to <code>format.js</code> (inside the <code>Duplex-1/duplex-format</code> folder).</li>
-        <li>Select <b>Duplex 1.9.0</b> for your story.</li>
+        <li>Select <b>Duplex 1.9.1</b> for your story.</li>
       </ol>
       <div class="code"><div class="codebar"><span>Linux example</span><button type="button">Copy</button></div><pre>file:///home/you/duplex-story-format/Duplex-1/duplex-format/format.js</pre></div>
       <p class="note">Browser Twine may block local file URLs. Use Twine Desktop or host the format online.</p>
@@ -810,7 +814,7 @@ Current tags: &lt;&lt;= tags().join(", ")&gt;&gt;</pre></div>
 </main>
 </div>
 
-<footer><img src="duplex-logo.png" alt=""><span>Duplex 1.9.0 documentation</span><a href="#overview">Back to top ↑</a></footer>
+<footer><img src="duplex-logo.png" alt=""><span>Duplex 1.9.1 documentation</span><a href="#overview">Back to top ↑</a></footer>
 
 <script>
   // Search filter

@@ -132,6 +132,10 @@ Duplex.shortcuts.add('map', {
 
 IDs must be unique. Each definition needs a label, a default shortcut of no more than two keys, and either an `action` function or a CSS `selector` for the button to activate. The read-only `Duplex.shortcuts.get(id)` and `Duplex.shortcuts.list()` methods expose effective player bindings; `set(id, shortcut)` is also available for author tooling.
 
+## Pictures and other media files
+
+A picture written as `<img src="banner.png">` is loaded from next to the story file. Browsers often can't do that when the story is opened from a Files app or a `content://` link, so only the picture's description shows. To pack the picture into the story, put it beside your `.twee` files and build with Tweego: Tweego stores it as a passage tagged `Twine.image`, and Duplex 1.9.1+ uses that passage for any `src` that names it (with or without extension or folders). `Twine.audio` and `Twine.video` passages work the same way, including in `<<cacheaudio>>`. In Twine 2, host the picture online and use its full `https://` address instead.
+
 ## Saves and portable backups
 
 Duplex keeps one browser save per story and can export or import portable JSON backups. Open **Saves** in the left UI bar to use **Save**, **Load**, **Export**, **Import**, or **Delete**. Exported files include the story identity and are validated before import, so a save from another story or a damaged file will not replace the current progress.
