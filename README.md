@@ -27,21 +27,28 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 
 ### Keep the choice for authors (1.10.1)
 
-By default, readers can switch between append and replace in **Settings**. To leave the choice to the story and its mods, turn that setting off in Story JavaScript:
+By default, readers can switch between append and replace in **Settings**. Authors decide whether that choice shows with `storymodeshow`, as a JavaScript call or a story variable.
+
+In Story JavaScript:
 
 ```js
-Config.passageModeSetting = false;
+storymodeshow(false);          // author-only: Settings hides Append/Replace
 Config.displayMode = "append"; // optional: fix the mode for the whole story
 ```
 
-or in `StoryInit`, without Story JavaScript:
+Or in `StoryInit`, with a story variable:
 
 ```twine
-<<run Config.passageModeSetting = false>>
+<<set $storymodeshow = false>>
 <<set $passageMode = "append">>
 ```
 
-With the setting off, **Settings** no longer shows the **Append passages** and **Replace passages** buttons, and only the story decides the mode. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Leaving `Config.passageModeSetting` out keeps the reader setting, so existing stories behave as before.
+- `storymodeshow(false)` or `$storymodeshow = false`: the mode is author-only. **Settings** no longer shows **Append passages** and **Replace passages**.
+- `storymodeshow(true)` or `$storymodeshow = true`: readers get the choice (the default).
+- `storymodeshow()` with nothing inside returns `true` or `false`, so `<<if storymodeshow()>>` works. It is also `Duplex.storymodeshow()`.
+- While `$storymodeshow` is set, it wins over the JavaScript call, so a story can change it partway through. `<<unset $storymodeshow>>` goes back to what the call chose.
+
+With the choice hidden, the story sets the mode with `$passageMode` or `Config.displayMode`. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Stories that never use `storymodeshow` behave as before.
 
 ## Install in Twine 2 Desktop
 

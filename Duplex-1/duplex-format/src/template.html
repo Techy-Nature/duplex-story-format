@@ -145,7 +145,7 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { rooms: { safeTags: ['safe-room'], unsafeTags: ['unsafe-room','danger-room'] }, displayMode: null, passageModeSetting: true, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
+    const Config = window.Config = { rooms: { safeTags: ['safe-room'], unsafeTags: ['unsafe-room','danger-room'] }, displayMode: null, storymodeshow: true, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
       // Passage tags that count as content tags. Readers can skip passages carrying any of them.
       tags: ['skip','sex','violence','gore','abuse','self-harm','drugs','death'],
       // Reader-facing names for tags. Tags without a label are shown as written.
@@ -227,6 +227,17 @@
     }
     window.tags=tags;
     window.hasTag=hasTag;
+    // storymodeshow(): whether Settings offers readers the Append/Replace choice. storymodeshow(false) makes the
+    // display mode author-only; storymodeshow(true) offers it again; storymodeshow() reads the current answer.
+    // A story variable, <<set $storymodeshow = false>>, does the same from Twine markup and wins while it is set.
+    function storymodeshow(show){
+      if(arguments.length)Config.storymodeshow=show!==false&&show!=='false';
+      const variable=State.variables?.storymodeshow;
+      if(variable===true||variable===false)return variable;
+      if(variable==='true'||variable==='false')return variable==='true';
+      return Config.storymodeshow!==false;
+    }
+    window.storymodeshow=storymodeshow;
 
     data.querySelectorAll('style[type="text/twine-css"]').forEach(source => {
       const style = document.createElement('style'); style.textContent = source.textContent; document.head.append(style);
@@ -815,9 +826,9 @@
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
-      // Config.passageModeSetting = false takes the Append/Replace choice away from readers, so only the
-      // story (Config.displayMode or $passageMode) and mods (<<set $passageMode>>) decide how passages show.
-      const readerChoosesMode=Config.passageModeSetting!==false;
+      // storymodeshow(false) or $storymodeshow = false takes the Append/Replace choice away from readers, so only
+      // the story (Config.displayMode or $passageMode) and mods (<<set $passageMode>>) decide how passages show.
+      const readerChoosesMode=storymodeshow();
       const box=dialog(options?.title||'Settings',authorSettings+(readerChoosesMode?'<p>Choose how passages are displayed.</p>':'')+'<div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),readerChoosesMode?[
         {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
         {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
@@ -1296,7 +1307,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name)),setPlayerPortrait},version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,storymodeshow,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name)),setPlayerPortrait},version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}
