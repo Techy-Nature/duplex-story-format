@@ -27,13 +27,13 @@ For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"a
 
 ### Keep the choice for authors (1.10.1)
 
-By default, readers can switch between append and replace in **Settings**. Authors decide whether that choice shows with `storymodeshow`, as a JavaScript call or a story variable.
+By default, readers can switch between append and replace in **Settings**. Authors decide whether that choice shows with `UI.settings.storymodeshow()` in JavaScript or the `$storymodeshow` story variable.
 
 In Story JavaScript:
 
 ```js
-storymodeshow(false);          // author-only: Settings hides Append/Replace
-Config.displayMode = "append"; // optional: fix the mode for the whole story
+UI.settings.storymodeshow(false); // author-only: Settings hides Append/Replace
+Config.displayMode = "append";    // optional: fix the mode for the whole story
 ```
 
 Or in `StoryInit`, with a story variable:
@@ -43,12 +43,12 @@ Or in `StoryInit`, with a story variable:
 <<set $passageMode = "append">>
 ```
 
-- `storymodeshow(false)` or `$storymodeshow = false`: the mode is author-only. **Settings** no longer shows **Append passages** and **Replace passages**.
-- `storymodeshow(true)` or `$storymodeshow = true`: readers get the choice (the default).
-- `storymodeshow()` with nothing inside returns `true` or `false`, so `<<if storymodeshow()>>` works. It is also `Duplex.storymodeshow()`.
+- `UI.settings.storymodeshow(false)` or `$storymodeshow = false`: the mode is author-only. **Settings** no longer shows **Append passages** and **Replace passages**.
+- `UI.settings.storymodeshow(true)` or `$storymodeshow = true`: readers get the choice (the default).
+- `UI.settings.storymodeshow()` with nothing inside returns `true` or `false`, so `<<if UI.settings.storymodeshow()>>` works.
 - While `$storymodeshow` is set, it wins over the JavaScript call, so a story can change it partway through. `<<unset $storymodeshow>>` goes back to what the call chose.
 
-With the choice hidden, the story sets the mode with `$passageMode` or `Config.displayMode`. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Stories that never use `storymodeshow` behave as before.
+With the choice hidden, the story sets the mode with `$passageMode` or `Config.displayMode`. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Stories that use neither behave as before.
 
 ## Install in Twine 2 Desktop
 

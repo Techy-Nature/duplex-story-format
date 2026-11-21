@@ -227,8 +227,8 @@
     }
     window.tags=tags;
     window.hasTag=hasTag;
-    // storymodeshow(): whether Settings offers readers the Append/Replace choice. storymodeshow(false) makes the
-    // display mode author-only; storymodeshow(true) offers it again; storymodeshow() reads the current answer.
+    // UI.settings.storymodeshow(): whether Settings offers readers the Append/Replace choice. Passing false makes
+    // the display mode author-only, true offers it again, and nothing reads the current answer.
     // A story variable, <<set $storymodeshow = false>>, does the same from Twine markup and wins while it is set.
     function storymodeshow(show){
       if(arguments.length)Config.storymodeshow=show!==false&&show!=='false';
@@ -237,7 +237,6 @@
       if(variable==='true'||variable==='false')return variable==='true';
       return Config.storymodeshow!==false;
     }
-    window.storymodeshow=storymodeshow;
 
     data.querySelectorAll('style[type="text/twine-css"]').forEach(source => {
       const style = document.createElement('style'); style.textContent = source.textContent; document.head.append(style);
@@ -826,7 +825,7 @@
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
-      // storymodeshow(false) or $storymodeshow = false takes the Append/Replace choice away from readers, so only
+      // UI.settings.storymodeshow(false) or $storymodeshow = false takes the Append/Replace choice away from readers, so only
       // the story (Config.displayMode or $passageMode) and mods (<<set $passageMode>>) decide how passages show.
       const readerChoosesMode=storymodeshow();
       const box=dialog(options?.title||'Settings',authorSettings+(readerChoosesMode?'<p>Choose how passages are displayed.</p>':'')+'<div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),readerChoosesMode?[
@@ -1129,7 +1128,7 @@
           ...(has?[{label:'Delete',action:()=>{Save.delete();closeDialog(closeFn);}}]:[])
         ],closeFn);
       },
-      settings(options,closeFn){return renderShortcutSettings(options,closeFn);},
+      settings:Object.assign(function settings(options,closeFn){return renderShortcutSettings(options,closeFn);},{storymodeshow}),
       update(){
         const regions=[['StoryCaption','#story-caption'],['StoryMenu','#story-menu'],['StoryLeftBar','#story-left-bar'],['StoryRightBar','#story-right-bar']];
         regions.forEach(([name,selector])=>{const region=document.querySelector(selector);if(!region)return;try{region.innerHTML=passages.has(name)?compile(passages.get(name).text):'';}catch(error){console.error(name+':',error);region.innerHTML='<div class="duplex-error">'+escapeHtml(name+': '+error.message)+'</div>';}});
@@ -1307,7 +1306,7 @@
     document.querySelector('#duplex-saves').addEventListener('click',()=>UI.saves());
     document.querySelector('#duplex-mods').addEventListener('click',()=>Mods.open());
     document.querySelector('#duplex-settings').addEventListener('click',()=>UI.settings());
-    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,storymodeshow,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name)),setPlayerPortrait},version:DUPLEX_VERSION};
+    window.Duplex=window.duplex={go,back:()=>document.querySelector('#duplex-back').click(),restart,mode,tags,hasTag,random,audio:AudioEngine,inventory:Inventory,rooms:Rooms,mods:Mods,shortcuts:Shortcuts,UI,Save,UIBarL,UIBarR,widgets,grammar:Grammar,skip:ContentSkip,speakers:{get:name=>{const found=Speakers.get(String(name));return found?{...found}:undefined;},has:name=>Speakers.has(String(name)),names:()=>[...Speakers.keys()],define:(name,options='')=>{speakerMacro(JSON.stringify(String(name))+' '+options,{restricted:false});return Speakers.has(String(name));},remove:name=>Speakers.delete(String(name)),setPlayerPortrait},version:DUPLEX_VERSION};
     if(window.matchMedia?.('(max-width:1100px)').matches){UIBarL.stow(true);UIBarR.stow(true);}
     function startStory(){data.querySelectorAll('script[type="text/twine-javascript"]').forEach(source => {try { (0, eval)(source.textContent); } catch (error) { console.error('Story JavaScript:', error); }});defineWidgets();defineGrammars();runInit();Object.assign(initial,clone(State.variables));go(startTitle());}
     if(window.indexedDB)window.Duplex.ready=loadMods().then(errors=>{errors.forEach(error=>console.error('Stored mod skipped:',error));startStory();return Mods.list();}).catch(error=>{console.error('Could not load installed mods:',error);startStory();return [];});else{window.Duplex.ready=Promise.resolve([]);startStory();}

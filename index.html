@@ -83,7 +83,7 @@
   <div class="timeline">
     <article>
       <b class="ver">1.10.1</b>
-      <div><h3>Authors can keep the display mode</h3><p>Call <code>storymodeshow(false)</code> in Story JavaScript, or <code>&lt;&lt;set $storymodeshow = false&gt;&gt;</code>, to take the <b>Append passages</b> and <b>Replace passages</b> buttons out of <b>Settings</b>. The story and its mods then decide the mode. Stories that leave it out work as before. See <a href="#modes">Choose the display mode</a>.</p></div>
+      <div><h3>Authors can keep the display mode</h3><p>Call <code>UI.settings.storymodeshow(false)</code> in Story JavaScript, or <code>&lt;&lt;set $storymodeshow = false&gt;&gt;</code>, to take the <b>Append passages</b> and <b>Replace passages</b> buttons out of <b>Settings</b>. The story and its mods then decide the mode. Stories that leave it out work as before. See <a href="#modes">Choose the display mode</a>.</p></div>
     </article>
     <article>
       <b class="ver">1.10.0</b>
@@ -200,9 +200,9 @@ python -m http.server 8080</pre></div></li>
   </div>
   <p>The value may be conditional, such as <code>&lt;&lt;set $passageMode = $useScrolling ? "append" : "replace"&gt;&gt;</code>. Story JavaScript may set <code>Config.displayMode</code>, which takes priority over story variables.</p>
   <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>Config.displayMode = "append"; // or "replace"</pre></div>
-  <p>Readers can also switch modes in <b>Settings</b>. Authors choose whether that option shows with <code>storymodeshow</code>: <code>storymodeshow(false)</code> or <code>$storymodeshow = false</code> makes the mode author-only and removes the <b>Append passages</b> and <b>Replace passages</b> buttons; <code>true</code> (the default) offers them. <code>storymodeshow()</code> with nothing inside returns the current answer. While <code>$storymodeshow</code> is set it wins over the call, so a story can change it partway through. Mods can still change the mode with <code>&lt;&lt;set $passageMode = "append"&gt;&gt;</code> in their own passages, and <code>Config.displayMode</code> always wins.</p>
-  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>storymodeshow(false);          // author-only: readers can't switch modes
-Config.displayMode = "append"; // optional: fix the mode</pre></div>
+  <p>Readers can also switch modes in <b>Settings</b>. Authors choose whether that option shows with <code>UI.settings.storymodeshow()</code> or the <code>$storymodeshow</code> story variable: <code>UI.settings.storymodeshow(false)</code> or <code>$storymodeshow = false</code> makes the mode author-only and removes the <b>Append passages</b> and <b>Replace passages</b> buttons; <code>true</code> (the default) offers them. <code>UI.settings.storymodeshow()</code> with nothing inside returns the current answer. While <code>$storymodeshow</code> is set it wins over the call, so a story can change it partway through. Mods can still change the mode with <code>&lt;&lt;set $passageMode = "append"&gt;&gt;</code> in their own passages, and <code>Config.displayMode</code> always wins.</p>
+  <div class="code"><div class="codebar"><span>Story JavaScript</span><button type="button">Copy</button></div><pre>UI.settings.storymodeshow(false); // author-only: readers can't switch modes
+Config.displayMode = "append";    // optional: fix the mode</pre></div>
   <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
 &lt;&lt;set $storymodeshow = false&gt;&gt;
 &lt;&lt;set $passageMode = "append"&gt;&gt;</pre></div>

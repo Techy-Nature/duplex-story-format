@@ -714,12 +714,12 @@ assert(mw.document.querySelector('#duplex-dialog-body').textContent.includes("ca
 assert(mw.Save.save()===true&&mw.Save.load()===true,'saving falls back to memory when browser storage is blocked');
 mediaDom.window.close();
 
-// storymodeshow(): the reader's Append/Replace choice is on by default and can be made author-only.
+// UI.settings.storymodeshow(): the reader's Append/Replace choice is on by default and can be made author-only.
 const modeButtons=win=>[...win.document.querySelectorAll('#duplex-dialog-actions button')].map(button=>button.textContent).filter(label=>/passages$/.test(label));
 const modeStory=`<tw-storydata name="Mode Lock" ifid="MODE-IFID" startnode="1">
   ${passage('1','Start','Opening. [[Next]]')}
   ${passage('2','Next','Second page.')}
-  ${passage('3','StoryInit','<<run storymodeshow(false)>><<set $passageMode = "replace">>')}
+  ${passage('3','StoryInit','<<run UI.settings.storymodeshow(false)>><<set $passageMode = "replace">>')}
 </tw-storydata>`;
 const modeDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Mode Lock').replace('{{STORY_DATA}}',modeStory),{runScripts:'dangerously',url:'https://example.test/mode',beforeParse(window){
   window.indexedDB=indexedDB;
@@ -732,22 +732,22 @@ const defaultModeDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Mode Defa
   window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
 }});
 await defaultModeDom.window.Duplex.ready;
-assert(defaultModeDom.window.storymodeshow()===true&&defaultModeDom.window.Duplex.storymodeshow()===true,'storymodeshow() is true by default');
+assert(defaultModeDom.window.UI.settings.storymodeshow()===true&&defaultModeDom.window.storymodeshow===undefined,'UI.settings.storymodeshow() is true by default and is not a bare global');
 defaultModeDom.window.UI.settings();
 assert(modeButtons(defaultModeDom.window).join()==='Append passages,Replace passages'&&defaultModeDom.window.document.querySelector('#duplex-dialog-body').textContent.includes('Choose how passages are displayed.'),'Settings offers Append and Replace by default');
 defaultModeDom.window.close();
 modeWin.UI.settings();
-assert(modeWin.document.querySelector('#duplex-dialog').open&&modeButtons(modeWin).length===0&&!modeWin.document.querySelector('#duplex-dialog-body').textContent.includes('Choose how passages are displayed.'),'storymodeshow(false) hides the Append and Replace buttons');
-assert(modeWin.storymodeshow()===false&&modeWin.Config.storymodeshow===false,'storymodeshow() reads back the author choice');
+assert(modeWin.document.querySelector('#duplex-dialog').open&&modeButtons(modeWin).length===0&&!modeWin.document.querySelector('#duplex-dialog-body').textContent.includes('Choose how passages are displayed.'),'UI.settings.storymodeshow(false) hides the Append and Replace buttons');
+assert(modeWin.UI.settings.storymodeshow()===false&&modeWin.Config.storymodeshow===false,'UI.settings.storymodeshow() reads back the author choice');
 assert([...modeWin.document.querySelectorAll('#duplex-dialog-actions button')].some(button=>button.textContent==='Close')&&modeWin.document.querySelector('.duplex-shortcut-row'),'Settings keeps shortcuts and Close when the mode setting is hidden');
 modeWin.document.querySelector('#duplex-dialog-actions button:last-child').click();
 modeWin.State.variables.storymodeshow=true;modeWin.UI.settings();
-assert(modeButtons(modeWin).length===2,'$storymodeshow = true shows the choice again and wins over storymodeshow(false)');
+assert(modeButtons(modeWin).length===2,'$storymodeshow = true shows the choice again and wins over UI.settings.storymodeshow(false)');
 modeWin.document.querySelector('#duplex-dialog-actions button:last-child').click();
-modeWin.State.variables.storymodeshow=false;modeWin.storymodeshow(true);modeWin.UI.settings();
+modeWin.State.variables.storymodeshow=false;modeWin.UI.settings.storymodeshow(true);modeWin.UI.settings();
 assert(modeButtons(modeWin).length===0&&modeWin.Config.storymodeshow===true,'$storymodeshow = false hides the choice while it is set');
 modeWin.document.querySelector('#duplex-dialog-actions button:last-child').click();
-delete modeWin.State.variables.storymodeshow;modeWin.storymodeshow(false);
+delete modeWin.State.variables.storymodeshow;modeWin.UI.settings.storymodeshow(false);
 await modeWin.Duplex.mods.import('Mod: Scroll Mod\nVersion: 1.0.0\n:: after Start\n<<set $passageMode = "append">>');
 modeWin.Duplex.go('Start');
 assert(modeWin.State.variables.passageMode==='append'&&modeWin.State.history.at(-1).mode==='append','a mod can still set $passageMode when readers cannot');
