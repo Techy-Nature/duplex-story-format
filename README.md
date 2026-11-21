@@ -1,4 +1,4 @@
-# [Duplex 1.10.0](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.10.1](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -25,12 +25,37 @@ The value may be conditional:
 
 For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"append"` or `"replace"`. That setting takes priority.
 
+### Keep the choice for authors (1.10.1)
+
+By default, readers can switch between append and replace in **Settings**. Authors decide whether that choice shows with `UI.settings.storymodeshow()` in JavaScript or the `$storymodeshow` story variable.
+
+In Story JavaScript:
+
+```js
+UI.settings.storymodeshow(false); // author-only: Settings hides Append/Replace
+Config.displayMode = "append";    // optional: fix the mode for the whole story
+```
+
+Or in `StoryInit`, with a story variable:
+
+```twine
+<<set $storymodeshow = false>>
+<<set $passageMode = "append">>
+```
+
+- `UI.settings.storymodeshow(false)` or `$storymodeshow = false`: the mode is author-only. **Settings** no longer shows **Append passages** and **Replace passages**.
+- `UI.settings.storymodeshow(true)` or `$storymodeshow = true`: readers get the choice (the default).
+- `UI.settings.storymodeshow()` with nothing inside returns `true` or `false`, so `<<if UI.settings.storymodeshow()>>` works.
+- While `$storymodeshow` is set, it wins over the JavaScript call, so a story can change it partway through. `<<unset $storymodeshow>>` goes back to what the call chose.
+
+With the choice hidden, the story sets the mode with `$passageMode` or `Config.displayMode`. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Stories that use neither behave as before.
+
 ## Install in Twine 2 Desktop
 
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.10.0** for your story.
+4. Select **Duplex 1.10.1** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
