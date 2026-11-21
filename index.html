@@ -206,6 +206,15 @@ Config.displayMode = "append";    // optional: fix the mode</pre></div>
   <div class="code"><div class="codebar"><span>Twine</span><button type="button">Copy</button></div><pre>:: StoryInit
 &lt;&lt;set $storymodeshow = false&gt;&gt;
 &lt;&lt;set $passageMode = "append"&gt;&gt;</pre></div>
+  <h3>Which setting wins</h3>
+  <p>Duplex picks the display mode from the first of these that is set, every time a passage opens:</p>
+  <ol>
+    <li><code>Config.displayMode</code> in Story JavaScript. Nothing overrides it, not readers, not mods, not <code>$passageMode</code>.</li>
+    <li><code>$passageMode</code>. The story, a mod's <code>&lt;&lt;set $passageMode&gt;&gt;</code>, and the reader's <b>Append passages</b> and <b>Replace passages</b> buttons all write this same variable, so whichever changed it last is in charge. Hiding the buttons leaves only the story and mods.</li>
+    <li><code>$displayMode</code>, the older name, still read for older stories.</li>
+    <li>Replace mode, when none of these is set.</li>
+  </ol>
+  <p><code>$passageMode</code> is saved with the game, so a reader's earlier choice comes back when they load an older save. Set it again in a passage if the story needs a particular mode at that point.</p>
 </section>
 
 <!-- Core -->
@@ -430,8 +439,8 @@ UIBarR.unstow();</pre></div>
   <p>Both bars implement <code>destroy()</code>, <code>hide()</code>, <code>show()</code>, <code>isHidden()</code>, <code>isStowed()</code>, <code>stow()</code>, <code>unstow()</code>, and <code>update()</code>.</p>
   <p class="note">Aliases: <code>UIBar</code>, <code>UIBarRight</code>, <code>UIBars.left</code>, and <code>UIBars.right</code>.</p>
   <h3>UI API</h3>
-  <div class="chips"><code>UI.alert(message)</code><code>UI.restart()</code><code>UI.saves()</code><code>UI.settings()</code><code>UI.update()</code><code>UI.jumpto()</code><code>UI.share()</code><code>UI.inventory()</code></div>
-  <p><code>UI.inventory()</code> opens the Inventory browser; <code>UI.saves()</code> opens the browser-save and portable-backup controls; <code>UI.settings()</code> opens Settings.</p>
+  <div class="chips"><code>UI.alert(message)</code><code>UI.restart()</code><code>UI.saves()</code><code>UI.settings()</code><code>UI.settings.storymodeshow()</code><code>UI.update()</code><code>UI.jumpto()</code><code>UI.share()</code><code>UI.inventory()</code></div>
+  <p><code>UI.inventory()</code> opens the Inventory browser; <code>UI.saves()</code> opens the browser-save and portable-backup controls; <code>UI.settings()</code> opens Settings. <code>UI.settings.storymodeshow(false)</code> takes the <b>Append passages</b> and <b>Replace passages</b> buttons out of Settings, <code>true</code> puts them back, and <code>UI.settings.storymodeshow()</code> returns which is in effect (see <a href="#modes">Choose the display mode</a>).</p>
 </section>
 
 <!-- Shortcuts -->

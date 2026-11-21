@@ -73,6 +73,16 @@ Duplex also sanitizes all restricted output, including raw markup and Markdown o
 
 Extensions may use `<<skipsummary>>…<</skipsummary>>`: when a reader skips the passage, the mod's summary is shown after the passage's own. A mod cannot change where a story passage skips to, so `<<skipto>>` and links inside an extension are never used as the passage's skip target. Skip markers are kept as inert `<template>` elements; any other `<template>`, and any attribute other than the marker's own, is still removed. Each extension's output is wrapped in `<div class="duplex-mod-extension" data-mod-extension="DuplexMod:<mod-id>:<extension-id>">` (styled `display:contents`, so layout is unchanged). See [CONTENT-SKIP.md](CONTENT-SKIP.md).
 
+### Changing the display mode from a mod
+
+A mod can switch the story between append and replace with a plain `<<set>>` in one of its places or passage additions, even when the story keeps the choice away from readers:
+
+```twine
+<<set $passageMode = "append">>
+```
+
+`<<set $storymodeshow = true>>` or `false` shows or hides the reader's **Append passages** and **Replace passages** buttons in the same way. If the story sets `Config.displayMode` in its Story JavaScript, that always wins and a mod can't change the mode. See [Which setting wins](README.md#which-setting-wins).
+
 ## Mod places (new passages)
 
 A mod can add its own places with a `passages` array, and link to them from its extensions. This is how a quest mod adds new locations without touching the story's own passages. See [`examples/quest-mod.json`](examples/quest-mod.json) for a complete manifest.

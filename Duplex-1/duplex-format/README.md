@@ -50,6 +50,17 @@ Or in `StoryInit`, with a story variable:
 
 With the choice hidden, the story sets the mode with `$passageMode` or `Config.displayMode`. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Stories that use neither behave as before.
 
+### Which setting wins
+
+Duplex picks the display mode from the first of these that is set, every time a passage opens:
+
+1. `Config.displayMode` in Story JavaScript (`"append"` or `"replace"`). Nothing overrides it, not readers, not mods, not `$passageMode`.
+2. `$passageMode`. The story, a mod's `<<set $passageMode>>`, and the reader's **Append passages** and **Replace passages** buttons all write this same variable, so whichever changed it last is in charge. Hiding the buttons with `$storymodeshow = false` or `UI.settings.storymodeshow(false)` leaves only the story and mods.
+3. `$displayMode`, the older name, still read for stories written before `$passageMode`.
+4. Replace mode, when none of these is set.
+
+`$passageMode` is saved with the game, so a reader's earlier choice comes back when they load an older save. Set it again in a passage if the story needs a particular mode at that point.
+
 ## Install in Twine 2 Desktop
 
 1. Extract this folder somewhere permanent.
