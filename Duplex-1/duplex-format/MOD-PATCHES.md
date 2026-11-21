@@ -139,6 +139,10 @@ Story code gets them with the mod's name: `Duplex.mods.createItem("Haunted House
 
 To update a mod, **Remove** the old version first, then import the new file.
 
+## Changing the display mode
+
+Any section can switch the story between append and replace with `<<set $passageMode = "append">>` or `"replace"`, even when the story hides that choice from readers. `<<set $storymodeshow = true>>` or `false` shows or hides the reader's buttons for it. If the story sets `Config.displayMode`, that always wins. See [Which setting wins](README.md#which-setting-wins).
+
 ## Small rules
 
 * A `::` line must start at the very beginning of the line.
