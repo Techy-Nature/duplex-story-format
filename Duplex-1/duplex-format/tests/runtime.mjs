@@ -128,7 +128,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.10.0','format version');
+assert(format.version === '1.10.1','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -712,7 +712,41 @@ assert(mw.document.querySelector('#duplex-passages article:last-child').textCont
 mw.UI.saves();
 assert(mw.document.querySelector('#duplex-dialog-body').textContent.includes("can't keep saves"),'Saves warns when browser storage is blocked');
 assert(mw.Save.save()===true&&mw.Save.load()===true,'saving falls back to memory when browser storage is blocked');
-mw.UI.settings?.();
 mediaDom.window.close();
+
+// Config.passageModeSetting: the reader's Append/Replace choice is on by default and can be left to authors and mods.
+const modeButtons=win=>[...win.document.querySelectorAll('#duplex-dialog-actions button')].map(button=>button.textContent).filter(label=>/passages$/.test(label));
+const modeStory=`<tw-storydata name="Mode Lock" ifid="MODE-IFID" startnode="1">
+  ${passage('1','Start','Opening. [[Next]]')}
+  ${passage('2','Next','Second page.')}
+  ${passage('3','StoryInit','<<run Config.passageModeSetting = false>><<set $passageMode = "replace">>')}
+</tw-storydata>`;
+const modeDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Mode Lock').replace('{{STORY_DATA}}',modeStory),{runScripts:'dangerously',url:'https://example.test/mode',beforeParse(window){
+  window.indexedDB=indexedDB;
+  window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};
+  window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
+}});
+const modeWin=modeDom.window;await modeWin.Duplex.ready;
+const defaultModeDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Mode Default').replace('{{STORY_DATA}}',modeStory.replace(/<tw-passagedata pid="3"[^]*?<\/tw-passagedata>/,'').replace('MODE-IFID','MODE-DEFAULT')),{runScripts:'dangerously',url:'https://example.test/mode-default',beforeParse(window){
+  window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};
+  window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
+}});
+await defaultModeDom.window.Duplex.ready;
+assert(defaultModeDom.window.Config.passageModeSetting===true,'reader passage mode setting is on by default');
+defaultModeDom.window.UI.settings();
+assert(modeButtons(defaultModeDom.window).join()==='Append passages,Replace passages'&&defaultModeDom.window.document.querySelector('#duplex-dialog-body').textContent.includes('Choose how passages are displayed.'),'Settings offers Append and Replace by default');
+defaultModeDom.window.close();
+modeWin.UI.settings();
+assert(modeWin.document.querySelector('#duplex-dialog').open&&modeButtons(modeWin).length===0&&!modeWin.document.querySelector('#duplex-dialog-body').textContent.includes('Choose how passages are displayed.'),'Config.passageModeSetting = false hides the Append and Replace buttons');
+assert([...modeWin.document.querySelectorAll('#duplex-dialog-actions button')].some(button=>button.textContent==='Close')&&modeWin.document.querySelector('.duplex-shortcut-row'),'Settings keeps shortcuts and Close when the mode setting is hidden');
+modeWin.document.querySelector('#duplex-dialog-actions button:last-child').click();
+await modeWin.Duplex.mods.import('Mod: Scroll Mod\nVersion: 1.0.0\n:: after Start\n<<set $passageMode = "append">>');
+modeWin.Duplex.go('Start');
+assert(modeWin.State.variables.passageMode==='append'&&modeWin.State.history.at(-1).mode==='append','a mod can still set $passageMode when readers cannot');
+modeWin.Duplex.go('Next');
+assert(modeWin.document.querySelectorAll('#duplex-passages > article').length>1,'the mod-chosen append mode keeps earlier passages on screen');
+modeWin.Config.displayMode='replace';modeWin.Duplex.go('Start');
+assert(modeWin.State.history.at(-1).mode==='replace'&&modeWin.document.querySelectorAll('#duplex-passages > article').length===1,'Config.displayMode still wins over a mod');
+modeDom.window.close();
 
 console.log('Duplex runtime tests passed.');

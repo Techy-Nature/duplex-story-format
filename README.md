@@ -1,4 +1,4 @@
-# [Duplex 1.10.0](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.10.1](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -25,12 +25,30 @@ The value may be conditional:
 
 For JavaScript-based setup, Story JavaScript may set `Config.displayMode` to `"append"` or `"replace"`. That setting takes priority.
 
+### Keep the choice for authors (1.10.1)
+
+By default, readers can switch between append and replace in **Settings**. To leave the choice to the story and its mods, turn that setting off in Story JavaScript:
+
+```js
+Config.passageModeSetting = false;
+Config.displayMode = "append"; // optional: fix the mode for the whole story
+```
+
+or in `StoryInit`, without Story JavaScript:
+
+```twine
+<<run Config.passageModeSetting = false>>
+<<set $passageMode = "append">>
+```
+
+With the setting off, **Settings** no longer shows the **Append passages** and **Replace passages** buttons, and only the story decides the mode. Mods can still change it with `<<set $passageMode = "append">>` or `"replace"` in their own places or passage additions, unless the story set `Config.displayMode`, which always wins. Leaving `Config.passageModeSetting` out keeps the reader setting, so existing stories behave as before.
+
 ## Install in Twine 2 Desktop
 
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.10.0** for your story.
+4. Select **Duplex 1.10.1** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 

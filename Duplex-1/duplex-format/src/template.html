@@ -145,7 +145,7 @@
     const initial = Object.create(null);
     const State = window.State = { variables: Object.create(null), history: [] };
     const setup = window.setup = Object.create(null);
-    const Config = window.Config = { rooms: { safeTags: ['safe-room'], unsafeTags: ['unsafe-room','danger-room'] }, displayMode: null, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
+    const Config = window.Config = { rooms: { safeTags: ['safe-room'], unsafeTags: ['unsafe-room','danger-room'] }, displayMode: null, passageModeSetting: true, audio: { pauseOnFadeToZero: true }, grammar: { avoidRepeats: true }, skip: {
       // Passage tags that count as content tags. Readers can skip passages carrying any of them.
       tags: ['skip','sex','violence','gore','abuse','self-harm','drugs','death'],
       // Reader-facing names for tags. Tags without a label are shown as written.
@@ -815,14 +815,17 @@
     function renderShortcutSettings(options,closeFn){
       const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
-      const box=dialog(options?.title||'Settings',authorSettings+'<p>Choose how passages are displayed.</p><div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),[
+      // Config.passageModeSetting = false takes the Append/Replace choice away from readers, so only the
+      // story (Config.displayMode or $passageMode) and mods (<<set $passageMode>>) decide how passages show.
+      const readerChoosesMode=Config.passageModeSetting!==false;
+      const box=dialog(options?.title||'Settings',authorSettings+(readerChoosesMode?'<p>Choose how passages are displayed.</p>':'')+'<div class="duplex-shortcut-list">'+rows+'</div><p class="duplex-shortcut-help">Select a shortcut, then press one or two keys. Escape cancels.</p>'+ContentSkip.settingsHtml(),readerChoosesMode?[
         {label:'Append passages',action:()=>{State.variables.passageMode='append';UI.update();closeDialog(closeFn);}},
         {label:'Replace passages',action:()=>{State.variables.passageMode='replace';UI.update();closeDialog(closeFn);}}
-      ],closeFn);
+      ]:[],closeFn);
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.10.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.10.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
     const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
