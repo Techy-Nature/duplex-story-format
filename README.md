@@ -89,6 +89,8 @@ GitHub can turn your story repo into an installable Android app on every push, w
 - Switches: `<<switch expression>><<case value>>...<<default>>...<</switch>>`
 - Scripting: `<<run>>`, `<<script>>`, and `<<unset>>`
 - Comments: `//` to the end of a line, `/* ... */` across lines, and `<<comment>>...<</comment>>`
+- No line breaks: `<<nobr>>...<</nobr>>` turns every line break inside it into a single space and trims the ends, so a block written over several lines reads as one line
+- Inline macros: `<<if>>` branches, widgets, container widgets and `<<include>>` stay inline mid-sentence. Only content with its own blank line starts new paragraphs.
 - Markdown: `[markdown]`-tagged passages and `<<markdown>>...<</markdown>>` macro supports headings, emphasis, inline code, links, images, block quotes, and ordered or unordered lists
 - Interactive controls: `<<button>>`, `<<link>>`, `<<linkappend>>`, `<<linkprepend>>`, `<<linkreplace>>`, `<<checkbox>>`, `<<radiobutton>>`, `<<cycle>>`, `<<dropdown>>`, `<<listbox>>`, `<<numberbox>>`, `<<textbox>>`, and `<<textarea>>`
 
