@@ -757,4 +757,14 @@ modeWin.Config.displayMode='replace';modeWin.Duplex.go('Start');
 assert(modeWin.State.history.at(-1).mode==='replace'&&modeWin.document.querySelectorAll('#duplex-passages > article').length===1,'Config.displayMode still wins over a mod');
 modeDom.window.close();
 
+// Nested macro output stays inline; <<nobr>> joins lines.
+const inlineStory=`<tw-storydata name="Inline" ifid="INLINE-IFID" startnode="1">${passage('1','Start','Over 25 different <<wrap>>sexual<</wrap>> scenes and <<if true>>an if<</if>> here.\n\n<<nobr>>\nOne\n<<if true>>two<</if>>\n   three\n<</nobr>> four.')}${passage('2','W','<<widget "wrap" container>><<if true>>_contents<</if>><</widget>>','widget')}</tw-storydata>`;
+const inlineDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Inline').replace('{{STORY_DATA}}',inlineStory),{runScripts:'dangerously',url:'https://example.test/inline',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
+await inlineDom.window.Duplex.ready;
+const inlineParagraphs=[...inlineDom.window.document.querySelectorAll('#duplex-passages > article:last-child .duplex-passage-body p')].map(p=>p.textContent).filter(Boolean);
+assert(inlineParagraphs[0]==='Over 25 different sexual scenes and an if here.','container widgets and <<if>> stay inline mid-sentence');
+assert(inlineParagraphs[1]==='One two three four.','<<nobr>> turns line breaks into single spaces');
+assert(inlineParagraphs.length===2,'no empty paragraphs are added around inline macros');
+inlineDom.window.close();
+
 console.log('Duplex runtime tests passed.');

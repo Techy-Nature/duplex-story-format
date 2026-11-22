@@ -571,7 +571,7 @@
        <<name.lower>> change the letter case of the printed text only (never
        link targets or other markup). Duplex.grammar is the JavaScript API. */
     const GRAMMAR_KEPT='grammarKept', GRAMMAR_MAX_DEPTH=20;
-    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary','speech','speaker']);
+    const GRAMMAR_RESERVED=new Set(['if','elseif','else','switch','case','default','set','run','unset','print','script','include','widget','comment','markdown','nobr','link','linkappend','linkprepend','linkreplace','button','checkbox','radiobutton','cycle','dropdown','listbox','option','options','optionsfrom','numberbox','textbox','textarea','cacheaudio','audio','createaudiogroup','track','createplaylist','masteraudio','playlist','removeaudiogroup','removeplaylist','waitforaudio','grammar','skipto','skipsummary','speech','speaker']);
     const GRAMMAR_CASES={upperfirst:'upperFirst',upper:'upper',lower:'lower'};
     const grammarLast=new Map();
     let grammarDepth=0;
@@ -703,14 +703,22 @@
       finally{includeStack.pop();}
     }
     function includePassage(argSource,context) { return includeNamedPassage(resolvePassage(evaluate(argSource),context),context); }
+    // <<nobr>>: every line break (and the spaces around it) becomes one space, and the
+    // block's leading and trailing whitespace is dropped, so the whole block reads as one line.
+    function nobrText(body){return String(body).replace(/^\s+|\s+$/g,'').replace(/[ \t]*(?:\r\n?|\n)\s*/g,' ');}
+    // Nested compiles (<<if>> branches, widget bodies, _contents, <<include>>) with no blank line
+    // return their text as-is, so they stay inline mid-sentence. Only the outermost compile, or
+    // nested text that has its own blank lines, is split into paragraphs.
+    let compileDepth=0;
     function compile(source,context) {
-      context=context||compileContexts.at(-1)||{restricted:false,sourcePassage:activeRenderTitle};compileContexts.push(context);
+      context=context||compileContexts.at(-1)||{restricted:false,sourcePassage:activeRenderTitle};compileContexts.push(context);compileDepth++;
       let out='', i=0;
       try { while (i < source.length) {
         const rest=source.slice(i);
         if (rest.startsWith('/*')) { const end=rest.indexOf('*/',2);if(end<0)throw new Error('Missing */ for block comment.');i+=end+2;continue; }
         if (rest.startsWith('//') && (i===0 || /\s/.test(source[i-1]))) { const end=rest.indexOf('\n');i+=end<0?rest.length:end;continue; }
         if (/^<<comment(?:\s|>>)/i.test(rest)) { const found=container(rest,'comment');i+=found.length;continue; }
+        if (/^<<nobr(?:\s|>>)/i.test(rest)) { const found=container(rest,'nobr');out+=compile(nobrText(found.body),context);i+=found.length;continue; }
         if (/^<<markdown(?:\s|>>)/i.test(rest)) { const found=markdownMacro(rest);out+=found.html;i+=found.length;continue; }
         if (rest.startsWith('<<if ')) { const found=conditional(rest); out+=found.html; i+=found.length; continue; }
         if (/^<<switch\s/i.test(rest)) { const found=switchMacro(rest);out+=found.html;i+=found.length;continue; }
@@ -770,8 +778,8 @@
         if (variable && (i===0 || !/[\w$]/.test(source[i-1]))) { out += renderValue(evaluate(variable[0])); i += variable[0].length; continue; }
         out += source[i++];
       }
-      out=out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');return context.restricted?sanitizeRestrictedHtml(out):out;
-      } finally { compileContexts.pop(); }
+      if(compileDepth===1||/\n{2,}/.test(out))out=out.replace(/\n{2,}/g,'</p><p>').replace(/^|$/g,'<p>').replace(/<p>\s*<\/p>/g,'');return context.restricted?sanitizeRestrictedHtml(out):out;
+      } finally { compileContexts.pop(); compileDepth--; }
     }
     function makeBar(element,spaceProperty) {
       const api={
