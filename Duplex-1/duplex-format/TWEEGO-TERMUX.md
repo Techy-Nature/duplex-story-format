@@ -78,7 +78,7 @@ Expected output:
 Available formats:
   ID                     Name (Version) [Details]
   --------------------   ------------------------------
-  duplex-1               Duplex (1.10.1)
+  duplex-1               Duplex (1.11.0)
 ```
 
 **Updating Duplex later:** run `git -C ~/duplex-story-format pull`, then repeat the `cp` command above.
@@ -108,7 +108,7 @@ My Story
 {
 	"ifid": "PASTE-YOUR-IFID-HERE",
 	"format": "Duplex",
-	"format-version": "1.10.1",
+	"format-version": "1.11.0",
 	"start": "Start"
 }
 ```
@@ -224,6 +224,7 @@ This keeps your `StoryData`, IFID and passages, so you can keep editing the stor
 | `{{button ...}}` shows as text | That older form was removed in 1.10.0. Delete the word `button`: `{{button Settings}}` becomes `{{Settings}}`, and `{{button Go\|Woods}}` becomes `{{Go\|Woods}}`. |
 | A picture shows only its description | The browser can't reach the file next to the story. Put the picture in `src/` so Tweego packs it in (step 5). |
 | Saves say they last only until you close the page | The browser opened the story from a `content://` link and blocks saving. Use Option A in step 6, or press **Export** in **Saves** to keep a backup. |
+| `Malformed "StorySettings" entry; skipping …` for every line, and your settings don't show | Tweego reads a passage named `StorySettings` as an old Twine 1 settings list and leaves it out. Rename it and tag it `settings`: `:: StorySettings` becomes `:: AdultSettings [settings]` (any name works). Needs Duplex 1.11.0 or newer. |
 | `--list-formats` doesn't show Duplex | Make sure the file is at `~/storyformats/duplex-1/format.js`, not one folder deeper. |
 
 ## What was tested
@@ -235,7 +236,8 @@ The rest was checked on a Linux computer with Tweego 2.1.1 built from `@master`:
 
 - `go install github.com/tmedwards/tweego@master` builds; `@latest` failed here because it pulled in dependencies that need a newer Go.
 - The same build compiles for Android (`GOOS=android GOARCH=arm64`), the target Termux uses.
-- `tweego --list-formats` lists Duplex 1.10.1 under the ID `duplex-1`.
+- `tweego --list-formats` lists Duplex 1.11.0 under the ID `duplex-1`.
+- A passage tagged `settings` survives a Tweego build with no warnings and shows in **Settings** (checked with Duplex 1.11.0).
 - Building the Duplex example with and without `-f`, and decompiling it with `-d`, all work, and the built story plays in a mobile-sized browser.
 
 Not yet tried on a real phone: running Termux itself, `termux-setup-storage`, and opening the story from Downloads.

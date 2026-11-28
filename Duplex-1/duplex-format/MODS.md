@@ -63,7 +63,7 @@ A schema 1 manifest may include `passageExtensions` (mods which omit it, includi
 }
 ```
 
-The target must exist in the base story when the mod is imported; mods cannot introduce a target for another mod. Duplex rejects duplicate or invalid extension IDs, missing targets, and targets tagged `widget`, `grammar`, `script`, or `stylesheet`. It also protects initialization, configuration, UI, and internal passages: `StoryInit`, `StoryTitle`, `StoryCaption`, `StoryMenu`, `StoryLeftBar`, `StoryRightBar`, `StoryInterface`, `StoryDisplayTitle`, `StoryAuthor`, `StorySubtitle`, `StoryShare`, `StorySettings`, `PassageHeader`, and `PassageFooter`.
+The target must exist in the base story when the mod is imported; mods cannot introduce a target for another mod. Duplex rejects duplicate or invalid extension IDs, missing targets, and targets tagged `widget`, `grammar`, `script`, `stylesheet`, or `settings`. It also protects initialization, configuration, UI, and internal passages: `StoryInit`, `StoryTitle`, `StoryCaption`, `StoryMenu`, `StoryLeftBar`, `StoryRightBar`, `StoryInterface`, `StoryDisplayTitle`, `StoryAuthor`, `StorySubtitle`, `StoryShare`, `StorySettings`, `PassageHeader`, and `PassageFooter`.
 
 Enabled extensions are represented internally as non-navigable `DuplexMod:<mod-id>:<extension-id>` passages tagged `mod restricted`. Their content is not copied into the target or save history. History stores only the compiled base-passage output; extension output is reconstructed from the currently enabled manifests when history is rebuilt, loaded, or revisited. Duplex renders all `before` extensions, the unchanged base output, then all `after` extensions. Ordering is installed-mod import order followed by manifest order, and the stored import order is restored between sessions. Disabling or removing a mod removes its virtual passages and its contribution to rebuilt history; enabling it reconstructs them without re-importing.
 
@@ -100,7 +100,7 @@ Each entry needs a `name` and `text`, and may have `tags`:
 ```
 
 * Names must be unique within the mod and may not contain `[`, `]`, `|`, `->` or `<-`.
-* Tags may not include `widget`, `grammar`, `script`, `stylesheet`, `mod` or `restricted`. Content tags such as `skip` or `violence` work as usual, so readers can skip mod places too.
+* Tags may not include `widget`, `grammar`, `script`, `stylesheet`, `settings`, `mod` or `restricted`. Content tags such as `skip` or `violence` work as usual, so readers can skip mod places too.
 * Add `"room": "safe"` or `"room": "unsafe"` to make the place an inventory room. Things left in a safe room stay there; an unsafe room is cleared when the reader leaves. See "Safe and unsafe places" in the main README.
 * Mod places are restricted exactly like extensions: no `<<script>>`, `<<run>>`, widgets, or JavaScript, and the same HTML sanitizer.
 

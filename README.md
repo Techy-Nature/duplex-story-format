@@ -1,4 +1,4 @@
-# [Duplex 1.10.1](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.11.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -66,7 +66,7 @@ Duplex picks the display mode from the first of these that is set, every time a 
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.10.1** for your story.
+4. Select **Duplex 1.11.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -154,6 +154,15 @@ UIBarR.unstow();
 The older `UIBar`, `UIBarRight`, `UIBars.left`, and `UIBars.right` names remain as compatibility aliases.
 
 The `UI` object provides `alert()`, `restart()`, `saves()`, `settings()`, `update()`, `jumpto()`, and `share()`.
+
+## Settings passages
+
+Anything you put in a settings passage appears at the top of the **Settings** dialog, above the shortcut rows. There are two ways to make one:
+
+- **Tag it `settings` (works everywhere, needed for Tweego).** Give any passage the `settings` tag, for example `:: AdultSettings [settings]`. You can have more than one; they show in story order.
+- **Name it `StorySettings` (Twine 2 editor only).** Tweego reads a passage with this name as an old Twine 1 settings list, prints `Malformed "StorySettings" entry` for every line, and leaves the passage out of the story. If you build with Tweego, use the tag instead.
+
+When a story has both, `StorySettings` comes first, then the tagged passages. Settings passages are UI, so content skipping never skips them, and mods cannot add to them.
 
 ## Saves and portable backups
 

@@ -101,6 +101,8 @@ Second widget paragraph.<</widget>>
   ${passage('25','audio-cue','chime','grammar')}
   ${passage('26','Grammar Widgets','<<widget "creature">>A <<beast.lower>> and a <<beast.upperFirst>> appear.<</widget>>','widget')}
   ${passage('18','StorySettings','<strong id="author-settings">Author settings</strong>')}
+  ${passage('27','AdultSettings','<<set _tagged to "tagged">><em id="tagged-settings"><<print _tagged>> settings</em>','settings')}
+  ${passage('28','MoreSettings','<em id="more-settings">More settings</em>','Settings')}
 </tw-storydata>`;
 
 const html = format.source.replace('{{STORY_NAME}}','Test').replace('{{STORY_DATA}}',story);
@@ -128,7 +130,7 @@ const dom = new JSDOM(html, {
 const { document, State, Duplex, duplex, Save } = dom.window;
 const assert = (condition,message) => { if (!condition) throw new Error(message); };
 
-assert(format.version === '1.10.1','format version');
+assert(format.version === '1.11.0','format version');
 assert(duplex===Duplex && typeof duplex.random==='function','lowercase Duplex API alias and random helper');
 assert(duplex.random(null)===undefined && duplex.random('red')===undefined && duplex.random([])===undefined,'random helper rejects non-arrays and empty arrays');
 const colors=dom.window.Array.from(['red','blue','green']);
@@ -183,6 +185,8 @@ assert(Duplex.shortcuts.get('inventory').shortcut==='Shift+I'&&Duplex.shortcuts.
 Duplex.shortcuts.add('test-action',{label:'Test action',defaultShortcut:'T',action:()=>{dom.window.shortcutAction=true;}});
 dom.window.UI.settings();
 assert(document.querySelector('#author-settings')&&[...document.querySelectorAll('.duplex-shortcut-row')].some(row=>row.textContent.includes('Inventory')&&row.querySelector('button').textContent==='Shift+I'),'StorySettings content and separate shortcut labels render accurately');
+{const settingsBox=document.querySelector('#author-settings').closest('#duplex-dialog-body')||document.body,order=[...settingsBox.querySelectorAll('#author-settings,#tagged-settings,#more-settings')].map(element=>element.id);
+assert(order.join()==='author-settings,tagged-settings,more-settings'&&document.querySelector('#tagged-settings').textContent==='tagged settings','passages tagged settings render after StorySettings, in story order, with macros');}
 const inventoryShortcutButton=document.querySelector('[data-shortcut-id="inventory"]');inventoryShortcutButton.click();
 inventoryShortcutButton.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Shift',shiftKey:true,bubbles:true,cancelable:true}));
 assert(inventoryShortcutButton.textContent==='Shift+…','shortcut recorder waits for a second key after a modifier');
@@ -230,6 +234,7 @@ for(const [bad,message] of [
   [{...extensionMod,id:'bad-target',passageExtensions:[{id:'x',target:'Missing',placement:'after',content:''}]},'missing target'],
   [{...extensionMod,id:'bad-init',passageExtensions:[{id:'x',target:'StoryInit',placement:'after',content:''}]},'protected target'],
   [{...extensionMod,id:'bad-widget',passageExtensions:[{id:'x',target:'Widgets',placement:'after',content:''}]},'protected tag'],
+  [{...extensionMod,id:'bad-settings',passageExtensions:[{id:'x',target:'AdultSettings',placement:'after',content:''}]},'settings tag target'],
   [{...extensionMod,id:'bad-duplicate',passageExtensions:[{id:'x',target:'Next',placement:'after',content:''},{id:'x',target:'Next',placement:'before',content:''}]},'duplicate extension'],
   [{...extensionMod,id:'bad-placement',passageExtensions:[{id:'x',target:'Next',placement:'around',content:''}]},'invalid placement']
 ]){let failed=false;try{Duplex.mods.register(bad);}catch(_){failed=true;}assert(failed,message+' rejected');}
@@ -440,7 +445,7 @@ const questSave=sw.Save.serialize();
 const noModDom=new JSDOM(format.source.replace('{{STORY_NAME}}','Skip Test').replace('{{STORY_DATA}}',skipStory),{runScripts:'dangerously',url:'https://example.test/skip2',beforeParse(window){window.scrollTo=()=>{};window.requestAnimationFrame=callback=>callback();window.HTMLElement.prototype.scrollIntoView=()=>{};}});
 let questError='';try{noModDom.window.Save.import(questSave);}catch(error){questError=error.message;}
 assert(questError.includes('quest.mod'),'a save in a mod place explains which mod it needs');noModDom.window.close();
-for(const [bad,why] of [[{name:'Lair',text:'',tags:['widget']},'protected tag'],[{name:'A->B',text:''},'link syntax in name'],[{name:'Cave',text:''},'duplicate name']]){
+for(const [bad,why] of [[{name:'Lair',text:'',tags:['widget']},'protected tag'],[{name:'Den',text:'',tags:['settings']},'settings tag'],[{name:'A->B',text:''},'link syntax in name'],[{name:'Cave',text:''},'duplicate name']]){
   let rejected=false;try{sw.Duplex.mods.register({schema:1,id:'bad.'+why.replace(/\W/g,''),name:'Bad',version:'1.0.0',items:[],passages:why==='duplicate name'?[bad,bad]:[bad]});}catch(_){rejected=true;}
   assert(rejected,'mod passages with a '+why+' are rejected');
 }
