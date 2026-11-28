@@ -1,4 +1,4 @@
-# [Duplex 1.10.1](https://techy-nature.github.io/duplex-story-format/)
+# [Duplex 1.11.0](https://techy-nature.github.io/duplex-story-format/)
 
 Duplex is a small, installable, [modifiable](https://github.com/Techy-Nature/duplex-story-format/blob/main/Duplex-1/duplex-format/MODS.md) Twine 2 story format with two navigation modes and one SugarCube-like passage syntax.
 
@@ -66,7 +66,7 @@ Duplex picks the display mode from the first of these that is set, every time a 
 1. Extract this folder somewhere permanent.
 2. In Twine, open **Story Formats**, then **Add a New Format**.
 3. Enter the full file URL to `format.js`, such as `file:///home/you/Twine/Duplex/format.js`.
-4. Select **Duplex 1.5.0** for your story.
+4. Select **Duplex 1.11.0** for your story.
 
 Browser-based Twine generally cannot install a local `file://` URL. Host the folder on a web server or use Twine Desktop.
 
@@ -144,11 +144,11 @@ The older `UIBar`, `UIBarRight`, `UIBars.left`, and `UIBars.right` names remain 
 
 The `UI` object provides `alert()`, `restart()`, `saves()`, `settings()`, `update()`, `jumpto()`, and `share()`.
 
-## Keyboard shortcuts and StorySettings
+## Keyboard shortcuts and settings passages
 
 Duplex includes keyboard shortcuts for **Inventory** (`Shift+I`), **Story settings** (`Shift+Alt`), **Reset story** (`Shift+Backspace`), and **Select** (`Enter`). Number keys follow the familiar keyboard layout for visible story links: `1` selects the first link, `2` the second, and so on, while `0` selects the last link. Shortcuts do not fire while the player is typing in an input.
 
-If a `StorySettings` passage exists, its compiled contents appear at the top of the Settings dialog. The built-in shortcut rows keep the action label separate from the shortcut button. A player selects that button and presses a one- or two-key shortcut; the new value is saved immediately for that story and the button displays the actual value. No additional save or apply button is needed.
+If a `StorySettings` passage exists, or any passage is tagged `settings`, their compiled contents appear at the top of the Settings dialog (`StorySettings` first, then tagged passages in story order). Tweego drops a passage named `StorySettings` and warns `Malformed "StorySettings" entry` for each line, so Tweego users should tag the passage instead, for example `:: AdultSettings [settings]`. The built-in shortcut rows keep the action label separate from the shortcut button. A player selects that button and presses a one- or two-key shortcut; the new value is saved immediately for that story and the button displays the actual value. No additional save or apply button is needed.
 
 Authors can register additional actions from story JavaScript with `Duplex.shortcuts.add()`. Players can change registered bindings in Settings, but cannot add actions themselves:
 

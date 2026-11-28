@@ -830,8 +830,16 @@
     function shortcutValue(definition){return normalizeShortcut(storedShortcuts()[definition.id]??definition.defaultShortcut);}
     function shortcutEvent(event){const parts=[];if(event.ctrlKey)parts.push('Ctrl');if(event.altKey)parts.push('Alt');if(event.shiftKey)parts.push('Shift');if(event.metaKey)parts.push('Meta');const key=shortcutKey(event.key);if(!['Ctrl','Alt','Shift','Meta'].includes(key))parts.push(key);return normalizeShortcut(parts);}
     function setShortcut(id,value){const definition=shortcutDefinitions.get(String(id));if(!definition)throw new Error('Shortcut not found.');const normalized=normalizeShortcut(value);if(!normalized)throw new Error('A shortcut must contain one or two keys.');const saved=storedShortcuts();saved[definition.id]=normalized;Storage.set(shortcutStorageKey(),JSON.stringify(saved));return normalized;}
+    // Author settings come from a StorySettings passage and from every passage tagged settings, in story order.
+    // The tag is there for Tweego, which reads a passage named StorySettings as a Twine 1 settings list,
+    // warns "Malformed StorySettings entry" for each line, and leaves the passage out of the story.
+    function settingsPassages(){
+      const list=passages.has('StorySettings')&&!passages.get('StorySettings').virtualMod?[passages.get('StorySettings')]:[];
+      passages.forEach((passage,title)=>{if(title!=='StorySettings'&&!passage.virtualMod&&passage.tags.some(tag=>tag.toLowerCase()==='settings'))list.push(passage);});
+      return list;
+    }
     function renderShortcutSettings(options,closeFn){
-      const authorSettings=passages.has('StorySettings')?compile(passages.get('StorySettings').text):'';
+      const authorSettings=settingsPassages().map(passage=>compile(passage.text)).join('');
       const rows=[...shortcutDefinitions.values()].map(definition=>'<div class="duplex-shortcut-row"><span>'+escapeHtml(definition.label)+'</span><button type="button" data-shortcut-id="'+escapeHtml(definition.id)+'">'+escapeHtml(shortcutValue(definition))+'</button></div>').join('');
       // UI.settings.storymodeshow(false) or $storymodeshow = false takes the Append/Replace choice away from readers, so only
       // the story (Config.displayMode or $passageMode) and mods (<<set $passageMode>>) decide how passages show.
@@ -843,10 +851,10 @@
       ContentSkip.bindSettings(box);
       box.querySelectorAll('[data-shortcut-id]').forEach(button=>button.addEventListener('click',()=>{button.dataset.recording='true';button.textContent='Press keys…';button.focus();}));return box;
     }
-    const MOD_SCHEMA=1, DUPLEX_VERSION='1.10.1', dangerousKeys=new Set(['__proto__','prototype','constructor']);
+    const MOD_SCHEMA=1, DUPLEX_VERSION='1.11.0', dangerousKeys=new Set(['__proto__','prototype','constructor']);
     const installedMods=new Map(), passageExtensions=new Map();
     const PROTECTED_MOD_TARGETS=new Set(['StoryInit','StoryTitle','StoryCaption','StoryMenu','StoryLeftBar','StoryRightBar','StoryInterface','StoryDisplayTitle','StoryAuthor','StorySubtitle','StoryShare','StorySettings','PassageHeader','PassageFooter']);
-    const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet']);
+    const PROTECTED_MOD_TAGS=new Set(['widget','grammar','script','stylesheet','settings']);
     let nextModOrder=0;
     function rebuildPassageExtensions(){
       const baseNames=new Set([...passages].filter(([,passage])=>!passage.virtualMod).map(([title])=>title)),virtuals=new Map(),extensions=new Map();
